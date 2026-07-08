@@ -1,0 +1,27 @@
+{
+  "statistics and data analysis": [
+    "time series analysis"
+  ],
+  "stats and data analysis": [
+    "time series analysis"
+  ],
+  "SDA": [
+    "Inferential stats",
+    "ANOVA",
+    "PCA & LDA"
+  ],
+  "ML": [
+    "Linear regression",
+    "Logisitc Regression",
+    "svm",
+    "clustering techniques",
+    "k-means",
+    "hierarchical clustering",
+    "confusion matrix",
+    "precision and recall",
+    "f1 score"
+  ],
+  "Science": [
+    "Physics"
+  ]
+}

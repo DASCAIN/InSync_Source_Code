@@ -1,0 +1,238 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Take Assignment: {{ assignment.title }} — InSync{% endblock %}
+
+{% block head_extra %}
+<style>
+  .question-card {
+    transition: all 0.3s ease;
+  }
+  .question-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  }
+  .option-btn {
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+  }
+  .option-btn:hover:not(.selected):not(.disabled) {
+    background-color: hsl(var(--muted));
+    border-color: hsl(var(--border));
+  }
+  .option-btn.selected {
+    background-color: hsl(var(--primary) / 0.1);
+    border-color: hsl(var(--primary));
+  }
+  .option-btn.correct {
+    background-color: hsl(var(--success) / 0.15) !important;
+    border-color: hsl(var(--success)) !important;
+  }
+  .option-btn.incorrect {
+    background-color: hsl(var(--destructive) / 0.15) !important;
+    border-color: hsl(var(--destructive)) !important;
+    opacity: 0.7;
+  }
+  .feedback-box {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}
+
+{% block inner_content %}
+<div class="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-20">
+  <!-- Header -->
+  <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+    <div class="container mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="{% url 'voice_tutor:student_dashboard' %}" class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        <span>Back to Dashboard</span>
+      </a>
+      <div class="text-center">
+        <h1 class="font-display font-semibold text-xl text-foreground">{{ assignment.title }}</h1>
+        <p class="text-xs text-muted-foreground">{{ assignment.topic }} • {{ assignment.expectedDuration }} mins</p>
+      </div>
+      <div class="w-24"></div> <!-- Spacer for flex alignment -->
+    </div>
+  </div>
+
+  <div class="container mx-auto px-6 py-8 max-w-4xl">
+    <!-- Assignment Description -->
+    <div class="bg-card rounded-2xl p-6 shadow-sm border border-border/50 mb-8">
+      <h2 class="font-semibold text-lg mb-2">Instructions</h2>
+      <p class="text-muted-foreground text-sm leading-relaxed">
+        {{ assignment.description|default:"Please answer all questions carefully. Select the best option for each question. Once you are done, click Submit Assignment to see your score." }}
+      </p>
+    </div>
+
+    <!-- Questions Form -->
+    <form id="assignment-form" class="space-y-8">
+      {% for question in assignment.questions %}
+      <div class="question-card bg-card rounded-2xl p-6 md:p-8 shadow-sm border border-border/50" id="question-card-{{ question.id }}">
+        <div class="flex items-start justify-between mb-4 gap-4">
+          <h3 class="font-medium text-foreground text-lg leading-snug">
+            <span class="text-primary mr-2">{{ forloop.counter }}.</span>
+            {{ question.content }}
+          </h3>
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground whitespace-nowrap">
+            {{ question.difficulty|title }}
+          </span>
+        </div>
+
+        <div class="space-y-3 mt-6 options-container" data-question-id="{{ question.id }}">
+          {% for option in question.options %}
+          <label class="option-btn flex items-center p-4 rounded-xl cursor-pointer bg-background border border-border group">
+            <input 
+              type="radio" 
+              name="question_{{ question.id }}" 
+              value="{{ option.letter }}" 
+              class="hidden peer"
+              data-is-correct="{{ option.is_correct|lower }}"
+            >
+            <div class="w-6 h-6 rounded-full border-2 border-muted-foreground flex items-center justify-center mr-4 peer-checked:border-primary peer-checked:bg-primary transition-colors flex-shrink-0">
+              <div class="w-2.5 h-2.5 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+            </div>
+            <span class="text-foreground font-medium group-hover:text-primary transition-colors">
+              <span class="mr-2 font-bold">{{ option.letter }}.</span> {{ option.text }}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+
+        <!-- Feedback & AI Tutor Link (Hidden until submitted) -->
+        <div class="feedback-box hidden mt-6 p-4 rounded-xl" id="feedback-{{ question.id }}">
+          <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div>
+              <p class="feedback-text font-semibold mb-1"></p>
+              <p class="text-sm text-muted-foreground">Correct Answer: <span class="font-bold text-foreground">{{ question.correctAnswer }}</span></p>
+            </div>
+            <a href="{% url 'voice_tutor:voice_agent_question' assignment.id question.id %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 whitespace-nowrap shrink-0 shadow-sm">
+              <i data-lucide="bot" class="w-4 h-4 mr-2"></i>
+              Discuss with AI Tutor
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Submit Section -->
+      <div class="flex flex-col items-center justify-center mt-12 pt-8 border-t border-border">
+        <div id="results-summary" class="hidden mb-6 text-center animate-fade-in">
+          <h2 class="text-3xl font-display font-bold mb-2">Score: <span id="score-display" class="text-primary">0%</span></h2>
+          <p class="text-muted-foreground">You got <span id="correct-count">0</span> out of {{ assignment.questions|length }} correct.</p>
+        </div>
+        <button 
+          type="button" 
+          id="submit-btn"
+          class="inline-flex items-center justify-center rounded-full text-base font-semibold transition-all bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 active:scale-95 h-12 px-8 shadow-lg shadow-primary/25"
+        >
+          Submit Assignment
+          <i data-lucide="check-circle" class="w-5 h-5 ml-2"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Handle radio button selection styling
+    const optionLabels = document.querySelectorAll('.option-btn');
+    const radios = document.querySelectorAll('input[type="radio"]');
+
+    radios.forEach(radio => {
+      radio.addEventListener('change', function() {
+        // Reset all labels in the same question container
+        const container = this.closest('.options-container');
+        const containerLabels = container.querySelectorAll('.option-btn');
+        containerLabels.forEach(label => label.classList.remove('selected'));
+
+        // Add selected class to the parent label
+        if (this.checked) {
+          this.closest('.option-btn').classList.add('selected');
+        }
+      });
+    });
+
+    // Handle form submission and grading
+    const submitBtn = document.getElementById('submit-btn');
+    const form = document.getElementById('assignment-form');
+    const totalQuestions = {{ assignment.questions|length }};
+
+    submitBtn.addEventListener('click', () => {
+      let correctAnswers = 0;
+      let answeredQuestions = 0;
+
+      // Grade each question
+      const containers = document.querySelectorAll('.options-container');
+      containers.forEach(container => {
+        const questionId = container.dataset.questionId;
+        const selectedRadio = container.querySelector('input[type="radio"]:checked');
+        const feedbackBox = document.getElementById(`feedback-${questionId}`);
+        const feedbackText = feedbackBox.querySelector('.feedback-text');
+        
+        // Disable all inputs to prevent changing answers
+        const inputs = container.querySelectorAll('input[type="radio"]');
+        const labels = container.querySelectorAll('.option-btn');
+        inputs.forEach(input => input.disabled = true);
+        labels.forEach(label => label.classList.add('disabled', 'pointer-events-none'));
+
+        if (selectedRadio) {
+          answeredQuestions++;
+          const isCorrect = selectedRadio.dataset.isCorrect === 'true';
+          const selectedLabel = selectedRadio.closest('.option-btn');
+
+          if (isCorrect) {
+            correctAnswers++;
+            selectedLabel.classList.add('correct');
+            feedbackBox.classList.add('bg-success/10', 'border', 'border-success/20');
+            feedbackText.classList.add('text-success');
+            feedbackText.textContent = "✅ Correct!";
+          } else {
+            selectedLabel.classList.add('incorrect');
+            // Highlight the actual correct answer
+            const correctRadio = container.querySelector('input[data-is-correct="true"]');
+            if (correctRadio) {
+               correctRadio.closest('.option-btn').classList.add('correct');
+            }
+            feedbackBox.classList.add('bg-destructive/10', 'border', 'border-destructive/20');
+            feedbackText.classList.add('text-destructive');
+            feedbackText.textContent = "❌ Incorrect";
+          }
+        } else {
+          // Unanswered
+          const correctRadio = container.querySelector('input[data-is-correct="true"]');
+          if (correctRadio) {
+             correctRadio.closest('.option-btn').classList.add('correct');
+          }
+          feedbackBox.classList.add('bg-warning/10', 'border', 'border-warning/20');
+          feedbackText.classList.add('text-warning');
+          feedbackText.textContent = "⚠️ Unanswered";
+        }
+        
+        feedbackBox.classList.remove('hidden');
+      });
+
+      // Show summary
+      const scorePercentage = Math.round((correctAnswers / totalQuestions) * 100);
+      document.getElementById('score-display').textContent = `${scorePercentage}%`;
+      document.getElementById('correct-count').textContent = correctAnswers;
+      
+      const summaryDiv = document.getElementById('results-summary');
+      summaryDiv.classList.remove('hidden');
+      
+      // Hide submit button
+      submitBtn.style.display = 'none';
+      
+      // Scroll to top to see results
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+</script>
+{% endblock %}

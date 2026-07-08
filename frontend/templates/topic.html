@@ -1,0 +1,328 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}{{ topic.name }} — InSync{% endblock %}
+
+{% block inner_content %}
+<div class="min-h-screen bg-gradient-to-b from-background to-muted/30">
+  <!-- Header Bar / Breadcrumb Header -->
+  <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+    <div class="container mx-auto px-6 py-4 flex flex-col gap-4">
+      <a
+        href="javascript:history.back()"
+        class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium w-fit"
+      >
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        <span>Back</span>
+      </a>
+      <div>
+        <div class="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span>{{ subject.name }}</span>
+          <span>/</span>
+          <span class="text-foreground font-medium">{{ topic.name }}</span>
+        </div>
+        <h1 class="font-display text-3xl font-bold text-foreground">{{ topic.name }}</h1>
+        <p class="text-muted-foreground mt-2 max-w-3xl leading-relaxed">{{ topic.description }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="container mx-auto px-6 py-8 space-y-6">
+    <!-- Tabs Navigation -->
+    <div class="flex items-center gap-1 p-1 bg-muted/60 rounded-xl w-fit">
+      <button
+        id="tab-btn-information"
+        onclick="switchTab('information')"
+        class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+      >
+        <i data-lucide="video" class="w-4 h-4"></i>
+        Information
+      </button>
+      <button
+        id="tab-btn-guided"
+        onclick="switchTab('guided')"
+        class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+      >
+        <i data-lucide="mic" class="w-4 h-4"></i>
+        Guided Assignments
+      </button>
+      <button
+        id="tab-btn-self"
+        onclick="switchTab('self')"
+        class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+      >
+        <i data-lucide="file-text" class="w-4 h-4"></i>
+        Self Assignments
+      </button>
+    </div>
+
+    <!-- Tab 1: Information Content -->
+    <div id="tab-content-information" class="tab-content space-y-8">
+      <!-- Learning Objectives -->
+      <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="p-2 rounded-xl bg-primary/10">
+            <i data-lucide="target" class="w-5 h-5 text-primary"></i>
+          </div>
+          <h2 class="font-display text-xl font-semibold">Learning Objectives</h2>
+        </div>
+        <ul class="grid sm:grid-cols-2 gap-3">
+          {% for objective in topic.learningObjectives %}
+            <li class="flex items-start gap-3 p-3 rounded-xl bg-muted/40">
+              <i data-lucide="check-circle-2" class="w-5 h-5 text-success mt-0.5 shrink-0"></i>
+              <span class="text-sm text-foreground">{{ objective }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Concept Videos -->
+      <div class="space-y-6">
+        <h2 class="font-display text-xl font-semibold flex items-center gap-2">
+          <i data-lucide="play" class="w-5 h-5 text-primary"></i>
+          Concept Videos
+        </h2>
+        <div class="grid md:grid-cols-2 gap-6">
+          {% for video in topic.videos %}
+            <div class="bg-card rounded-2xl overflow-hidden shadow-md border border-border/50">
+              <div class="aspect-video bg-black">
+                <video class="w-full h-full" controls preload="metadata" playsinline>
+                  <source src="{% static 'videos/' %}{{ video.src|cut:'/videos/' }}" type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+              <div class="p-5">
+                <h3 class="font-display font-semibold text-lg text-foreground">{{ video.title }}</h3>
+                {% if video.description %}
+                  <p class="text-sm text-muted-foreground mt-2 leading-relaxed">{{ video.description }}</p>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Guided Assignments Content -->
+    <div id="tab-content-guided" class="tab-content space-y-6 hidden">
+      <!-- Voice Tutor Sidebar Promo (rendered full width inside tab) -->
+      <div class="bg-card rounded-2xl p-8 shadow-md border border-border/50 text-center space-y-4">
+        <div class="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+          <i data-lucide="mic" class="w-10 h-10 text-primary"></i>
+        </div>
+        <h2 class="font-display text-2xl font-semibold text-foreground">AI Voice Tutor Sessions</h2>
+        <p class="text-muted-foreground max-w-lg mx-auto">
+          Start an interactive session with our AI tutor. It will guide you through the questions
+          below step by step using voice conversation.
+        </p>
+        <div class="flex flex-wrap justify-center gap-3 pt-2">
+          {% for aId in topic.guidedAssignmentIds %}
+            <a
+              href="{% url 'voice_tutor:voice_agent_assignment' assignment_id=aId %}"
+              class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-base font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gradient-to-r from-primary via-purple-500 to-accent text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-12 px-8"
+            >
+              <i data-lucide="mic" class="w-5 h-5"></i>
+              Start Guided Session
+            </a>
+          {% endfor %}
+        </div>
+        <div class="flex flex-wrap justify-center gap-2 pt-4">
+          <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-secondary text-secondary-foreground gap-1">
+            <i data-lucide="check-circle-2" class="w-3 h-3 text-success"></i> Step-by-step guidance
+          </span>
+          <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-secondary text-secondary-foreground gap-1">
+            <i data-lucide="check-circle-2" class="w-3 h-3 text-success"></i> Voice interaction
+          </span>
+          <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-secondary text-secondary-foreground gap-1">
+            <i data-lucide="check-circle-2" class="w-3 h-3 text-success"></i> Hints available
+          </span>
+        </div>
+      </div>
+
+      <!-- Practice Questions -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="font-display text-xl font-semibold text-foreground">Guided Questions</h2>
+          <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground">
+            {{ topic.assignmentQuestions|length }} questions
+          </span>
+        </div>
+        {% if is_professor %}
+          <p class="text-sm text-muted-foreground bg-primary/5 rounded-xl p-3 border border-primary/10">
+            👨‍🏫 As a professor, you can view answers and edit any question. Students will see the same questions without answers.
+          </p>
+        {% endif %}
+        <div class="space-y-4">
+          {% for question in topic.assignmentQuestions %}
+            {% include 'student/partials/question_card.html' with question=question index=forloop.counter tab='guided' is_professor=is_professor %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Self Assignments Content -->
+    <div id="tab-content-self" class="tab-content space-y-6 hidden">
+      <div class="flex items-center justify-between">
+        <h2 class="font-display text-xl font-semibold text-foreground">Practice Questions</h2>
+        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground">
+          {{ topic.assignmentQuestions|length }} questions
+        </span>
+      </div>
+      {% if is_professor %}
+        <p class="text-sm text-muted-foreground bg-primary/5 rounded-xl p-3 border border-primary/10">
+          👨‍🏫 Professor view — answers and edit controls are visible. Students see only the questions.
+        </p>
+      {% endif %}
+      <div class="space-y-4">
+        {% for question in topic.assignmentQuestions %}
+          {% include 'student/partials/question_card.html' with question=question index=forloop.counter tab='self' is_professor=is_professor %}
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+  // Selected option tracking for MCQs
+  const selectedOptions = {};
+
+  // Tab switching logic
+  function switchTab(tabId) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.add('hidden');
+    });
+
+    // Show selected tab content
+    const activeContent = document.getElementById('tab-content-' + tabId);
+    if (activeContent) {
+      activeContent.classList.remove('hidden');
+    }
+
+    // Reset button styles
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.className = "tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-muted/30";
+    });
+
+    // Style active button
+    const activeBtn = document.getElementById('tab-btn-' + tabId);
+    if (activeBtn) {
+      activeBtn.className = "tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-background text-foreground shadow-sm";
+    }
+  }
+
+  // Initialize default active tab
+  window.addEventListener('DOMContentLoaded', () => {
+    switchTab('information');
+  });
+
+  function selectOption(questionId, option, tab) {
+    selectedOptions[tab + '-' + questionId] = option;
+    
+    // Clear styles
+    const labels = ['a', 'b', 'c', 'd'];
+    labels.forEach(lbl => {
+      const optBtn = document.getElementById(`opt-${tab}-${questionId}-${lbl}`);
+      if (optBtn) {
+        optBtn.className = "flex items-center gap-3 p-3 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-all w-full text-left";
+      }
+    });
+
+    // Apply active selection border class
+    const activeBtn = document.getElementById(`opt-${tab}-${questionId}-${option}`);
+    if (activeBtn) {
+      activeBtn.className = "flex items-center gap-3 p-3 rounded-xl border-2 border-primary/40 bg-primary/10 transition-all w-full text-left";
+    }
+  }
+
+  function checkQuestionAnswer(questionId, type, correctAnswer, tab) {
+    const submitBtn = document.getElementById(`submit-btn-${tab}-${questionId}`);
+    const retryBtn = document.getElementById(`retry-btn-${tab}-${questionId}`);
+    const feedback = document.getElementById(`feedback-${tab}-${questionId}`);
+    const modelAnswer = document.getElementById(`model-answer-${tab}-${questionId}`);
+
+    let studentAns = '';
+    if (type === 'mcq') {
+      studentAns = selectedOptions[tab + '-' + questionId] || '';
+      if (!studentAns) {
+        alert("Please select an option first.");
+        return;
+      }
+    } else {
+      const inputEl = document.getElementById(`answer-${tab}-${questionId}`);
+      studentAns = inputEl.value.trim();
+      if (!studentAns) {
+        alert("Please input your answer first.");
+        return;
+      }
+      inputEl.setAttribute('disabled', 'true');
+    }
+
+    // Disable inputs
+    submitBtn.classList.add('hidden');
+    retryBtn.classList.remove('hidden');
+
+    if (type === 'mcq' || type === 'numerical') {
+      const isRight = studentAns.toLowerCase() === correctAnswer.toLowerCase();
+      feedback.textContent = isRight ? '✅ Correct! Great job!' : '❌ Incorrect. Suggest using AI Voice Tutor to learn.';
+      feedback.className = `text-sm font-medium ${isRight ? 'text-success' : 'text-destructive'}`;
+      
+      // Reveal model answer
+      modelAnswer.classList.remove('hidden');
+    } else {
+      // descriptive
+      feedback.textContent = '📝 Submitted. Study the model answer below.';
+      feedback.className = 'text-sm font-medium text-muted-foreground';
+      modelAnswer.classList.remove('hidden');
+    }
+  }
+
+  function retryQuestion(questionId, type, tab) {
+    const submitBtn = document.getElementById(`submit-btn-${tab}-${questionId}`);
+    const retryBtn = document.getElementById(`retry-btn-${tab}-${questionId}`);
+    const feedback = document.getElementById(`feedback-${tab}-${questionId}`);
+    const modelAnswer = document.getElementById(`model-answer-${tab}-${questionId}`);
+
+    submitBtn.classList.remove('hidden');
+    retryBtn.classList.add('hidden');
+    feedback.textContent = '';
+    modelAnswer.classList.add('hidden');
+
+    if (type === 'mcq') {
+      delete selectedOptions[tab + '-' + questionId];
+      const labels = ['a', 'b', 'c', 'd'];
+      labels.forEach(lbl => {
+        const optBtn = document.getElementById(`opt-${tab}-${questionId}-${lbl}`);
+        if (optBtn) {
+          optBtn.className = "flex items-center gap-3 p-3 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-all w-full text-left";
+        }
+      });
+    } else {
+      const inputEl = document.getElementById(`answer-${tab}-${questionId}`);
+      inputEl.removeAttribute('disabled');
+      inputEl.value = '';
+    }
+  }
+
+  // Professor helper reveals
+  function toggleProfessorAnswer(questionId, tab) {
+    const modelAnswer = document.getElementById(`model-answer-${tab}-${questionId}`);
+    const btn = document.getElementById(`prof-reveal-btn-${tab}-${questionId}`);
+    const isHidden = modelAnswer.classList.contains('hidden');
+    
+    if (isHidden) {
+      modelAnswer.classList.remove('hidden');
+      btn.innerHTML = `<i data-lucide="eye-off" class="w-3.5 h-3.5 mr-1"></i> Hide`;
+    } else {
+      modelAnswer.classList.add('hidden');
+      btn.innerHTML = `<i data-lucide="eye" class="w-3.5 h-3.5 mr-1"></i> Show Answer`;
+    }
+    lucide.createIcons();
+  }
+</script>
+{% endblock %}
+

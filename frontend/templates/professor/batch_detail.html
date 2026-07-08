@@ -1,0 +1,153 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}{{ batch.name }} Details — InSync{% endblock %}
+
+{% block inner_content %}
+<div class="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-3 mb-2">
+        <a href="{% url 'voice_tutor:professor_batchs' %}" class="p-2 rounded-md hover:bg-accent text-muted-foreground transition-colors">
+          <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <h1 class="font-display text-3xl font-bold text-foreground">{{ batch.name }}</h1>
+      </div>
+      <p class="text-muted-foreground">{{ batch.description|default:"No description provided." }}</p>
+    </div>
+  </div>
+
+  <!-- Meta Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-card border border-border/50 rounded-xl p-4 shadow-sm">
+      <div class="text-sm font-medium text-muted-foreground mb-1">University</div>
+      <div class="font-semibold text-foreground">{{ batch.university.name|default:"N/A" }}</div>
+    </div>
+    <div class="bg-card border border-border/50 rounded-xl p-4 shadow-sm">
+      <div class="text-sm font-medium text-muted-foreground mb-1">Session</div>
+      <div class="font-semibold text-foreground">{{ batch.session.name|default:"N/A" }}</div>
+    </div>
+    <div class="bg-card border border-border/50 rounded-xl p-4 shadow-sm">
+      <div class="text-sm font-medium text-muted-foreground mb-1">Course</div>
+      <div class="font-semibold text-foreground">{{ batch.course.name|default:"N/A" }}</div>
+    </div>
+    <div class="bg-card border border-border/50 rounded-xl p-4 shadow-sm">
+      <div class="text-sm font-medium text-muted-foreground mb-1">Total Students</div>
+      <div class="font-semibold text-foreground">{{ students|length }}</div>
+    </div>
+  </div>
+
+  <!-- Students Data Table -->
+  <div class="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+    <div class="p-5 border-b border-border/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <h2 class="font-display text-lg font-bold text-foreground">Students Directory</h2>
+      <div class="relative w-full md:w-72">
+        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"></i>
+        <input type="text" id="dt-search" placeholder="Search students..." class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 pl-9" />
+      </div>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table id="batch-students-table" class="w-full text-sm text-left align-middle" style="width:100%">
+        <thead class="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border/50">
+          <tr>
+            <th class="px-6 py-4 font-semibold">Student</th>
+            <th class="px-6 py-4 font-semibold">Username</th>
+            <th class="px-6 py-4 font-semibold">Email</th>
+            <th class="px-6 py-4 font-semibold">Joined</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border/50">
+          {% for s in students %}
+          <tr class="hover:bg-muted/30 transition-colors bg-background">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center gap-3">
+                <img src="{% if s.avatar %}{{ s.avatar }}{% else %}https://ui-avatars.com/api/?name={{ s.name|urlencode }}&background=random{% endif %}" class="w-8 h-8 rounded-full object-cover border border-border" alt="avatar" />
+                <span class="font-medium text-foreground">{{ s.name }}</span>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-muted-foreground font-mono text-xs">{{ s.id }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-muted-foreground">{{ s.email }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-muted-foreground">{{ s.createdAt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<!-- jQuery and DataTables CDN -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+<!-- Custom Tailwind styling for DataTables wrapper -->
+<style>
+  /* Hide custom search if DataTables provides it, or hide DataTables search if using custom */
+  /* Here we will let DataTables handle search entirely and hide our custom search input for simplicity, or bind them. We will bind them. */
+  .dataTables_wrapper .dataTables_filter { display: none; }
+  
+  .dataTables_wrapper .dataTables_length select {
+    border: 1px solid hsl(var(--input));
+    border-radius: 0.375rem;
+    padding: 0.25rem 1.5rem 0.25rem 0.75rem;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+  .dataTables_wrapper .dataTables_info,
+  .dataTables_wrapper .dataTables_length {
+    color: hsl(var(--muted-foreground)) !important;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+    padding-left: 1.5rem;
+  }
+  .dataTables_wrapper .dataTables_info {
+    padding-left: 1.5rem;
+    padding-top: 1rem;
+  }
+  .dataTables_wrapper .dataTables_paginate {
+    padding-right: 1.5rem;
+    padding-top: 1rem;
+  }
+  .dataTables_wrapper .dataTables_paginate .paginate_button {
+    color: hsl(var(--foreground)) !important;
+    border: 1px solid transparent !important;
+    border-radius: 0.375rem !important;
+    margin-left: 2px;
+  }
+  .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: hsl(var(--accent)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--accent-foreground)) !important;
+  }
+  .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+    border-color: hsl(var(--primary)) !important;
+  }
+  table.dataTable.no-footer {
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
+  }
+</style>
+
+<script>
+  $(document).ready(function() {
+    var table = $('#batch-students-table').DataTable({
+      pageLength: 10,
+      language: {
+        lengthMenu: "Show _MENU_ entries"
+      }
+    });
+
+    // Bind custom search input to DataTables search
+    $('#dt-search').on('keyup', function() {
+      table.search(this.value).draw();
+    });
+  });
+</script>
+{% endblock %}

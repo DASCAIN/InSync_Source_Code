@@ -1,0 +1,263 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Messages — InSync{% endblock %}
+
+{% block inner_content %}
+<div class="p-6 lg:p-8 h-[calc(100vh-2rem)] flex flex-col">
+  <h1 class="font-display text-3xl font-bold mb-6 text-foreground">Messages</h1>
+  
+  <div class="flex h-[calc(100%-4rem)] bg-card rounded-2xl shadow-md border border-border/50 overflow-hidden flex-1">
+    
+    <!-- Student List (Left sidebar) -->
+    <div class="w-80 border-r border-border/50 flex flex-col shrink-0">
+      <div class="p-4 border-b border-border/50">
+        <div class="relative">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"></i>
+          <input 
+            id="student-search"
+            placeholder="Search students..." 
+            oninput="searchStudents()"
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 pl-10"
+          />
+        </div>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto" id="student-list">
+        {% for student in students %}
+          <button
+            id="student-tab-{{ student.id }}"
+            onclick="selectStudent('{{ student.id }}')"
+            class="student-item w-full text-left p-4 border-b border-border/30 hover:bg-muted/50 transition-colors block"
+            data-name="{{ student.name }}"
+          >
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm shrink-0">
+                {{ student.name.0 }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-sm text-foreground truncate">{{ student.name }}</p>
+                <p class="text-xs text-muted-foreground truncate" id="student-last-msg-{{ student.id }}">No messages yet</p>
+              </div>
+            </div>
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Chat Area (Right pane) -->
+    <div class="flex-1 flex flex-col bg-background/20" id="chat-pane-active">
+      <!-- Active student profile header -->
+      <div class="p-4 border-b border-border/50 flex items-center gap-3 bg-card" id="chat-header">
+        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold" id="header-avatar">
+          S
+        </div>
+        <div>
+          <p class="font-medium text-foreground" id="header-name">Student Name</p>
+          <p class="text-xs text-muted-foreground" id="header-email">student@university.edu</p>
+        </div>
+      </div>
+
+      <!-- Messages container -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-4" id="messages-container">
+        <!-- Messages list appended dynamically via JS -->
+      </div>
+
+      <!-- Text input bar -->
+      <div class="p-4 border-t border-border/50 bg-card">
+        <div class="flex gap-2">
+          <textarea
+            id="new-msg-text"
+            placeholder="Type a message..."
+            class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none min-h-[44px] max-h-[120px]"
+            rows="1"
+            onkeydown="handleMsgInputKey(event)"
+          ></textarea>
+          <button 
+            onclick="sendNewMessage()"
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 w-10 shrink-0"
+          >
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty Chat Area -->
+    <div class="flex-1 flex flex-col items-center justify-center text-muted-foreground hidden" id="chat-pane-empty">
+      <div class="text-center">
+        <i data-lucide="message-square" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+        <p>Select a student to start messaging</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+  // Message data structure ported from React
+  const studentData = {
+    {% for s in students %}
+      "{{ s.id }}": {
+        name: "{{ s.name }}",
+        email: "{{ s.email }}"
+      },
+    {% endfor %}
+  };
+
+  const dummyMessages = {
+    student_001: [
+      { id: '1', from: 'Rahul Kumar', text: 'Professor, I have a doubt about conditional probability in Q2.', time: '10:30 AM', isOwn: false },
+      { id: '2', from: 'You', text: 'Sure Rahul, try thinking about it as the reduced sample space when condition B has occurred.', time: '10:35 AM', isOwn: true },
+      { id: '3', from: 'Rahul Kumar', text: 'That makes sense! I\'ll retry with that approach.', time: '10:37 AM', isOwn: false },
+    ],
+    student_002: [
+      { id: '1', from: 'Priya Singh', text: 'I completed the Probability Basics assignment. Can you review?', time: '2:15 PM', isOwn: false },
+      { id: '2', from: 'You', text: 'Great work Priya! I can see your engagement score is 92%. Excellent.', time: '2:20 PM', isOwn: true },
+    ],
+    student_003: [
+      { id: '1', from: 'Arjun Patel', text: 'I\'m struggling with the assignment. Can I get extra help?', time: '4:00 PM', isOwn: false },
+    ],
+  };
+
+  let selectedStudentId = null;
+
+  // Initialize view
+  window.addEventListener('DOMContentLoaded', () => {
+    // Select first student by default
+    const firstId = Object.keys(studentData)[0] || null;
+    selectStudent(firstId);
+    
+    // Update sidebar previews
+    Object.keys(studentData).forEach(id => {
+      const msgs = dummyMessages[id] || [];
+      const last = msgs[msgs.length - 1];
+      const previewEl = document.getElementById(`student-last-msg-${id}`);
+      if (previewEl && last) {
+        previewEl.textContent = last.text;
+      }
+    });
+  });
+
+  function selectStudent(studentId) {
+    if (!studentId) {
+      document.getElementById('chat-pane-active').classList.add('hidden');
+      document.getElementById('chat-pane-empty').classList.remove('hidden');
+      return;
+    }
+
+    selectedStudentId = studentId;
+    document.getElementById('chat-pane-active').classList.remove('hidden');
+    document.getElementById('chat-pane-empty').classList.add('hidden');
+
+    // Highlight sidebar active tab
+    document.querySelectorAll('.student-item').forEach(btn => {
+      btn.className = "student-item w-full text-left p-4 border-b border-border/30 hover:bg-muted/50 transition-colors block";
+    });
+    const activeBtn = document.getElementById(`student-tab-${studentId}`);
+    if (activeBtn) {
+      activeBtn.className = "student-item w-full text-left p-4 border-b border-border/30 bg-primary/5 border-l-2 border-l-primary hover:bg-muted/50 transition-colors block";
+    }
+
+    // Set header
+    const stud = studentData[studentId];
+    document.getElementById('header-name').textContent = stud.name;
+    document.getElementById('header-email').textContent = stud.email;
+    document.getElementById('header-avatar').textContent = stud.name.charAt(0);
+
+    renderMessages();
+  }
+
+  function renderMessages() {
+    const container = document.getElementById('messages-container');
+    container.innerHTML = '';
+    const msgs = dummyMessages[selectedStudentId] || [];
+
+    if (msgs.length === 0) {
+      container.innerHTML = `
+        <div class="flex items-center justify-center h-full text-muted-foreground">
+          <p>No messages yet. Start a conversation!</p>
+        </div>
+      `;
+      return;
+    }
+
+    msgs.forEach(msg => {
+      const wrapper = document.createElement('div');
+      wrapper.className = `flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`;
+
+      const bubble = document.createElement('div');
+      bubble.className = `max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
+        msg.isOwn ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-foreground'
+      }`;
+
+      const text = document.createElement('p');
+      text.className = "text-sm leading-relaxed";
+      text.textContent = msg.text;
+
+      const time = document.createElement('p');
+      time.className = `text-[10px] mt-1 text-right ${msg.isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'}`;
+      time.textContent = msg.time;
+
+      bubble.appendChild(text);
+      bubble.appendChild(time);
+      wrapper.appendChild(bubble);
+      container.appendChild(wrapper);
+    });
+
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function sendNewMessage() {
+    const input = document.getElementById('new-msg-text');
+    const trimmed = input.value.trim();
+    if (!trimmed || !selectedStudentId) return;
+
+    const msgs = dummyMessages[selectedStudentId] || [];
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const newMsg = {
+      id: `${Date.now()}`,
+      from: 'You',
+      text: trimmed,
+      time: timeStr,
+      isOwn: true
+    };
+    
+    msgs.push(newMsg);
+    dummyMessages[selectedStudentId] = msgs;
+    
+    // Update preview in sidebar
+    const previewEl = document.getElementById(`student-last-msg-${selectedStudentId}`);
+    if (previewEl) {
+      previewEl.textContent = trimmed;
+    }
+
+    input.value = '';
+    renderMessages();
+  }
+
+  function handleMsgInputKey(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendNewMessage();
+    }
+  }
+
+  function searchStudents() {
+    const query = document.getElementById('student-search').value.toLowerCase();
+    const items = document.querySelectorAll('.student-item');
+    
+    items.forEach(item => {
+      const name = item.getAttribute('data-name').toLowerCase();
+      if (name.includes(query)) {
+        item.style.display = 'block';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}404 — Page Not Found{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen items-center justify-center bg-muted">
+  <div class="text-center">
+    <h1 class="mb-4 text-6xl font-bold text-foreground">404</h1>
+    <p class="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
+    <a href="{% url 'voice_tutor:index' %}" class="text-primary hover:underline font-medium">
+      Return to Home
+    </a>
+  </div>
+</div>
+{% endblock %}

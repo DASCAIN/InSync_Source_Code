@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen flex">
+  <!-- Left Side - Branding (matching login.html) -->
+  <div class="hidden lg:flex lg:w-1/2 gradient-hero relative overflow-hidden">
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
+    
+    <div class="relative z-10 flex flex-col justify-center p-16">
+      <div class="flex items-center gap-3 mb-8">
+        <img
+          src="{% static 'images/insync-logo.png' %}"
+          alt="InSync by DASCAIN"
+          class="h-12 w-auto object-contain"
+          style="height: 3rem;"
+        />
+        <div>
+          <span class="font-display font-bold text-3xl text-white">InSync</span>
+          <span class="text-white/70 text-sm ml-2">by DASCAIN</span>
+        </div>
+      </div>
+
+      <h1 class="font-display text-4xl font-bold text-white mb-4">
+        Join the Intelligence
+      </h1>
+      <p class="text-white/80 text-lg max-w-md leading-relaxed">
+        Register to gain deep insights into student understanding and improve teaching outcomes.
+      </p>
+
+      <!-- Floating elements -->
+      <div class="absolute bottom-20 right-20 w-32 h-32 bg-white/10 rounded-full blur-2xl animate-float"></div>
+      <div class="absolute top-40 right-40 w-20 h-20 bg-white/10 rounded-full blur-xl animate-float" style="animation-delay: 2s;"></div>
+    </div>
+  </div>
+
+  <!-- Right Side - Sign Up Form (Scrollable) -->
+  <div class="flex-1 flex flex-col justify-start p-8 lg:p-16 bg-background overflow-y-auto max-h-screen">
+    <a 
+      href="{% url 'voice_tutor:login' %}"
+      class="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 self-start text-sm font-medium"
+    >
+      <i data-lucide="arrow-left" class="w-4 h-4"></i>
+      Back to login
+    </a>
+
+    <div class="max-w-xl w-full mx-auto pb-12">
+      <!-- Mobile Logo -->
+      <div class="lg:hidden flex items-center gap-3 mb-8">
+        <img
+          src="{% static 'images/insync-logo.png' %}"
+          alt="InSync by DASCAIN"
+          class="h-10 w-auto object-contain"
+          style="height: 2.5rem;"
+        />
+        <div>
+          <span class="font-display font-bold text-xl">InSync</span>
+          <span class="text-xs text-muted-foreground ml-1 block">by DASCAIN</span>
+        </div>
+      </div>
+
+      <h2 class="font-display text-3xl font-bold mb-2">Create Account</h2>
+      <p class="text-muted-foreground mb-8">Choose your role and fill in the registration details</p>
+
+      {% if error %}
+      <div class="bg-destructive/10 text-destructive border border-destructive/20 rounded-lg p-3 mb-6 text-sm">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <form method="POST" action="{% url 'voice_tutor:signup' %}" onsubmit="return validateForm()">
+        {% csrf_token %}
+        <input type="hidden" name="role" id="selected-role-input" value="" />
+
+        <!-- Role Selection -->
+        <div class="space-y-4 mb-8">
+          <label class="text-sm font-medium text-foreground">Select Role <span class="text-destructive">*</span></label>
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Professor Card -->
+            <button
+              type="button"
+              id="role-btn-professor"
+              onclick="selectRole('professor')"
+              class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center"
+            >
+              <i data-lucide="graduation-cap" id="icon-professor" class="w-8 h-8 mx-auto mb-3 text-muted-foreground"></i>
+              <span class="font-medium text-foreground block">
+                Professor
+              </span>
+            </button>
+            
+            <!-- Student Card -->
+            <button
+              type="button"
+              id="role-btn-student"
+              onclick="selectRole('student')"
+              class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center"
+            >
+              <i data-lucide="book-open" id="icon-student" class="w-8 h-8 mx-auto mb-3 text-muted-foreground"></i>
+              <span class="font-medium text-foreground block">
+                Student
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Role Dependent Field Wrappers -->
+        <div id="signup-fields" style="display: none;" class="space-y-6">
+          
+          <!-- General Fields -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Full Name -->
+            <div class="space-y-2">
+              <label for="name" class="text-sm font-medium">Full Name <span class="text-destructive">*</span></label>
+              <input
+                id="name"
+                type="text"
+                name="name"
+                required
+                placeholder="John Doe"
+                class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            
+            <!-- Mobile Number -->
+            <div class="space-y-2">
+              <label for="mobile_number" class="text-sm font-medium">Mobile Number <span class="text-destructive">*</span></label>
+              <input
+                id="mobile_number"
+                type="tel"
+                name="mobile_number"
+                required
+                placeholder="+1234567890"
+                class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- DOB -->
+            <div class="space-y-2">
+              <label for="dob" class="text-sm font-medium">Date of Birth <span class="text-destructive">*</span></label>
+              <input
+                id="dob"
+                type="date"
+                name="dob"
+                required
+                class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+
+            <!-- Email -->
+            <div class="space-y-2">
+              <label for="email" class="text-sm font-medium">Email Address <span class="text-destructive">*</span></label>
+              <input
+                id="email"
+                type="email"
+                name="email"
+                required
+                placeholder="you@university.edu"
+                class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="space-y-2">
+            <label for="password" class="text-sm font-medium">Password <span class="text-destructive">*</span></label>
+            <input
+              id="password"
+              type="password"
+              name="password"
+              required
+              placeholder="••••••••"
+              class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <!-- University -->
+          <div class="space-y-2">
+            <label for="university" class="text-sm font-medium">University <span class="text-destructive">*</span></label>
+            <select
+              id="university"
+              name="university"
+              required
+              class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select University</option>
+              {% for u in universities %}
+              <option value="{{ u.id }}">{{ u.name }} ({{ u.code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Professor Fields Section -->
+          <div id="prof-only-fields" class="space-y-6" style="display: none;">
+            <div class="space-y-2">
+              <label for="emp_id" class="text-sm font-medium">Employee ID <span class="text-destructive">*</span></label>
+              <input
+                id="emp_id"
+                type="text"
+                name="emp_id"
+                placeholder="EMP12345"
+                class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+
+          <!-- Student Fields Section -->
+          <div id="student-only-fields" class="space-y-6" style="display: none;">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Course -->
+              <div class="space-y-2">
+                <label for="course" class="text-sm font-medium">Course <span class="text-destructive">*</span></label>
+                <select
+                  id="course"
+                  name="course"
+                  class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Select Course</option>
+                  {% for c in courses %}
+                  <option value="{{ c.id }}">{{ c.name }} ({{ c.code }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Session -->
+              <div class="space-y-2">
+                <label for="session" class="text-sm font-medium">Session Batch <span class="text-destructive">*</span></label>
+                <select
+                  id="session"
+                  name="session"
+                  class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Select Session</option>
+                  {% for s in sessions %}
+                  <option value="{{ s.id }}">{{ s.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <!-- Enrollment Number -->
+            <div class="space-y-2">
+              <label for="enrollment_number" class="text-sm font-medium">Enrollment Number <span class="text-destructive">*</span></label>
+              <input
+                id="enrollment_number"
+                type="text"
+                name="enrollment_number"
+                placeholder="ENR987654"
+                class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+
+          <!-- Preferred Subjects (Multi-select) -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Preferred Subjects (Select Multiple)</label>
+            <div class="border border-input rounded-md p-4 bg-background max-h-48 overflow-y-auto space-y-2">
+              {% for s in subjects %}
+              <label class="flex items-center gap-3 cursor-pointer p-1 rounded hover:bg-muted/50 transition-colors">
+                <input
+                  type="checkbox"
+                  name="preferred_subjects"
+                  value="{{ s.id }}"
+                  class="rounded border-input text-primary focus:ring-ring w-4 h-4"
+                />
+                <span class="text-sm font-medium text-foreground">{{ s.name }} ({{ s.code }})</span>
+              </label>
+              {% empty %}
+              <p class="text-sm text-muted-foreground text-center py-2">No subjects available.</p>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <button 
+            type="submit"
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 py-3 w-full text-lg font-semibold shadow-md mt-4"
+          >
+            Sign Up
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+  let selectedRole = null;
+
+  function selectRole(role) {
+    selectedRole = role;
+    document.getElementById('selected-role-input').value = role;
+
+    const profBtn = document.getElementById('role-btn-professor');
+    const studBtn = document.getElementById('role-btn-student');
+    const profIcon = document.getElementById('icon-professor');
+    const studIcon = document.getElementById('icon-student');
+
+    const fieldsWrapper = document.getElementById('signup-fields');
+    const profFields = document.getElementById('prof-only-fields');
+    const studentFields = document.getElementById('student-only-fields');
+
+    // Toggle button styles
+    if (role === 'professor') {
+      profBtn.className = "p-6 rounded-xl border-2 border-primary bg-primary/5 shadow-lg text-center";
+      profIcon.className = "w-8 h-8 mx-auto mb-3 text-primary";
+      
+      studBtn.className = "p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center";
+      studIcon.className = "w-8 h-8 mx-auto mb-3 text-muted-foreground";
+
+      // Show/Hide Fields
+      fieldsWrapper.style.display = 'block';
+      profFields.style.display = 'block';
+      studentFields.style.display = 'none';
+
+      // Set requirements
+      document.getElementById('emp_id').setAttribute('required', 'true');
+      document.getElementById('course').removeAttribute('required');
+      document.getElementById('session').removeAttribute('required');
+      document.getElementById('enrollment_number').removeAttribute('required');
+    } else {
+      studBtn.className = "p-6 rounded-xl border-2 border-primary bg-primary/5 shadow-lg text-center";
+      studIcon.className = "w-8 h-8 mx-auto mb-3 text-primary";
+      
+      profBtn.className = "p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center";
+      profIcon.className = "w-8 h-8 mx-auto mb-3 text-muted-foreground";
+
+      // Show/Hide Fields
+      fieldsWrapper.style.display = 'block';
+      studentFields.style.display = 'block';
+      profFields.style.display = 'none';
+
+      // Set requirements
+      document.getElementById('emp_id').removeAttribute('required');
+      document.getElementById('course').setAttribute('required', 'true');
+      document.getElementById('session').setAttribute('required', 'true');
+      document.getElementById('enrollment_number').setAttribute('required', 'true');
+    }
+  }
+
+  function validateForm() {
+    if (!selectedRole) {
+      alert("Please select a role first.");
+      return false;
+    }
+    return true;
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,7 @@
+*.zip
+.env
+__pycache__/
+*/__pycache__/
+data/qdrant_storage/
+data/videos/
+storage/openai_voice/

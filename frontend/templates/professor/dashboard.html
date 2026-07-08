@@ -1,0 +1,267 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Professor Dashboard — InSync{% endblock %}
+
+{% block inner_content %}
+<div class="p-6 lg:p-8 space-y-8">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+    <div class="flex-1">
+      <h1 class="font-display text-3xl font-bold mb-1 text-foreground">
+        Welcome back, {{ request.session.user.name }}! 👋
+      </h1>
+      <p class="text-muted-foreground">
+        Here's what's happening with your classes today.
+      </p>
+    </div>
+    <div class="flex gap-3 flex-wrap justify-start md:justify-end shrink-0 ml-auto">
+      <a 
+        href="{% url 'voice_tutor:professor_assignments' %}" 
+        class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2"
+        style="background-color: #2563eb; color: white; border: none;"
+        onmouseover="this.style.backgroundColor='#1d4ed8'"
+        onmouseout="this.style.backgroundColor='#2563eb'"
+      >
+        <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+        New Assignment
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Total Students -->
+    <div class="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
+      <div class="flex items-start justify-between mb-4">
+        <div class="p-3 rounded-xl bg-primary/10 text-primary">
+          <i data-lucide="users" class="w-6 h-6"></i>
+        </div>
+        <span class="text-sm font-medium text-success">+12%</span>
+      </div>
+      <h3 class="text-3xl font-display font-bold mb-1">{{ total_students }}</h3>
+      <p class="text-muted-foreground text-sm">Total Students</p>
+      <p class="text-xs text-muted-foreground mt-2">vs last month</p>
+    </div>
+
+    <!-- Active Assignments -->
+    <div class="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
+      <div class="flex items-start justify-between mb-4">
+        <div class="p-3 rounded-xl bg-accent/10 text-accent">
+          <i data-lucide="book-open" class="w-6 h-6"></i>
+        </div>
+        <span class="text-sm font-medium text-success">+5%</span>
+      </div>
+      <h3 class="text-3xl font-display font-bold mb-1">{{ active_assignments_count }}</h3>
+      <p class="text-muted-foreground text-sm">Active Assignments</p>
+      <p class="text-xs text-muted-foreground mt-2">vs last month</p>
+    </div>
+
+    <!-- Engagement Rate -->
+    <div class="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
+      <div class="flex items-start justify-between mb-4">
+        <div class="p-3 rounded-xl bg-success/10 text-success">
+          <i data-lucide="trending-up" class="w-6 h-6"></i>
+        </div>
+        <span class="text-sm font-medium text-success">+8%</span>
+      </div>
+      <h3 class="text-3xl font-display font-bold mb-1">{{ batch_analytics.overallEngagement }}%</h3>
+      <p class="text-muted-foreground text-sm">Engagement Rate</p>
+      <p class="text-xs text-muted-foreground mt-2">vs last week</p>
+    </div>
+
+    <!-- Need Attention -->
+    <div class="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
+      <div class="flex items-start justify-between mb-4">
+        <div class="p-3 rounded-xl bg-warning/10 text-warning">
+          <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        </div>
+      </div>
+      <h3 class="text-3xl font-display font-bold mb-1">{{ batch_analytics.outliers|length }}</h3>
+      <p class="text-muted-foreground text-sm">Need Attention</p>
+    </div>
+  </div>
+
+  <!-- Learning Content Section -->
+  <div class="space-y-4">
+    <h2 class="font-display text-xl font-semibold text-foreground">📚 Learning Content</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for subject in subjects %}
+        {% for topic in subject.topics %}
+          <a
+            href="{% url 'voice_tutor:topic_page' subject.id topic.id %}"
+            class="bg-card rounded-2xl p-5 shadow-md border border-border/50 hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer group block"
+          >
+            <div class="flex items-center gap-3 mb-3">
+              <div class="p-2 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                <i data-lucide="play" class="w-5 h-5 text-primary"></i>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">{{ subject.name }}</p>
+                <h3 class="font-display font-semibold text-foreground">{{ topic.name }}</h3>
+              </div>
+            </div>
+            <p class="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{{ topic.description }}</p>
+            <div class="flex gap-2 mt-3">
+              <span class="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">{{ topic.videos|length }} videos</span>
+              <span class="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">{{ topic.assignmentQuestions|length }} questions</span>
+            </div>
+          </a>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="grid lg:grid-cols-3 gap-8">
+    <!-- batchs Section -->
+    <div class="lg:col-span-2 space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="font-display text-xl font-semibold text-foreground">Your batchs</h2>
+        <a href="{% url 'voice_tutor:professor_batchs' %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3">
+          View All
+        </a>
+      </div>
+      <div class="space-y-4">
+        {% for batch in batchs %}
+          <button 
+            onclick="location.href='{% url 'voice_tutor:professor_batchs' %}?batch_id={{ batch.id }}'"
+            class="w-full text-left bg-card rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group"
+          >
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <h3 class="font-display font-semibold text-lg text-foreground mb-1">{{ batch.name }}</h3>
+                <p class="text-sm text-muted-foreground">{{ batch.description }}</p>
+              </div>
+              <div class="p-2 rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground transition-colors text-primary">
+                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+              </div>
+            </div>
+
+            <div class="flex gap-6 mt-6">
+              <div class="flex items-center gap-2">
+                <i data-lucide="users" class="w-4 h-4 text-muted-foreground"></i>
+                <span class="text-sm">
+                  <span class="font-semibold text-foreground">{{ batch.studentIds|length }}</span> students
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <i data-lucide="book-open" class="w-4 h-4 text-muted-foreground"></i>
+                <span class="text-sm">
+                  <span class="font-semibold text-foreground">{{ batch.assignmentIds|length }}</span> assignments
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <i data-lucide="trending-up" class="w-4 h-4 text-success"></i>
+                <span class="text-sm">
+                  <span class="font-semibold text-success">74%</span> engaged
+                </span>
+              </div>
+            </div>
+
+            <!-- Student Avatars -->
+            <div class="flex items-center mt-4 pt-4 border-t border-border">
+              <div class="flex -space-x-2">
+                {% for student in batch.avatar_students %}
+                  <div
+                    class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold border-2 border-card"
+                    style="z-index: {{ forloop.revcounter }};"
+                  >
+                    {{ student.name.0 }}
+                  </div>
+                {% endfor %}
+                {% if batch.remaining_students_count > 0 %}
+                  <div class="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-semibold border-2 border-card">
+                    +{{ batch.remaining_students_count }}
+                  </div>
+                {% endif %}
+              </div>
+              <span class="ml-3 text-sm text-muted-foreground">
+                {{ batch.students_display_str }}
+              </span>
+            </div>
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div class="space-y-6">
+      <!-- Recent Assignments -->
+      <div class="space-y-4">
+        <h2 class="font-display text-xl font-semibold text-foreground">Recent Assignments</h2>
+        <div class="space-y-4">
+          {% for assignment in recent_assignments %}
+            <div 
+              onclick="location.href='{% url 'voice_tutor:professor_assignments' %}'"
+              class="w-full text-left bg-card rounded-2xl p-6 shadow-md border border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group cursor-pointer"
+            >
+              <div class="flex items-start justify-between mb-4">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold {% if assignment.difficulty == 'beginner' %}bg-success/10 text-success border-success/20{% elif assignment.difficulty == 'intermediate' %}bg-warning/10 text-warning border-warning/20{% else %}bg-destructive/10 text-destructive border-destructive/20{% endif %} capitalize">
+                      {{ assignment.difficulty }}
+                    </span>
+                  </div>
+                  <h3 class="font-display font-semibold text-lg text-foreground mb-1">{{ assignment.title }}</h3>
+                  <p class="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{{ assignment.description }}</p>
+                </div>
+                <div class="p-2 rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground transition-colors text-primary">
+                  <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-6 mt-4 pt-4 border-t border-border text-muted-foreground text-sm">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="help-circle" class="w-4 h-4"></i>
+                  <span><span class="font-semibold text-foreground">{{ assignment.questions|length }}</span> questions</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i data-lucide="clock" class="w-4 h-4"></i>
+                  <span><span class="font-semibold text-foreground">{{ assignment.expectedDuration }}</span> min</span>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Quick Insights -->
+      <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
+        <h3 class="font-display font-semibold mb-4 text-foreground">Quick Insights</h3>
+        <div class="space-y-4">
+          <div class="p-4 rounded-xl bg-warning/10 border border-warning/20">
+            <h4 class="font-medium text-sm text-foreground mb-1">Common Weak Concepts</h4>
+            <div class="flex flex-wrap gap-2 mt-2">
+              {% for concept in batch_analytics.commonWeakConcepts %}
+                <span class="px-2 py-1 text-xs rounded-full bg-warning/20 text-warning font-medium">
+                  {{ concept }}
+                </span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-primary/10 border border-primary/20">
+            <h4 class="font-medium text-sm text-foreground mb-2">Performance Distribution</h4>
+            <div class="flex gap-4 text-sm">
+              <div>
+                <span class="text-success font-semibold">{{ batch_analytics.performanceDistribution.high }}</span>
+                <span class="text-muted-foreground ml-1">High</span>
+              </div>
+              <div>
+                <span class="text-warning font-semibold">{{ batch_analytics.performanceDistribution.medium }}</span>
+                <span class="text-muted-foreground ml-1">Medium</span>
+              </div>
+              <div>
+                <span class="text-destructive font-semibold">{{ batch_analytics.performanceDistribution.low }}</span>
+                <span class="text-muted-foreground ml-1">Low</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

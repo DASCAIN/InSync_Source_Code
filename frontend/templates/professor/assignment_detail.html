@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Assignment Details - {{ assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  
+  <!-- Header -->
+  <div class="flex items-center gap-4">
+    <a href="{% url 'voice_tutor:professor_assignments' %}" class="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground">
+      <i data-lucide="arrow-left" class="w-6 h-6"></i>
+    </a>
+    <div>
+      <h1 class="text-3xl font-display font-bold text-foreground">{{ assignment.title }}</h1>
+      <div class="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-2">
+        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="book" class="w-3 h-3 mr-1"></i>{{ assignment.subject }}</span>
+        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="bookmark" class="w-3 h-3 mr-1"></i>{{ assignment.topic }}</span>
+        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="users" class="w-3 h-3 mr-1"></i>{{ assignment.batch }}</span>
+        <span class="w-1 h-1 rounded-full bg-border ml-1"></span>
+        <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> {{ assignment.createdAt|date:"M d, Y" }}</span>
+        <span class="w-1 h-1 rounded-full bg-border"></span>
+        <span class="flex items-center gap-1"><i data-lucide="user" class="w-3.5 h-3.5"></i> By {{ assignment.createdBy }}</span>
+      </div>
+    </div>
+    <div class="ml-auto">
+      {% if assignment.has_pdf %}
+      <a href="{% url 'voice_tutor:serve_assignment_pdf' assignment.id %}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium">
+        <i data-lucide="file-text" class="w-4 h-4"></i>
+        View Source PDF
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
+      <div class="p-3 bg-primary/10 text-primary rounded-lg">
+        <i data-lucide="book-open" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <p class="text-sm text-muted-foreground">Difficulty</p>
+        <p class="font-semibold capitalize text-foreground">{{ assignment.difficulty }}</p>
+      </div>
+    </div>
+    
+    <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
+      <div class="p-3 bg-secondary text-secondary-foreground rounded-lg">
+        <i data-lucide="clock" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <p class="text-sm text-muted-foreground">Duration</p>
+        <p class="font-semibold text-foreground">{{ assignment.expectedDuration }} mins</p>
+      </div>
+    </div>
+    
+    <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
+      <div class="p-3 bg-success/10 text-success rounded-lg">
+        <i data-lucide="users" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <p class="text-sm text-muted-foreground">Completion Rate</p>
+        <p class="font-semibold text-foreground">
+          {% if assignment.progressCount > 0 %}
+            {% widthratio assignment.completedCount assignment.progressCount 100 %}%
+          {% else %}
+            0%
+          {% endif %}
+        </p>
+      </div>
+    </div>
+    
+    <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
+      <div class="p-3 bg-accent text-accent-foreground rounded-lg">
+        <i data-lucide="zap" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <p class="text-sm text-muted-foreground">Avg Engagement</p>
+        <p class="font-semibold text-foreground">{{ assignment.avgEngagement }}%</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Description -->
+  {% if assignment.description %}
+  <div class="bg-card rounded-2xl p-6 border border-border shadow-sm">
+    <h2 class="text-lg font-semibold mb-2">Description</h2>
+    <p class="text-muted-foreground">{{ assignment.description }}</p>
+  </div>
+  {% endif %}
+
+  <!-- Two Column Layout: Questions & Students -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    
+    <!-- Left Col: Questions -->
+    <div class="lg:col-span-2 space-y-4">
+      <h2 class="text-xl font-display font-bold text-foreground">Generated Questions ({{ assignment.questions|length }})</h2>
+      
+      <div class="space-y-4">
+        {% for q in assignment.questions %}
+        <div class="bg-card rounded-xl border border-border p-5 shadow-sm">
+          <div class="flex items-start justify-between mb-3">
+            <h3 class="font-medium text-foreground"><span class="text-muted-foreground mr-2">{{ forloop.counter }}.</span> {{ q.content }}</h3>
+            <span class="text-xs px-2 py-1 rounded-md bg-secondary text-secondary-foreground uppercase">{{ q.type }}</span>
+          </div>
+          
+          {% if q.type == 'mcq' %}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+            {% for opt in q.options %}
+            <div class="px-4 py-3 rounded-lg border text-sm flex items-center gap-3 {% if opt.is_correct %}bg-success/10 border-success/30 text-success-foreground font-medium{% else %}bg-secondary/30 border-border text-muted-foreground{% endif %}">
+              <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs {% if opt.is_correct %}bg-success text-white{% else %}bg-secondary text-secondary-foreground{% endif %}">
+                {{ opt.letter|upper }}
+              </span>
+              {{ opt.text }}
+              {% if opt.is_correct %}
+                <i data-lucide="check" class="w-4 h-4 ml-auto text-success"></i>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="mt-4 p-4 rounded-lg bg-success/10 border border-success/30">
+            <p class="text-sm font-medium text-success-foreground mb-1">Correct Answer:</p>
+            <p class="text-sm text-foreground">{{ q.correctAnswer }}</p>
+          </div>
+          {% endif %}
+          
+          {% if q.conceptTags %}
+          <div class="mt-4 flex flex-wrap gap-2">
+            {% for tag in q.conceptTags %}
+            <span class="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary">{{ tag }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="bg-card rounded-xl border border-border p-8 text-center">
+          <i data-lucide="help-circle" class="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50"></i>
+          <p class="text-muted-foreground">No questions found for this assignment.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Right Col: Student Progress -->
+    <div class="space-y-4">
+      <h2 class="text-xl font-display font-bold text-foreground">Student Performance</h2>
+      
+      <div class="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        {% if assignment.students_progress %}
+          <div class="divide-y divide-border">
+            {% for student in assignment.students_progress %}
+            <div class="p-4 hover:bg-secondary/50 transition-colors">
+              <div class="flex items-center gap-3 mb-3">
+                <img src="{{ student.student_avatar }}" alt="{{ student.student_name }}" class="w-10 h-10 rounded-full object-cover bg-secondary">
+                <div>
+                  <p class="font-medium text-foreground">{{ student.student_name }}</p>
+                  <p class="text-xs text-muted-foreground capitalize">{{ student.status|title }}</p>
+                </div>
+                <div class="ml-auto text-right">
+                  <span class="text-sm font-semibold {% if student.pct >= 80 %}text-success{% elif student.pct >= 50 %}text-warning{% else %}text-destructive{% endif %}">
+                    {{ student.pct }}%
+                  </span>
+                </div>
+              </div>
+              <div class="w-full bg-secondary rounded-full h-1.5 mb-2">
+                <div class="h-1.5 rounded-full {% if student.pct >= 80 %}bg-success{% elif student.pct >= 50 %}bg-warning{% else %}bg-destructive{% endif %}" style="width: {{ student.pct }}%"></div>
+              </div>
+              <div class="flex justify-between text-xs text-muted-foreground">
+                <span title="Engagement"><i data-lucide="zap" class="w-3 h-3 inline mr-1"></i>{{ student.engagement }}%</span>
+                <span title="Hints Used"><i data-lucide="help-circle" class="w-3 h-3 inline mr-1"></i>{{ student.hints_used }}</span>
+                <span title="Time Spent"><i data-lucide="clock" class="w-3 h-3 inline mr-1"></i>{{ student.time_spent }}s</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="p-8 text-center">
+            <i data-lucide="users" class="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50"></i>
+            <p class="text-muted-foreground text-sm">No students have started this assignment yet.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,479 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Assignments — InSync{% endblock %}
+
+{% block inner_content %}
+<div class="p-6 lg:p-8 space-y-8">
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="font-display text-3xl font-bold mb-1 text-foreground">Assignments</h1>
+      <p class="text-muted-foreground">Create and manage learning assignments.</p>
+    </div>
+    <button onclick="document.getElementById('upload-assignment-modal').classList.remove('hidden')" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+      <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+      Create Assignment
+    </button>
+  </div>
+
+  <form method="GET" class="bg-card p-4 rounded-2xl shadow-sm border border-border/50 flex flex-wrap gap-4 items-end mb-6">
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Subject</label>
+      <select name="subject_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
+        <option value="">All Subjects</option>
+        {% for s in filters.subjects %}
+          <option value="{{ s.code }}" {% if filters.selected_subject == s.code %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Topic</label>
+      <select name="topic_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
+        <option value="">All Topics</option>
+        {% for t in filters.topics %}
+          <option value="{{ t.code }}" {% if filters.selected_topic == t.code %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Batch</label>
+      <select name="batch_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
+        <option value="">All Batches</option>
+        {% for b in filters.batches %}
+          <option value="{{ b.code }}" {% if filters.selected_batch == b.code %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Professor</label>
+      <select name="professor_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
+        <option value="">All Professors</option>
+        {% for p in filters.professors %}
+          <option value="{{ p.user.username }}" {% if filters.selected_professor == p.user.username %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs font-medium text-muted-foreground mb-1">Sort By</label>
+      <select name="sort" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
+        <option value="desc" {% if filters.selected_sort == 'desc' %}selected{% endif %}>Newest First (Desc)</option>
+        <option value="asc" {% if filters.selected_sort == 'asc' %}selected{% endif %}>Oldest First (Asc)</option>
+      </select>
+    </div>
+    <div class="flex-none">
+      <a href="?" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
+        Clear
+      </a>
+    </div>
+  </form>
+
+  <div id="active-jobs-container" class="space-y-4 mb-4"></div>
+
+  <div class="grid gap-4" id="assignments-list">
+    {% for item in assignments %}
+      <a href="{% url 'voice_tutor:professor_assignment_detail' item.id %}"
+        class="assignment-item block bg-card rounded-2xl p-6 shadow-md border border-border/50 hover:border-primary/30 hover:shadow-lg transition-all"
+        data-title="{{ item.title }}"
+        data-topic="{{ item.topic }}"
+      >
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div class="flex items-start gap-4">
+            <div class="p-3 rounded-xl bg-accent/10 text-primary">
+              <i data-lucide="book-open" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="font-display text-lg font-semibold text-foreground assignment-title">{{ item.title }}</h3>
+              <p class="text-sm text-muted-foreground mt-1">{{ item.description }}</p>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground capitalize"><i data-lucide="bar-chart" class="w-3 h-3 mr-1"></i>{{ item.difficulty }}</span>
+                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="book" class="w-3 h-3 mr-1"></i>{{ item.subject }}</span>
+                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="bookmark" class="w-3 h-3 mr-1"></i>{{ item.topic }}</span>
+                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="users" class="w-3 h-3 mr-1"></i>{{ item.batch }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="text-right flex flex-col items-end gap-1 shrink-0 mt-2 md:mt-0">
+            <span class="text-xs text-muted-foreground flex items-center"><i data-lucide="calendar" class="w-3 h-3 mr-1"></i>{{ item.createdAt|date:"M d, Y" }}</span>
+            <span class="text-xs text-muted-foreground flex items-center"><i data-lucide="user" class="w-3 h-3 mr-1"></i>By {{ item.createdBy }}</span>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-border/50 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
+          <div class="flex items-center gap-2">
+            <i data-lucide="book-open" class="w-4 h-4"></i>
+            <span>{{ item.questions|length }} questions</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            <span>{{ item.expectedDuration }} min</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4"></i>
+            <span>{{ item.completedCount }}/{{ item.progressCount }} completed</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+            <span>{{ item.avgEngagement }}% engagement</span>
+          </div>
+        </div>
+      </a>
+    {% empty %}
+      <p class="text-center text-muted-foreground py-12">No assignments found.</p>
+    {% endfor %}
+    <p id="no-assignments-found-msg" class="hidden text-center text-muted-foreground py-12">No assignments found.</p>
+  </div>
+  
+  <!-- Pagination Controls -->
+  <div class="mt-8 flex items-center justify-between border-t border-border/50 pt-4">
+    <span class="text-sm text-muted-foreground" id="pagination-info">Showing 0 to 0 of 0 assignments</span>
+    <div class="flex items-center gap-1" id="pagination-controls">
+      <!-- Buttons injected via JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Upload Assignment Modal -->
+<div id="upload-assignment-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+  <div class="bg-card w-full max-w-md rounded-xl shadow-lg border border-border p-6 relative">
+    <button onclick="document.getElementById('upload-assignment-modal').classList.add('hidden')" class="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+      <i data-lucide="x" class="w-5 h-5"></i>
+    </button>
+    <h2 class="text-2xl font-display font-bold mb-4 text-foreground">Upload Assignment PDF</h2>
+    <form id="upload-assignment-form" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">Batch</label>
+        <select name="batch_id" id="batch-select" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" required onchange="updateSubjects()">
+          <option value="" disabled selected>Select a Batch</option>
+          {% for batch in batches %}
+            <option value="{{ batch.code }}">{{ batch.name }} ({{ batch.code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">Subject</label>
+        <select name="subject" id="subject-select" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" required onchange="updateTopics()">
+          <option value="" disabled selected>Select a Subject</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">Topic</label>
+        <select name="topic" id="topic-select" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" required>
+          <option value="" disabled selected>Select a Topic</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">PDF File</label>
+        <input type="file" name="file" accept="application/pdf" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-primary file:text-primary-foreground file:h-full file:px-4 file:mr-4 file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer" required>
+      </div>
+      <div id="upload-status" class="text-sm font-medium hidden"></div>
+      <div class="pt-4 flex justify-end gap-3">
+        <button type="button" onclick="document.getElementById('upload-assignment-modal').classList.add('hidden')" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Cancel</button>
+        <button type="submit" id="upload-submit-btn" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">Upload & Generate</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script id="batch-subjects-data" type="application/json">
+{{ batch_subjects_json|safe }}
+</script>
+<script id="subject-topics-data" type="application/json">
+{{ subject_topics_json|safe }}
+</script>
+<script>
+  function updateSubjects() {
+    const batchSelect = document.getElementById('batch-select');
+    const subjectSelect = document.getElementById('subject-select');
+    const topicSelect = document.getElementById('topic-select');
+    
+    // Clear subject and topic
+    subjectSelect.innerHTML = '<option value="" disabled selected>Select a Subject</option>';
+    topicSelect.innerHTML = '<option value="" disabled selected>Select a Topic</option>';
+    
+    const batchCode = batchSelect.value;
+    if (!batchCode) return;
+    
+    const batchSubjectsMap = JSON.parse(document.getElementById('batch-subjects-data').textContent);
+    const subjects = batchSubjectsMap[batchCode] || [];
+    
+    subjects.forEach(subject => {
+      const opt = document.createElement('option');
+      opt.value = subject.name;
+      opt.textContent = subject.name;
+      subjectSelect.appendChild(opt);
+    });
+  }
+  
+  function updateTopics() {
+    const subjectSelect = document.getElementById('subject-select');
+    const topicSelect = document.getElementById('topic-select');
+    
+    // Clear topic
+    topicSelect.innerHTML = '<option value="" disabled selected>Select a Topic</option>';
+    
+    const subjectName = subjectSelect.value;
+    if (!subjectName) return;
+    
+    // We need to look up subject code by name to get topics from subjectTopicsMap
+    const batchSubjectsMap = JSON.parse(document.getElementById('batch-subjects-data').textContent);
+    const subjectTopicsMap = JSON.parse(document.getElementById('subject-topics-data').textContent);
+    
+    // Find the code
+    let subjectCode = null;
+    for (const bCode in batchSubjectsMap) {
+      const sbjs = batchSubjectsMap[bCode];
+      const match = sbjs.find(s => s.name === subjectName);
+      if (match) {
+        subjectCode = match.code;
+        break;
+      }
+    }
+    
+    if (!subjectCode) return;
+    
+    const topics = subjectTopicsMap[subjectCode] || [];
+    
+    topics.forEach(topic => {
+      const opt = document.createElement('option');
+      opt.value = topic.name;
+      opt.textContent = topic.name;
+      topicSelect.appendChild(opt);
+    });
+  }
+  function filterAssignments() {
+    const query = document.getElementById('search-assignments').value.toLowerCase();
+    const items = document.querySelectorAll('.assignment-item');
+    const msg = document.getElementById('no-assignments-found-msg');
+    
+    let visibleCount = 0;
+    items.forEach(item => {
+      const title = item.getAttribute('data-title').toLowerCase();
+      const topic = item.getAttribute('data-topic').toLowerCase();
+      if (title.includes(query) || topic.includes(query)) {
+        item.style.display = 'block';
+        visibleCount++;
+      } else {
+        item.style.display = 'none';
+      }
+    });
+
+    if (visibleCount === 0) {
+      msg.classList.remove('hidden');
+    } else {
+      msg.classList.add('hidden');
+    }
+  }
+
+  document.getElementById('upload-assignment-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('upload-submit-btn');
+    const status = document.getElementById('upload-status');
+    const formData = new FormData(this);
+    const filename = document.querySelector('input[type=file]').files[0].name;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Uploading...';
+    lucide.createIcons();
+    
+    status.classList.remove('hidden', 'text-destructive', 'text-success');
+    status.classList.add('text-muted-foreground');
+    status.innerText = 'Uploading file to server...';
+
+    try {
+      const response = await fetch('/api/teacher/upload-assignment', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+
+      if (response.ok && data.job_id) {
+        status.classList.remove('text-muted-foreground');
+        status.classList.add('text-success');
+        status.innerText = data.message || 'Successfully queued for generation!';
+        setTimeout(() => {
+          document.getElementById('upload-assignment-modal').classList.add('hidden');
+          btn.disabled = false;
+          btn.innerText = 'Upload & Generate';
+          this.reset();
+          status.classList.add('hidden');
+        }, 2000);
+
+        // Track job progress
+        addActiveJob(data.job_id, filename);
+
+      } else {
+        throw new Error(data.detail || 'Upload failed');
+      }
+    } catch (err) {
+      status.classList.remove('text-muted-foreground');
+      status.classList.add('text-destructive');
+      status.innerText = err.message;
+      btn.disabled = false;
+      btn.innerText = 'Upload & Generate';
+    }
+  });
+
+  function addActiveJob(jobId, filename) {
+    const container = document.getElementById('active-jobs-container');
+    const jobIdSafe = 'job-' + jobId;
+    
+    const cardHtml = `
+      <div id="${jobIdSafe}" class="bg-card rounded-2xl p-6 shadow-md border border-primary/30 transition-all relative group">
+        <button onclick="this.parentElement.remove()" class="absolute top-4 right-4 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity" title="Dismiss">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-3">
+            <div id="${jobIdSafe}-icon-wrapper" class="p-2 rounded-xl bg-primary/10 text-primary">
+              <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+            </div>
+            <div>
+              <h3 class="font-display font-semibold text-foreground">Generating Assignment...</h3>
+              <p class="text-sm text-muted-foreground" id="${jobIdSafe}-filename">${filename}</p>
+            </div>
+          </div>
+          <span id="${jobIdSafe}-pct" class="text-sm font-semibold text-primary mr-6">0%</span>
+        </div>
+        <div class="w-full bg-secondary rounded-full h-2 mt-4">
+          <div id="${jobIdSafe}-bar" class="bg-primary h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p id="${jobIdSafe}-status" class="text-xs text-muted-foreground mt-2">Initializing...</p>
+      </div>
+    `;
+    
+    const div = document.createElement('div');
+    div.innerHTML = cardHtml.trim();
+    container.prepend(div.firstChild);
+    lucide.createIcons();
+
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/teacher/upload-status/${jobId}`);
+        if (res.ok) {
+          const jobData = await res.json();
+          document.getElementById(`${jobIdSafe}-status`).innerText = jobData.status;
+          document.getElementById(`${jobIdSafe}-bar`).style.width = jobData.progress + '%';
+          document.getElementById(`${jobIdSafe}-pct`).innerText = jobData.progress + '%';
+          
+          if (jobData.progress >= 100) {
+            clearInterval(intervalId);
+            const iconWrapper = document.getElementById(`${jobIdSafe}-icon-wrapper`);
+            if (jobData.status.toLowerCase().includes('fail')) {
+               iconWrapper.innerHTML = '<i data-lucide="x-circle" class="w-5 h-5"></i>';
+               iconWrapper.classList.replace('text-primary', 'text-destructive');
+               iconWrapper.classList.replace('bg-primary/10', 'bg-destructive/10');
+               document.getElementById(`${jobIdSafe}-pct`).classList.replace('text-primary', 'text-destructive');
+               document.getElementById(`${jobIdSafe}-bar`).classList.replace('bg-primary', 'bg-destructive');
+               lucide.createIcons();
+            } else {
+               iconWrapper.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i>';
+               iconWrapper.classList.replace('text-primary', 'text-success');
+               iconWrapper.classList.replace('bg-primary/10', 'bg-success/10');
+               document.getElementById(`${jobIdSafe}-pct`).classList.replace('text-primary', 'text-success');
+               document.getElementById(`${jobIdSafe}-bar`).classList.replace('bg-primary', 'bg-success');
+               document.getElementById(`${jobIdSafe}-status`).innerText = "Assignment generation complete! Refreshing...";
+               lucide.createIcons();
+               
+               setTimeout(() => {
+                 window.location.reload();
+               }, 2000);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Polling error", err);
+      }
+    }, 2000);
+  }
+
+  // Restore active jobs on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    const existingJobs = {{ active_jobs_json|safe|default:"[]" }};
+    existingJobs.forEach(job => {
+      addActiveJob(job.job_id, job.filename || "Unknown PDF");
+    });
+  });
+</script>
+
+<!-- Client-side Pagination Script -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const items = Array.from(document.querySelectorAll('.assignment-item'));
+    const itemsPerPage = 10;
+    let currentPage = 1;
+    const totalPages = Math.ceil(items.length / itemsPerPage);
+    
+    const paginationInfo = document.getElementById('pagination-info');
+    const paginationControls = document.getElementById('pagination-controls');
+
+    function renderPage(page) {
+      if(items.length === 0) {
+        paginationInfo.textContent = "No assignments found.";
+        paginationControls.innerHTML = "";
+        return;
+      }
+
+      currentPage = page;
+      const start = (page - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+
+      items.forEach((item, index) => {
+        if (index >= start && index < end) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+
+      paginationInfo.textContent = `Showing ${start + 1} to ${Math.min(end, items.length)} of ${items.length} assignments`;
+      renderControls();
+    }
+
+    function renderControls() {
+      paginationControls.innerHTML = '';
+      
+      // Prev button
+      const prevBtn = document.createElement('button');
+      prevBtn.className = `w-8 h-8 flex items-center justify-center rounded-md border border-input text-sm ${currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-muted' : 'hover:bg-accent bg-background'}`;
+      prevBtn.innerHTML = '<i data-lucide="chevron-left" class="w-4 h-4"></i>';
+      prevBtn.onclick = () => { if (currentPage > 1) renderPage(currentPage - 1); };
+      paginationControls.appendChild(prevBtn);
+
+      // Page buttons
+      for (let i = 1; i <= totalPages; i++) {
+        if (totalPages > 5) {
+          if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+            if (i === 2 || i === totalPages - 1) {
+              const dots = document.createElement('span');
+              dots.className = 'px-2 text-muted-foreground';
+              dots.textContent = '...';
+              paginationControls.appendChild(dots);
+            }
+            continue;
+          }
+        }
+        
+        const btn = document.createElement('button');
+        btn.className = `w-8 h-8 flex items-center justify-center rounded-md text-sm transition-colors ${currentPage === i ? 'bg-primary text-primary-foreground font-medium' : 'border border-input hover:bg-accent bg-background text-foreground'}`;
+        btn.textContent = i;
+        btn.onclick = () => renderPage(i);
+        paginationControls.appendChild(btn);
+      }
+
+      // Next button
+      const nextBtn = document.createElement('button');
+      nextBtn.className = `w-8 h-8 flex items-center justify-center rounded-md border border-input text-sm ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-muted' : 'hover:bg-accent bg-background'}`;
+      nextBtn.innerHTML = '<i data-lucide="chevron-right" class="w-4 h-4"></i>';
+      nextBtn.onclick = () => { if (currentPage < totalPages) renderPage(currentPage + 1); };
+      paginationControls.appendChild(nextBtn);
+
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    renderPage(1);
+  });
+</script>
+{% endblock %}
+

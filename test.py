@@ -1,0 +1,1 @@
+from django.template.loader import render_to_string; import json; ctx={'batch_subjects_json': json.dumps({'BT-0001': [{'code': 'SUB001', 'name': 'Machine Learning'}]}), 'subject_topics_json': json.dumps({})}; html=render_to_string('professor/assignments.html', ctx); start=html.find('id=\"mapping-data\"'); print(html[start:start+250])

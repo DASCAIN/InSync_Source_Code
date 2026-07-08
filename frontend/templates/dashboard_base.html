@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen bg-background">
+  <!-- Mobile Header -->
+  <header class="lg:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-card border-b border-border px-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <img
+        src="{% static 'images/insync-logo.png' %}"
+        alt="InSync by DASCAIN"
+        className="h-8 w-auto object-contain"
+        style="height: 2rem;"
+      />
+      <span class="font-display font-bold">InSync</span>
+    </div>
+    <button
+      onclick="toggleSidebar()"
+      class="p-2 rounded-lg hover:bg-muted"
+    >
+      <i data-lucide="menu" id="hamburger-icon" class="w-6 h-6"></i>
+    </button>
+  </header>
+
+  <!-- Sidebar Overlay for Mobile -->
+  <div 
+    id="sidebar-overlay"
+    class="hidden lg:hidden fixed inset-0 z-30 bg-black/50"
+    onclick="toggleSidebar()"
+  ></div>
+
+  <!-- Sidebar -->
+  <aside 
+    id="dashboard-sidebar"
+    class="fixed top-0 left-0 z-40 h-screen w-64 bg-sidebar transform -translate-x-full lg:translate-x-0 transition-transform duration-300"
+  >
+    <div class="flex flex-col h-full">
+      <!-- Logo -->
+      <div class="h-16 px-6 flex items-center gap-3 border-b border-sidebar-border">
+        <img
+          src="{% static 'images/insync-logo.png' %}"
+          alt="InSync by DASCAIN"
+          class="h-8 w-auto object-contain"
+          style="height: 2rem;"
+        />
+        <div>
+          <span class="font-display font-bold text-sidebar-foreground">InSync</span>
+          <span class="text-xs text-sidebar-foreground/50 ml-1">by DASCAIN</span>
+        </div>
+      </div>
+
+      <!-- User Info -->
+      <div class="px-4 py-4 border-b border-sidebar-border">
+        <div class="flex items-center gap-3 p-3 rounded-xl bg-sidebar-accent">
+          <div class="w-10 h-10 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-semibold">
+            {{ request.session.user.name.0 }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-sidebar-foreground truncate">{{ request.session.user.name }}</p>
+            <p class="text-xs text-sidebar-foreground/60 capitalize">{{ request.session.user.role }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+        {% if request.session.user.role == 'professor' %}
+          <!-- Professor Navigation -->
+          <a
+            href="{% url 'voice_tutor:professor_dashboard' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'dashboard' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+            <span class="font-medium">Dashboard</span>
+            {% if active_tab == 'dashboard' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+          <a
+            href="{% url 'voice_tutor:professor_batchs' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'batchs' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="users" class="w-5 h-5"></i>
+            <span class="font-medium">Batches</span>
+            {% if active_tab == 'batchs' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+          <a
+            href="{% url 'voice_tutor:professor_subjects' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'subjects' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="library" class="w-5 h-5"></i>
+            <span class="font-medium">Subjects</span>
+            {% if active_tab == 'subjects' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+          <a
+            href="{% url 'voice_tutor:professor_topics' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'topics' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="layers" class="w-5 h-5"></i>
+            <span class="font-medium">Topics</span>
+            {% if active_tab == 'topics' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+          <a
+            href="{% url 'voice_tutor:professor_assignments' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'assignments' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="book-open" class="w-5 h-5"></i>
+            <span class="font-medium">Assignments</span>
+            {% if active_tab == 'assignments' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+          <a
+            href="{% url 'voice_tutor:professor_analytics' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'analytics' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+            <span class="font-medium">Analytics</span>
+            {% if active_tab == 'analytics' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+          <a
+            href="{% url 'voice_tutor:professor_messages' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'messages' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="message-square" class="w-5 h-5"></i>
+            <span class="font-medium">Messages</span>
+            {% if active_tab == 'messages' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+        {% else %}
+          <!-- Student Navigation -->
+          <a
+            href="{% url 'voice_tutor:student_dashboard' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'dashboard' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+            <span class="font-medium">Dashboard</span>
+            {% if active_tab == 'dashboard' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+          <a
+            href="{% url 'voice_tutor:student_dashboard' %}?tab=assignments"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'assignments' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="book-open" class="w-5 h-5"></i>
+            <span class="font-medium">Assignments</span>
+            {% if active_tab == 'assignments' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+          <a
+            href="{% url 'voice_tutor:student_dashboard' %}?tab=progress"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'progress' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+            <span class="font-medium">My Progress</span>
+            {% if active_tab == 'progress' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+          <a
+            href="{% url 'voice_tutor:student_dashboard' %}?tab=messages"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'messages' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="message-square" class="w-5 h-5"></i>
+            <span class="font-medium">Messages</span>
+            {% if active_tab == 'messages' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
+        {% endif %}
+      </nav>
+
+      <!-- Bottom Actions -->
+      <div class="px-4 py-4 border-t border-sidebar-border space-y-2">
+        <a
+          href="#"
+          onclick="alert('Demo Settings — Configuration loaded from .env')"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+        >
+          <i data-lucide="settings" class="w-5 h-5"></i>
+          <span class="font-medium">Settings</span>
+        </a>
+        <a
+          href="{% url 'voice_tutor:logout' %}"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive transition-colors"
+        >
+          <i data-lucide="log-out" class="w-5 h-5"></i>
+          <span class="font-medium">Log Out</span>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content wrapper -->
+  <main class="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
+    {% block inner_content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+  let isSidebarOpen = false;
+
+  function toggleSidebar() {
+    const sidebar = document.getElementById('dashboard-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const icon = document.getElementById('hamburger-icon');
+
+    isSidebarOpen = !isSidebarOpen;
+    if (isSidebarOpen) {
+      sidebar.classList.remove('-translate-x-full');
+      overlay.classList.remove('hidden');
+      icon.setAttribute('data-lucide', 'x');
+    } else {
+      sidebar.classList.add('-translate-x-full');
+      overlay.classList.add('hidden');
+      icon.setAttribute('data-lucide', 'menu');
+    }
+    lucide.createIcons();
+  }
+</script>
+{% block dashboard_scripts %}{% endblock %}
+{% endblock %}
+

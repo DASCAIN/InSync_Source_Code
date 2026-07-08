@@ -1,0 +1,464 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen">
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
+    <div class="container mx-auto px-6">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo -->
+        <div class="flex items-center gap-3">
+          <img
+            src="{% static 'images/insync-logo.png' %}"
+            alt="InSync by DASCAIN"
+            class="h-10 w-auto object-contain"
+            style="height: 2.5rem;"
+          />
+          <div>
+            <span class="font-display font-bold text-xl">InSync</span>
+            <span class="text-xs text-muted-foreground ml-1">by DASCAIN</span>
+          </div>
+        </div>
+
+        <!-- Desktop Nav -->
+        <nav class="hidden md:flex items-center gap-8">
+          <a href="#features" class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Features
+          </a>
+          <a href="#principles" class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Principles
+          </a>
+          <a href="#" onclick="alert('Pricing details: Free during public beta!')" class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Pricing
+          </a>
+        </nav>
+
+        <!-- Desktop CTA -->
+        <div class="hidden md:flex items-center gap-4">
+          <a href="{% url 'voice_tutor:login' %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+            Log In
+          </a>
+          <a href="{% url 'voice_tutor:login' %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+            Get Started
+          </a>
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button
+          class="md:hidden p-2 rounded-lg hover:bg-muted"
+          onclick="toggleMobileMenu()"
+        >
+          <i data-lucide="menu" id="menu-icon" class="w-6 h-6"></i>
+        </button>
+      </div>
+
+      <!-- Mobile Menu -->
+      <div id="mobile-menu" class="hidden md:hidden py-4 border-t border-border animate-fade-in">
+        <nav class="flex flex-col gap-4">
+          <a href="#features" class="text-sm text-muted-foreground hover:text-foreground transition-colors" onclick="toggleMobileMenu()">
+            Features
+          </a>
+          <a href="#principles" class="text-sm text-muted-foreground hover:text-foreground transition-colors" onclick="toggleMobileMenu()">
+            Principles
+          </a>
+          <a href="#" onclick="alert('Pricing details: Free during public beta!')" class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Pricing
+          </a>
+          <div class="flex flex-col gap-2 pt-4 border-t border-border">
+            <a href="{% url 'voice_tutor:login' %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+              Log In
+            </a>
+            <a href="{% url 'voice_tutor:login' %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+              Get Started
+            </a>
+          </div>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="relative min-h-screen flex items-center overflow-hidden">
+      <!-- Background Elements -->
+      <div class="absolute inset-0 bg-gradient-to-br from-secondary via-background to-background"></div>
+      <div class="absolute top-20 right-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse-slow"></div>
+      <div class="absolute bottom-20 left-20 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-pulse-slow"></div>
+      
+      <!-- Grid Pattern -->
+      <div class="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.3)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.3)_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
+
+      <div class="container relative mx-auto px-6 py-20">
+        <div class="grid lg:grid-cols-2 gap-16 items-center">
+          <!-- Left Content -->
+          <div class="space-y-8 animate-fade-in">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium">
+              <i data-lucide="brain" class="w-4 h-4"></i>
+              <span>AI-Powered Teaching Intelligence</span>
+            </div>
+
+            <h1 class="font-display text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+              <span class="gradient-text">InSync</span>
+              <br />
+              <span class="text-foreground">by DASCAIN</span>
+            </h1>
+
+            <p class="text-xl text-muted-foreground max-w-lg leading-relaxed">
+              Help professors understand how students think—not just what they answer—using 
+              <span class="text-foreground font-medium"> guided voice tutors </span> 
+              and <span class="text-foreground font-medium">learning analytics</span>.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4">
+              <a 
+                href="{% url 'voice_tutor:login' %}" 
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 py-3 text-lg font-semibold group"
+              >
+                Get Started
+                <i data-lucide="chevron-right" class="w-5 h-5 ml-1 group-hover:translate-x-1 transition-transform"></i>
+              </a>
+              <button 
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-12 px-6 py-3 text-lg font-semibold"
+                onclick="document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })"
+              >
+                Learn More
+              </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="flex gap-8 pt-4">
+              <div>
+                <div class="text-3xl font-display font-bold text-primary">98%</div>
+                <div class="text-sm text-muted-foreground">Engagement Rate</div>
+              </div>
+              <div>
+                <div class="text-3xl font-display font-bold text-primary">3x</div>
+                <div class="text-sm text-muted-foreground">Better Insights</div>
+              </div>
+              <div>
+                <div class="text-3xl font-display font-bold text-primary">24/7</div>
+                <div class="text-sm text-muted-foreground">AI Assistance</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Content - Feature Cards -->
+          <div class="relative animate-slide-in-right">
+            <div class="grid gap-6">
+              <!-- Voice Agent Card -->
+              <div class="glass-card rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div class="flex items-start gap-4">
+                  <div class="p-3 rounded-xl bg-primary/10">
+                    <i data-lucide="mic" class="w-6 h-6 text-primary"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-display font-semibold text-lg mb-2">Voice-Based Tutoring</h3>
+                    <p class="text-muted-foreground text-sm">
+                      AI tutors guide students step-by-step through problems, encouraging 
+                      writing and thinking at every stage.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Analytics Card -->
+              <div class="glass-card rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 md:ml-8">
+                <div class="flex items-start gap-4">
+                  <div class="p-3 rounded-xl bg-accent/10">
+                    <i data-lucide="bar-chart-3" class="w-6 h-6 text-accent"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-display font-semibold text-lg mb-2">Learning Analytics</h3>
+                    <p class="text-muted-foreground text-sm">
+                      Convert every conversation into actionable insights. Understand 
+                      where students struggle and succeed.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Brain Card -->
+              <div class="glass-card rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div class="flex items-start gap-4">
+                  <div class="p-3 rounded-xl bg-success/10">
+                    <i data-lucide="brain" class="w-6 h-6 text-success"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-display font-semibold text-lg mb-2">Thinking Process</h3>
+                    <p class="text-muted-foreground text-sm">
+                      Focus on the learning journey, not just answers. Every student 
+                      deserves equal attention.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Floating Elements -->
+            <div class="absolute -top-4 -right-4 w-20 h-20 bg-primary/20 rounded-full blur-xl animate-float"></div>
+            <div class="absolute -bottom-4 -left-4 w-16 h-16 bg-accent/20 rounded-full blur-xl animate-float" style="animation-delay: 2s;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-24 bg-muted/30">
+      <div class="container mx-auto px-6">
+        <div class="text-center mb-16">
+          <h2 class="font-display text-4xl md:text-5xl font-bold mb-4">
+            Everything You Need to
+            <span class="gradient-text"> Teach Better</span>
+          </h2>
+          <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+            InSync gives professors superpowers. Understand your students like never before.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <!-- Feature 1 -->
+          <div class="group bg-card rounded-2xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
+            <div class="inline-flex p-3 rounded-xl mb-6 bg-primary/10">
+              <i data-lucide="users" class="w-6 h-6 text-primary"></i>
+            </div>
+            <h3 class="font-display text-xl font-semibold mb-3">batch Management</h3>
+            <p class="text-muted-foreground leading-relaxed">Create and manage classes, batches, and student groups with ease. Assign work and track progress at scale.</p>
+          </div>
+          <!-- Feature 2 -->
+          <div class="group bg-card rounded-2xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
+            <div class="inline-flex p-3 rounded-xl mb-6 bg-accent/10">
+              <i data-lucide="book-open" class="w-6 h-6 text-accent"></i>
+            </div>
+            <h3 class="font-display text-xl font-semibold mb-3">Smart Assignments</h3>
+            <p class="text-muted-foreground leading-relaxed">Design structured assignments with step-by-step problem solving. Guide students through the thinking process.</p>
+          </div>
+          <!-- Feature 3 -->
+          <div class="group bg-card rounded-2xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
+            <div class="inline-flex p-3 rounded-xl mb-6 bg-success/10">
+              <i data-lucide="message-square" class="w-6 h-6 text-success"></i>
+            </div>
+            <h3 class="font-display text-xl font-semibold mb-3">Voice AI Tutors</h3>
+            <p class="text-muted-foreground leading-relaxed">Deploy patient, encouraging AI tutors that guide students without revealing answers. Learning happens step by step.</p>
+          </div>
+          <!-- Feature 4 -->
+          <div class="group bg-card rounded-2xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
+            <div class="inline-flex p-3 rounded-xl mb-6 bg-primary/10">
+              <i data-lucide="trending-up" class="w-6 h-6 text-primary"></i>
+            </div>
+            <h3 class="font-display text-xl font-semibold mb-3">Deep Analytics</h3>
+            <p class="text-muted-foreground leading-relaxed">Understand engagement, identify weak concepts, and spot students who need attention—all from conversation data.</p>
+          </div>
+          <!-- Feature 5 -->
+          <div class="group bg-card rounded-2xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
+            <div class="inline-flex p-3 rounded-xl mb-6 bg-accent/10">
+              <i data-lucide="shield" class="w-6 h-6 text-accent"></i>
+            </div>
+            <h3 class="font-display text-xl font-semibold mb-3">Ethical Learning</h3>
+            <p class="text-muted-foreground leading-relaxed">No shortcut learning. No answer engines. We treat confusion as learning, not failure.</p>
+          </div>
+          <!-- Feature 6 -->
+          <div class="group bg-card rounded-2xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
+            <div class="inline-flex p-3 rounded-xl mb-6 bg-success/10">
+              <i data-lucide="zap" class="w-6 h-6 text-success"></i>
+            </div>
+            <h3 class="font-display text-xl font-semibold mb-3">Real-Time Insights</h3>
+            <p class="text-muted-foreground leading-relaxed">Get instant visibility into how your class is performing. Make data-driven teaching decisions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Principles Section -->
+    <section id="principles" class="py-24 bg-gradient-to-b from-background to-secondary/20">
+      <div class="container mx-auto px-6">
+        <div class="text-center mb-16">
+          <h2 class="font-display text-4xl md:text-5xl font-bold mb-4">
+            Our <span class="gradient-text">Core Principles</span>
+          </h2>
+          <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Built on a foundation of educational philosophy, not just technology.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-6">
+          <div class="flex items-center gap-4 bg-card rounded-full px-6 py-4 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div class="p-2 rounded-full bg-primary/10">
+              <i data-lucide="lightbulb" class="w-5 h-5 text-primary"></i>
+            </div>
+            <h3 class="font-medium text-sm">Learning is Step-by-Step</h3>
+          </div>
+          <div class="flex items-center gap-4 bg-card rounded-full px-6 py-4 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div class="p-2 rounded-full bg-primary/10">
+              <i data-lucide="pen-tool" class="w-5 h-5 text-primary"></i>
+            </div>
+            <h3 class="font-medium text-sm">Writing is Cognition</h3>
+          </div>
+          <div class="flex items-center gap-4 bg-card rounded-full px-6 py-4 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div class="p-2 rounded-full bg-primary/10">
+              <i data-lucide="heart" class="w-5 h-5 text-primary"></i>
+            </div>
+            <h3 class="font-medium text-sm">Thinking Matters More</h3>
+          </div>
+          <div class="flex items-center gap-4 bg-card rounded-full px-6 py-4 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div class="p-2 rounded-full bg-primary/10">
+              <i data-lucide="scale" class="w-5 h-5 text-primary"></i>
+            </div>
+            <h3 class="font-medium text-sm">Equal Attention for All</h3>
+          </div>
+          <div class="flex items-center gap-4 bg-card rounded-full px-6 py-4 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+            <div class="p-2 rounded-full bg-primary/10">
+              <i data-lucide="sparkles" class="w-5 h-5 text-primary"></i>
+            </div>
+            <h3 class="font-medium text-sm">AI Guides, Humans Teach</h3>
+          </div>
+        </div>
+
+        <div class="mt-16 grid md:grid-cols-3 gap-8">
+          <div class="text-center">
+            <div class="inline-flex p-4 rounded-2xl bg-primary/10 mb-4">
+              <i data-lucide="lightbulb" class="w-8 h-8 text-primary"></i>
+            </div>
+            <h3 class="font-display font-semibold text-lg mb-2">Learning is Step-by-Step</h3>
+            <p class="text-muted-foreground">Not instant. Real understanding takes time and guided practice.</p>
+          </div>
+          <div class="text-center">
+            <div class="inline-flex p-4 rounded-2xl bg-primary/10 mb-4">
+              <i data-lucide="pen-tool" class="w-8 h-8 text-primary"></i>
+            </div>
+            <h3 class="font-display font-semibold text-lg mb-2">Writing is Cognition</h3>
+            <p class="text-muted-foreground">When students write, they think. We encourage writing at every step.</p>
+          </div>
+          <div class="text-center">
+            <div class="inline-flex p-4 rounded-2xl bg-primary/10 mb-4">
+              <i data-lucide="heart" class="w-8 h-8 text-primary"></i>
+            </div>
+            <h3 class="font-display font-semibold text-lg mb-2">Thinking Matters More</h3>
+            <p class="text-muted-foreground">The process is more valuable than the final answer.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-24 relative overflow-hidden">
+      <!-- Background -->
+      <div class="absolute inset-0 gradient-hero opacity-90"></div>
+      <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
+      
+      <!-- Floating elements -->
+      <div class="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl animate-float"></div>
+      <div class="absolute bottom-10 right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl animate-float" style="animation-delay: 3s;"></div>
+
+      <div class="container relative mx-auto px-6 text-center">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-white text-sm font-medium mb-8">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>Ready to Transform Your Teaching?</span>
+        </div>
+
+        <h2 class="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
+          Start Using InSync Today
+        </h2>
+
+        <p class="text-xl text-white/80 max-w-2xl mx-auto mb-10">
+          Join forward-thinking educators who are already using AI to understand 
+          their students better and teach more effectively.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a 
+            href="{% url 'voice_tutor:login' %}" 
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-white text-primary hover:bg-white/95 h-12 px-6 py-3 text-lg font-semibold group"
+          >
+            Get Started Free
+            <i data-lucide="arrow-right" class="w-5 h-5 ml-1 group-hover:translate-x-1 transition-transform"></i>
+          </a>
+          <button 
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-white/30 text-white hover:bg-white/10 h-12 px-6 py-3 text-lg font-semibold bg-transparent"
+            onclick="alert('Contacting sales... This demo instance does not require booking.')"
+          >
+            Schedule Demo
+          </button>
+        </div>
+
+        <p class="text-white/60 text-sm mt-8">
+          No credit card required • Free for educators
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-sidebar text-sidebar-foreground py-16">
+    <div class="container mx-auto px-6">
+      <div class="grid md:grid-cols-4 gap-12">
+        <!-- Brand -->
+        <div class="md:col-span-2">
+          <div class="flex items-center gap-3 mb-4">
+            <img
+              src="{% static 'images/insync-logo.png' %}"
+              alt="InSync by DASCAIN"
+              class="h-10 w-auto object-contain"
+              style="height: 2.5rem;"
+            />
+            <div>
+              <span class="font-display font-bold text-xl">InSync</span>
+              <span class="text-xs text-sidebar-foreground/60 ml-1">by DASCAIN</span>
+            </div>
+          </div>
+          <p class="text-sidebar-foreground/70 max-w-sm leading-relaxed">
+            An AI-powered teaching intelligence platform that helps professors understand 
+            how students think—not just what they answer.
+          </p>
+        </div>
+
+        <!-- Links 1 -->
+        <div>
+          <h4 class="font-semibold mb-4">Product</h4>
+          <ul class="space-y-2 text-sidebar-foreground/70">
+            <li><a href="#features" class="hover:text-sidebar-foreground transition-colors">Features</a></li>
+            <li><a href="#" class="hover:text-sidebar-foreground transition-colors">Pricing</a></li>
+            <li><a href="#" class="hover:text-sidebar-foreground transition-colors">Documentation</a></li>
+            <li><a href="#" class="hover:text-sidebar-foreground transition-colors">Roadmap</a></li>
+          </ul>
+        </div>
+
+        <!-- Links 2 -->
+        <div>
+          <h4 class="font-semibold mb-4">Company</h4>
+          <ul class="space-y-2 text-sidebar-foreground/70">
+            <li><a href="#" class="hover:text-sidebar-foreground transition-colors">About DASCAIN</a></li>
+            <li><a href="#" class="hover:text-sidebar-foreground transition-colors">Contact</a></li>
+            <li><a href="#" class="hover:text-sidebar-foreground transition-colors">Privacy Policy</a></li>
+            <li><a href="#" class="hover:text-sidebar-foreground transition-colors">Terms of Service</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="border-t border-sidebar-border mt-12 pt-8 text-center text-sidebar-foreground/50 text-sm">
+        <p>© 2026 DASCAIN. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+  function toggleMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    const icon = document.getElementById('menu-icon');
+    const isHidden = menu.classList.contains('hidden');
+    
+    if (isHidden) {
+      menu.classList.remove('hidden');
+      icon.setAttribute('data-lucide', 'x');
+    } else {
+      menu.classList.add('hidden');
+      icon.setAttribute('data-lucide', 'menu');
+    }
+    lucide.createIcons();
+  }
+</script>
+{% endblock %}
+

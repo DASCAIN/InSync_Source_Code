@@ -1,0 +1,43 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}InSync by DASCAIN{% endblock %}</title>
+    <meta name="description" content="InSync by DASCAIN — AI-powered teaching intelligence that helps professors understand how students think." />
+    <meta name="author" content="DASCAIN" />
+
+    <link rel="icon" type="image/png" href="{% static 'images/insync-logo.png' %}" />
+    <link rel="apple-touch-icon" href="{% static 'images/insync-logo.png' %}" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="InSync by DASCAIN" />
+    <meta property="og:description" content="AI-powered teaching intelligence that helps professors understand how students think—not just what they answer." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://insync.dascain.com/insync-logo.png" />
+    <meta property="og:image:alt" content="InSync by DASCAIN logo" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="InSync by DASCAIN" />
+    <meta name="twitter:description" content="AI-powered teaching intelligence that helps professors understand how students think—not just what they answer." />
+    <meta name="twitter:image" content="https://insync.dascain.com/insync-logo.png" />
+
+    <!-- Compiled CSS Stylesheet -->
+    <link rel="stylesheet" href="{% static 'css/index.css' %}?v=1.1" />
+    {% block head_extra %}{% endblock %}
+  </head>
+
+  <body class="bg-background text-foreground antialiased font-sans">
+    {% block content %}{% endblock %}
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+      lucide.createIcons();
+    </script>
+    {% block scripts_extra %}{% endblock %}
+  </body>
+</html>
+

@@ -1,0 +1,595 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}{{ assignment.title }} — InSync{% endblock %}
+
+{% block head_extra %}
+<style>
+  /* Custom pulse animation for mic button */
+  .pulse-glow-active {
+    box-shadow: 0 0 30px 5px rgba(99, 102, 241, 0.6);
+  }
+  .pulse-success-active {
+    box-shadow: 0 0 30px 5px rgba(16, 185, 129, 0.6);
+  }
+</style>
+{% endblock %}
+
+{% block inner_content %}
+<div class="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
+  <!-- Header -->
+  <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+    <div class="container mx-auto px-6 py-4 flex items-center justify-between">
+      <a
+        href="{% url 'voice_tutor:student_dashboard' %}"
+        class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
+      >
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        <span>Back to Assignment</span>
+      </a>
+      <div class="text-center">
+        <h1 class="font-display font-semibold text-lg text-foreground">{{ assignment.title }}</h1>
+        <p class="text-xs text-muted-foreground">Question {{ question.order }} of {{ total_questions_count }}</p>
+      </div>
+      <button 
+        onclick="toggleHint()"
+        class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3 border border-input bg-background"
+      >
+        <i data-lucide="lightbulb" class="w-4 h-4 mr-2 text-warning"></i>
+        Hint
+      </button>
+    </div>
+  </div>
+
+  <div class="container mx-auto px-6 py-8 flex-1">
+    <div class="grid lg:grid-cols-3 gap-8">
+      <!-- Main Voice Interface -->
+      <div class="lg:col-span-2 space-y-6">
+        
+        <!-- Voice Agent Panel -->
+        <div class="bg-card rounded-2xl p-8 shadow-lg border border-border/50">
+          <div class="text-center space-y-8">
+            <div class="space-y-4">
+              <!-- Animated Circle mic button -->
+              <button
+                id="mic-circle-btn"
+                onclick="toggleConversation()"
+                class="w-32 h-32 mx-auto rounded-full flex items-center justify-center transition-all duration-500 bg-muted hover:scale-105 active:scale-95"
+              >
+                <!-- Loader icon -->
+                <i data-lucide="loader-2" id="icon-loader" class="hidden w-16 h-16 text-muted-foreground animate-spin"></i>
+                <!-- Speak icon -->
+                <i data-lucide="volume-2" id="icon-speaking" class="hidden w-16 h-16 text-white"></i>
+                <!-- Listening / Mic icon -->
+                <i data-lucide="mic" id="icon-mic" class="w-16 h-16 text-muted-foreground"></i>
+              </button>
+
+              <p id="mic-status-label" class="text-lg font-medium text-foreground">
+                Tap the microphone to speak
+              </p>
+              <p id="mic-substatus-label" class="text-muted-foreground">
+                Share your thoughts or ask a question
+              </p>
+            </div>
+
+            <div class="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <i data-lucide="pen-line" class="w-4 h-4 text-primary"></i>
+              <span>Remember to write down each step as you work through the problem</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transcript Panel -->
+        <div class="bg-card rounded-2xl p-6 shadow-lg border border-border/50">
+          <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 class="font-display font-semibold text-foreground">Transcript</h3>
+            <div class="flex items-center gap-2">
+              <span id="message-count-badge" class="text-xs text-muted-foreground">
+                0 messages
+              </span>
+              <button
+                id="copy-transcript-btn"
+                disabled
+                onclick="copyTranscript()"
+                class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-8 px-3"
+              >
+                <i data-lucide="copy" class="w-4 h-4 mr-1"></i>
+                Copy
+              </button>
+              <button
+                id="download-transcript-btn"
+                disabled
+                onclick="downloadTranscript()"
+                class="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-8 px-3"
+              >
+                <i data-lucide="download" class="w-4 h-4 mr-1"></i>
+                Download
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="transcript-container"
+            class="space-y-3 max-h-64 overflow-y-auto pr-2 min-h-[100px] flex flex-col"
+          >
+            <!-- Empty state -->
+            <p id="transcript-empty-msg" class="text-sm text-muted-foreground my-auto text-center">
+              No transcript yet. Start speaking to the tutor to see it here.
+            </p>
+          </div>
+        </div>
+
+        <!-- Hint Section -->
+        <div id="hint-panel" class="hidden bg-warning/10 border border-warning/20 rounded-2xl p-6 animate-fade-in">
+          <div class="flex items-start gap-3">
+            <i data-lucide="lightbulb" class="w-5 h-5 text-warning mt-0.5"></i>
+            <div>
+              <h3 class="font-semibold mb-2 text-foreground">Hint</h3>
+              <p class="text-muted-foreground text-sm leading-relaxed">
+                Start by counting all the marbles in the jar. This will give you the total number of possible outcomes (sample space).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Sidebar -->
+      <div class="space-y-6">
+        <div class="bg-card rounded-2xl p-6 shadow-lg border border-border/50">
+          <h3 class="font-display font-semibold mb-4 text-foreground">Your Progress</h3>
+          <div class="space-y-3">
+            {% for metric in metrics_list %}
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                <span class="text-sm font-medium text-foreground">{{ metric }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="bg-card rounded-2xl p-6 shadow-lg border border-border/50">
+          <h3 class="font-display font-semibold mb-4 text-foreground">This Session</h3>
+          <div class="grid grid-cols-1 gap-4">
+            <div class="text-center p-3 rounded-xl bg-muted/50">
+              <p id="timer-label" class="text-2xl font-bold text-primary">0:00</p>
+              <p class="text-xs text-muted-foreground">Time Spent</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-primary/5 rounded-2xl p-6 border border-primary/10">
+          <h4 class="font-medium text-sm mb-2 text-foreground">💡 Pro Tip</h4>
+          <p class="text-sm text-muted-foreground leading-relaxed">
+            Talk through your thinking out loud. The AI tutor learns best when you explain your reasoning step by step.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script type="module">
+  // Load ElevenLabs client conversation module from CDN
+  import { Conversation } from 'https://esm.sh/@elevenlabs/client';
+
+  const AGENT_ID = 'agent_9101km4pezz9fsfa88d8tcs5wqse';
+  const DEFAULT_MEM0_USER_ID = '5033a22d-170c-4ac8-93ec-bf39035cdadb';
+
+  function getMem0UserId() {
+    try {
+      const stored = localStorage.getItem('mem0_user_id');
+      if (stored && stored.trim()) return stored.trim();
+      localStorage.setItem('mem0_user_id', DEFAULT_MEM0_USER_ID);
+    } catch (e) {}
+    return DEFAULT_MEM0_USER_ID;
+  }
+
+  // DOM references
+  const micCircleBtn = document.getElementById('mic-circle-btn');
+  const iconLoader = document.getElementById('icon-loader');
+  const iconSpeaking = document.getElementById('icon-speaking');
+  const iconMic = document.getElementById('icon-mic');
+  const statusLabel = document.getElementById('mic-status-label');
+  const substatusLabel = document.getElementById('mic-substatus-label');
+  
+  const transcriptContainer = document.getElementById('transcript-container');
+  const transcriptEmptyMsg = document.getElementById('transcript-empty-msg');
+  const messageCountBadge = document.getElementById('message-count-badge');
+  const copyBtn = document.getElementById('copy-transcript-btn');
+  const downloadBtn = document.getElementById('download-transcript-btn');
+  
+  const timerLabel = document.getElementById('timer-label');
+  const hintPanel = document.getElementById('hint-panel');
+
+  const mem0UserId = getMem0UserId();
+  const assignmentId = '{{ assignment.id }}';
+  const leadId = assignmentId;
+  const userName = '{{ request.session.user.name|default:"" }}';
+  const userEmail = '{{ request.session.user.email|default:"" }}';
+
+  // State management
+  let isConnecting = false;
+  let isConnected = false;
+  let conversationId = null;
+  let transcriptEntries = [];
+  let sessionStartMs = null;
+  let timerInterval = null;
+  let statusInterval = null;
+  let elevenLabsConv = null;
+
+  // Toggle visual states
+  function updateUIState(state) {
+    iconLoader.classList.add('hidden');
+    iconSpeaking.classList.add('hidden');
+    iconMic.classList.add('hidden');
+    
+    micCircleBtn.className = "w-32 h-32 mx-auto rounded-full flex items-center justify-center transition-all duration-500 bg-muted hover:scale-105 active:scale-95";
+
+    if (state === 'connecting') {
+      iconLoader.classList.remove('hidden');
+      statusLabel.textContent = '⏳ Connecting to AI Tutor...';
+      substatusLabel.textContent = 'Setting up your voice session';
+    } else if (state === 'speaking') {
+      iconSpeaking.classList.remove('hidden');
+      micCircleBtn.className = "w-32 h-32 mx-auto rounded-full flex items-center justify-center transition-all duration-500 bg-gradient-to-br from-primary to-accent pulse-glow-active hover:scale-105 active:scale-95 text-white";
+      statusLabel.textContent = '🗣️ AI Tutor is speaking...';
+      substatusLabel.textContent = 'Listen carefully and take notes';
+    } else if (state === 'listening') {
+      iconMic.classList.remove('hidden');
+      micCircleBtn.className = "w-32 h-32 mx-auto rounded-full flex items-center justify-center transition-all duration-500 bg-gradient-to-br from-success to-success/80 pulse-success-active hover:scale-105 active:scale-95 text-white";
+      statusLabel.textContent = '🎤 Listening to you...';
+      substatusLabel.textContent = 'Speak clearly and take your time';
+    } else {
+      // idle
+      iconMic.classList.remove('hidden');
+      statusLabel.textContent = 'Tap the microphone to speak';
+      substatusLabel.textContent = 'Share your thoughts or ask a question';
+    }
+    lucide.createIcons();
+  }
+
+  // Timer logic
+  function startTimer() {
+    sessionStartMs = Date.now();
+    timerInterval = setInterval(() => {
+      const elapsed = Date.now() - sessionStartMs;
+      const totalSec = Math.floor(elapsed / 1000);
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      timerLabel.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  // Hint visibility
+  window.toggleHint = function() {
+    hintPanel.classList.toggle('hidden');
+  }
+
+  // CSRF token retrieval helper
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Format local clock time
+  function formatTimestamp(value) {
+    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Dynamic transcript updates
+  function renderTranscript() {
+    if (transcriptEntries.length === 0) {
+      transcriptEmptyMsg.style.display = 'block';
+      copyBtn.setAttribute('disabled', 'true');
+      downloadBtn.setAttribute('disabled', 'true');
+      messageCountBadge.textContent = '0 messages';
+      transcriptContainer.innerHTML = '';
+      transcriptContainer.appendChild(transcriptEmptyMsg);
+      return;
+    }
+
+    transcriptEmptyMsg.style.display = 'none';
+    copyBtn.removeAttribute('disabled');
+    downloadBtn.removeAttribute('disabled');
+    messageCountBadge.textContent = `${transcriptEntries.length} messages`;
+
+    // Rebuild DOM nodes
+    transcriptContainer.innerHTML = '';
+    transcriptEntries.forEach(entry => {
+      const wrapper = document.createElement('div');
+      wrapper.className = `flex ${entry.role === 'user' ? 'justify-end' : 'justify-start'}`;
+
+      const block = document.createElement('div');
+      block.className = `flex flex-col ${entry.role === 'user' ? 'items-end' : 'items-start'}`;
+
+      const bubble = document.createElement('div');
+      bubble.className = `max-w-[80%] rounded-xl px-4 py-2 text-sm ${
+        entry.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+      }`;
+      bubble.textContent = entry.text;
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = "mt-1 text-[10px] text-muted-foreground";
+      timeSpan.textContent = formatTimestamp(entry.timestamp);
+
+      block.appendChild(bubble);
+      block.appendChild(timeSpan);
+      wrapper.appendChild(block);
+      transcriptContainer.appendChild(wrapper);
+    });
+
+    // Scroll container
+    transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+  }
+
+  function upsertTranscriptEntry(id, role, text, timestamp) {
+    const idx = transcriptEntries.findIndex(e => e.id === id);
+    if (idx === -1) {
+      transcriptEntries.push({ id, role, text, timestamp });
+    } else {
+      transcriptEntries[idx].text = text;
+      transcriptEntries[idx].timestamp = timestamp || transcriptEntries[idx].timestamp;
+    }
+    renderTranscript();
+  }
+
+  // Copy/Download transcript triggers
+  function getTranscriptRawText() {
+    return transcriptEntries.map(e => {
+      const roleName = e.role === 'user' ? 'Student' : 'Tutor';
+      return `[${formatTimestamp(e.timestamp)}] ${roleName}: ${e.text}`;
+    }).join('\n');
+  }
+
+  window.copyTranscript = function() {
+    const raw = getTranscriptRawText();
+    if (!raw) return;
+    navigator.clipboard.writeText(raw).then(() => {
+      alert("Transcript copied to clipboard!");
+    }).catch(e => {
+      console.error(e);
+      alert("Could not copy transcript.");
+    });
+  }
+
+  window.downloadTranscript = function() {
+    const raw = getTranscriptRawText();
+    if (!raw) return;
+    const blob = new Blob([raw], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `transcript-${assignmentId}-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Voice session management
+  window.toggleConversation = async function() {
+    if (isConnected) {
+      await endVoiceSession();
+      return;
+    }
+    await startVoiceSession();
+  }
+
+  async function startVoiceSession() {
+    isConnecting = true;
+    updateUIState('connecting');
+    transcriptEntries = [];
+    renderTranscript();
+
+    let newConversationId = null;
+    try {
+      // Prompt microphone permission
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Request conversation start from django backend
+      const response = await fetch('/api/voice/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+          user_id: mem0UserId,
+          lead_id: leadId,
+          user_name: userName,
+          user_email: userEmail
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.detail || 'Failed to start voice session.');
+      }
+
+      const data = await response.json();
+      const agentId = data?.agent_id || AGENT_ID;
+      const signedUrl = data?.call_url;
+      newConversationId = data?.conversation_id;
+      conversationId = newConversationId;
+
+      // Initialize ElevenLabs Browser SDK Conversation
+      elevenLabsConv = await Conversation.startSession({
+        signedUrl,
+        agentId: signedUrl ? undefined : agentId,
+        onConnect: () => {
+          console.log("Connected to ElevenLabs conversational AI.");
+          isConnected = true;
+          isConnecting = false;
+          updateUIState('listening');
+          startTimer();
+          startStatusPolling();
+        },
+        onDisconnect: async () => {
+          console.log("Disconnected from ElevenLabs.");
+          await cleanSessionState();
+        },
+        onError: (err) => {
+          console.error("ElevenLabs error:", err);
+          alert(`ElevenLabs error: ${err.message || err}`);
+          cleanSessionState();
+        },
+        onMessage: (payload) => {
+          if (!payload?.message || !payload.role) return;
+          upsertTranscriptEntry(
+            `${payload.role}-${payload.event_id || Date.now()}`,
+            payload.role === 'user' ? 'user' : 'agent',
+            payload.message,
+            Date.now()
+          );
+        },
+        onAgentChatResponsePart: (part) => {
+          if (!part?.text) return;
+          const isDelta = part.type === 'delta';
+          const entryId = `agent-${part.event_id || 'stream'}`;
+          const existing = transcriptEntries.find(e => e.id === entryId);
+          const currentText = existing ? existing.text : '';
+          const newText = isDelta ? currentText + part.text : part.text;
+          upsertTranscriptEntry(entryId, 'agent', newText, Date.now());
+        }
+      });
+
+      // Update speaks visual
+      // Standard ElevenLabs SDK gives an onSpeaking state or we can poll it.
+      // We'll approximate speaking visually based on delta responses or let conversation SDK handle it.
+      // In the ESM SDK, isSpeaking is exposed. Let's poll for visual state.
+      setInterval(() => {
+        if (isConnected && elevenLabsConv) {
+          // Check if agent is currently speaking
+          // The SDK has `conversation.isSpeaking` property
+          const speaking = elevenLabsConv.isSpeaking || false;
+          updateUIState(speaking ? 'speaking' : 'listening');
+        }
+      }, 500);
+
+      // Contextual Memory update
+      const memories = data?.memories || '';
+      if (memories && memories.toLowerCase() !== 'no memories found') {
+        elevenLabsConv.sendContextualUpdate(`Long-term memory for this student:\n${memories}`);
+      }
+
+    } catch (e) {
+      console.error(e);
+      isConnecting = false;
+      updateUIState('idle');
+      alert(`Voice connection failed: ${e.message || e}`);
+      if (newConversationId) {
+        await endBackendConversation(newConversationId);
+      }
+      conversationId = null;
+    }
+  }
+
+  async function endVoiceSession() {
+    if (elevenLabsConv) {
+      try {
+        await elevenLabsConv.endSession();
+      } catch (e) {
+        console.warn("Error ending ElevenLabs session:", e);
+      }
+    }
+    await cleanSessionState();
+  }
+
+  async function cleanSessionState() {
+    stopTimer();
+    stopStatusPolling();
+    isConnected = false;
+    isConnecting = false;
+    updateUIState('idle');
+    if (conversationId) {
+      await endBackendConversation(conversationId);
+      conversationId = null;
+    }
+    elevenLabsConv = null;
+  }
+
+  async function endBackendConversation(id) {
+    try {
+      const response = await fetch('/api/voice/end', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ conversation_id: id })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Load final transcript saved by backend
+        if (data?.transcript && Array.isArray(data.transcript)) {
+          loadBackendTranscript(data.transcript);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to end backend session log:", e);
+    }
+  }
+
+  function loadBackendTranscript(items) {
+    transcriptEntries = items.map((item, index) => {
+      let role = item.role || item.source || item.speaker || 'agent';
+      if (role === 'ai' || role === 'assistant') role = 'agent';
+      
+      const text = item.message || item.text || item.content || item.transcript || '';
+      const tsVal = item.timestamp || item.time || Date.now();
+      const timestamp = (typeof tsVal === 'number') ? (tsVal < 1e12 ? tsVal * 1000 : tsVal) : Date.parse(tsVal) || Date.now();
+      
+      return {
+        id: `${role}-${index}`,
+        role: role === 'user' ? 'user' : 'agent',
+        text,
+        timestamp
+      };
+    });
+    renderTranscript();
+  }
+
+  // Status Polling logic (calls GET /api/voice/status/<id> to refresh structured transcripts)
+  function startStatusPolling() {
+    statusInterval = setInterval(async () => {
+      if (!conversationId) return;
+      try {
+        const response = await fetch(`/api/voice/status/${conversationId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.transcript && Array.isArray(data.transcript)) {
+            loadBackendTranscript(data.transcript);
+          }
+        }
+      } catch (e) {
+        console.warn("Error polling transcript status:", e);
+      }
+    }, 5000);
+  }
+
+  function stopStatusPolling() {
+    if (statusInterval) {
+      clearInterval(statusInterval);
+      statusInterval = null;
+    }
+  }
+</script>
+{% endblock %}

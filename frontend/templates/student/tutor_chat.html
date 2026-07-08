@@ -1,0 +1,245 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Chat with AI Tutor — InSync{% endblock %}
+
+{% block inner_content %}
+<div class="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
+  <!-- Header Bar -->
+  <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+    <div class="container mx-auto px-6 py-4 flex items-center justify-between">
+      <a
+        href="{% url 'voice_tutor:student_dashboard' %}"
+        class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        <span>Back</span>
+      </a>
+      <div class="text-center">
+        <h1 class="font-display font-semibold text-lg text-foreground">Chat with AI Tutor</h1>
+        <p class="text-xs text-muted-foreground">Ask questions and get step-by-step help.</p>
+      </div>
+      <div class="w-16" ></div>
+    </div>
+  </div>
+
+  <!-- Chat Area -->
+  <div class="container mx-auto px-6 py-8 flex-1 flex flex-col max-w-4xl">
+    <div class="bg-card rounded-2xl shadow-lg border border-border/60 flex flex-col flex-1 p-6 gap-4 min-h-[500px]">
+      
+      <!-- Messages List -->
+      <div
+        id="chat-container"
+        class="flex flex-col gap-4 overflow-y-auto flex-1 pr-2 max-h-[55vh]"
+      >
+        <!-- Welcome prompt -->
+        <div id="empty-state-msg" class="text-muted-foreground text-sm text-center my-auto">
+          Start the conversation with a question or problem you want help with.
+        </div>
+      </div>
+
+      <!-- Thinking Dots -->
+      <div id="thinking-indicator" class="hidden flex justify-start">
+        <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm bg-background border border-border text-muted-foreground">
+          Tutor is thinking<span id="thinking-dots">...</span>
+        </div>
+      </div>
+
+      <!-- Input Actions -->
+      <div class="flex items-end gap-3 mt-auto border-t pt-4 border-border/40">
+        <textarea
+          id="chat-textarea"
+          rows="3"
+          placeholder="Type your question here..."
+          class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[90px] resize-none"
+          onkeydown="handleKeyDown(event)"
+          oninput="validateSendButton()"
+        ></textarea>
+        <div class="flex shrink-0 flex-col gap-2">
+          <a href="{% url 'voice_tutor:openai_voice_tutor' %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+            <i data-lucide="mic" class="w-4 h-4 mr-2"></i>
+            Assessment Mode
+          </a>
+          <button
+            id="send-btn"
+            disabled
+            onclick="sendMessage()"
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <i data-lucide="send" class="w-4 h-4 mr-2"></i>
+            Send
+          </button>
+        </div>
+      </div>
+      <p class="text-xs text-muted-foreground">
+        Press Enter to send, Shift+Enter to add a new line.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+  const DEFAULT_MEM0_USER_ID = '5033a22d-170c-4ac8-93ec-bf39035cdadb';
+
+  function getMem0UserId() {
+    try {
+      const stored = localStorage.getItem('mem0_user_id');
+      if (stored && stored.trim()) return stored.trim();
+      localStorage.setItem('mem0_user_id', DEFAULT_MEM0_USER_ID);
+    } catch (e) {}
+    return DEFAULT_MEM0_USER_ID;
+  }
+
+  const chatContainer = document.getElementById('chat-container');
+  const chatTextarea = document.getElementById('chat-textarea');
+  const sendBtn = document.getElementById('send-btn');
+  const thinkingIndicator = document.getElementById('thinking-indicator');
+  const thinkingDotsSpan = document.getElementById('thinking-dots');
+  const emptyStateMsg = document.getElementById('empty-state-msg');
+  const mem0UserId = getMem0UserId();
+
+  let isLoading = false;
+  let dotsInterval = null;
+
+  function validateSendButton() {
+    const text = chatTextarea.value.trim();
+    if (text.length > 0 && !isLoading) {
+      sendBtn.removeAttribute('disabled');
+    } else {
+      sendBtn.setAttribute('disabled', 'true');
+    }
+  }
+
+  function startThinking() {
+    isLoading = true;
+    validateSendButton();
+    thinkingIndicator.classList.remove('hidden');
+    scrollToBottom();
+    
+    let dots = '';
+    dotsInterval = setInterval(() => {
+      dots = dots.length >= 3 ? '' : dots + '.';
+      thinkingDotsSpan.textContent = dots;
+    }, 400);
+  }
+
+  function stopThinking() {
+    isLoading = false;
+    validateSendButton();
+    thinkingIndicator.classList.add('hidden');
+    if (dotsInterval) {
+      clearInterval(dotsInterval);
+      dotsInterval = null;
+    }
+  }
+
+  function scrollToBottom() {
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function appendMessage(role, text, isTypewriter = false) {
+    if (emptyStateMsg) {
+      emptyStateMsg.style.display = 'none';
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+
+    const bubble = document.createElement('div');
+    bubble.className = `max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
+      role === 'user'
+        ? 'bg-primary text-primary-foreground'
+        : 'bg-background border border-border text-foreground'
+    }`;
+
+    const textDiv = document.createElement('div');
+    textDiv.className = "whitespace-pre-wrap leading-relaxed";
+    bubble.appendChild(textDiv);
+    wrapper.appendChild(bubble);
+    chatContainer.appendChild(wrapper);
+    scrollToBottom();
+
+    if (role === 'assistant' && isTypewriter) {
+      let index = 0;
+      const speed = 16;
+      const interval = setInterval(() => {
+        index++;
+        textDiv.textContent = text.slice(0, index);
+        scrollToBottom();
+        if (index >= text.length) {
+          clearInterval(interval);
+        }
+      }, speed);
+    } else {
+      textDiv.textContent = text;
+      scrollToBottom();
+    }
+  }
+
+  async function sendMessage() {
+    const trimmed = chatTextarea.value.trim();
+    if (!trimmed || isLoading) return;
+
+    appendMessage('user', trimmed);
+    chatTextarea.value = '';
+    validateSendButton();
+    startThinking();
+
+    try {
+      const response = await fetch('/api/tutor/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+          message: trimmed,
+          user_id: mem0UserId
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.detail || 'Failed to reach the tutor.');
+      }
+
+      const data = await response.json();
+      const reply = data?.response || '';
+      if (!reply) {
+        throw new Error('Tutor returned an empty response.');
+      }
+      
+      stopThinking();
+      appendMessage('assistant', reply, true);
+    } catch (e) {
+      console.error(e);
+      stopThinking();
+      alert(e.message || 'Something went wrong while chatting with the tutor.');
+    }
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+</script>
+{% endblock %}
