@@ -262,10 +262,17 @@ def auto_seed_if_empty():
     # 8. batchs
     batch, _ = models.Batch.objects.get_or_create(
         code='C101',
-        defaults={'name': 'JEE Probability Batch – 2026', 'professor': prof_profile, 'subject': subject}
+        defaults={'name': 'JEE Probability Batch – 2026', 'description': 'Intensive probability module for JEE aspirants'}
     )
     batch.students.add(s1_profile, s2_profile, s3_profile)
     batch.assignments.add(a1, a2)
+    
+    # 9. Allocation
+    models.ProfessorAllocation.objects.get_or_create(
+        batch=batch,
+        subject=subject,
+        professor=prof_profile
+    )
 
 def login_view(request):
     auto_seed_if_empty()
@@ -492,31 +499,32 @@ def student_dashboard(request):
                 'status': prog_obj.status
             }
             
-            questions_list = []
-            for q in a.questions.all():
-                options_list = [opt.option_text for opt in q.options.all().order_by('option_letter')]
-                questions_list.append({
-                    'id': q.code,
-                    'content': q.content,
-                    'type': q.question_type,
-                    'options': options_list,
-                    'correctAnswer': q.correct_answer,
-                    'conceptTags': json.loads(q.concept_tags) if q.concept_tags else [],
-                    'difficulty': q.difficulty
-                })
-
-            student_assignments.append({
-                'id': a.code,
-                'title': a.title,
-                'topic': a.topic.name,
-                'description': a.description or '',
-                'difficulty': a.difficulty,
-                'questions': questions_list,
-                'expectedDuration': a.expected_duration,
-                'batchIds': [a.professor_allocation.batch.code] if a.professor_allocation else [],
-                'createdAt': a.created_at,
-                'progress': prog
+        questions_list = []
+        for q in a.questions.all():
+            options_list = [opt.option_text for opt in q.options.all().order_by('option_letter')]
+            questions_list.append({
+                'id': q.code,
+                'content': q.content,
+                'type': q.question_type,
+                'options': options_list,
+                'correctAnswer': q.correct_answer,
+                'conceptTags': json.loads(q.concept_tags) if q.concept_tags else [],
+                'difficulty': q.difficulty
             })
+
+        student_assignments.append({
+            'id': a.code,
+            'title': a.title,
+            'topic': a.topic.name,
+            'description': a.description or '',
+            'difficulty': a.difficulty,
+            'questions': questions_list,
+            'expectedDuration': a.expected_duration,
+            'batchIds': [a.professor_allocation.batch.code] if a.professor_allocation else [],
+            'createdAt': a.created_at,
+            'progress': prog
+        })
+
             
     # Calculate stats
     all_progress = models.StudentTopicAssessmentReview.objects.filter(student=student_profile)

@@ -1,6 +1,5 @@
 """
 Vector store service.
-
 Manages Qdrant vector indices — adding documents, and querying
 the vector store with metadata filtering. Also manages the metadata.json topic registry.
 """
