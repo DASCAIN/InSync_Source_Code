@@ -3,7 +3,7 @@ name: Deploy Django to AWS Elastic Beanstalk
 on:
   push:
     branches:
-      - main  # Change to 'master' if your default branch is named master
+      - Main  # Change to 'master' if your default branch is named master
 
 jobs:
   deploy:
