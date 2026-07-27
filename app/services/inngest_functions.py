@@ -292,7 +292,7 @@ async def rag_generate_assignment(*args, **kwargs) -> dict:
     @sync_to_async
     def _save_to_db():
         from voice_tutor.models import (
-            TopicMaster, SubjectMaster, batch,
+            TopicMaster, SubjectMaster, Batch,
             Assignment, AssignmentQuestion, QuestionOption
         )
         import uuid
@@ -345,9 +345,13 @@ async def rag_generate_assignment(*args, **kwargs) -> dict:
                     )
 
         # Link to batch
-        batch = batch.objects.filter(code=batch_id).first()
-        if batch:
-            pass
+        batch_obj = Batch.objects.filter(code=batch_id).first()
+        if batch_obj:
+            from voice_tutor.models import ProfessorAllocation
+            alloc = ProfessorAllocation.objects.filter(batch=batch_obj, subject=subject_obj).first()
+            if alloc:
+                assignment_obj.professor_allocation = alloc
+                assignment_obj.save()
 
         return assign_code
 

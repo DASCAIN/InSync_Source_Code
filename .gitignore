@@ -1,7 +1,22 @@
-*.zip
-.env
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python cache
 __pycache__/
 */__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment
+.env
+
+# IDE
+.vscode/
+
+# Existing
+*.zip
 data/qdrant_storage/
 data/videos/
 storage/openai_voice/
