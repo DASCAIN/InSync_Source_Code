@@ -26,8 +26,8 @@ if not DEBUG and SECRET_KEY == 'django-insecure-insync-secret-key-for-dascain-20
 def env_list(name, default=''):
     return [item.strip() for item in os.getenv(name, default).split(',') if item.strip()]
 
-
-ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1',)
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 
 INSTALLED_APPS = [
@@ -75,27 +75,16 @@ WSGI_APPLICATION = 'insync_backend.wsgi.application'
 ASGI_APPLICATION = 'insync_backend.asgi.application'
 
 # Database
-DATABASE_URL = os.getenv('DATABASE_URL')
-if DATABASE_URL:
-    try:
-        import dj_database_url
-
-        DATABASES = {
-            'default': dj_database_url.config(
-                default=DATABASE_URL,
-                conn_max_age=600,
-                conn_health_checks=True,
-            )
-        }
-    except ImportError:
-        raise ImportError('DATABASE_URL is set, but dj-database-url is not installed.')
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR.parent / 'lead_generation.db',
-        }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'insync_db',
+        'USER': 'postgres',
+        'PASSWORD': 'f$KZPJG!',
+        'HOST': 'insync-aws-db.cjc24queim24.ap-south-1.rds.amazonaws.com',
+        'PORT': '5432',
     }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {
