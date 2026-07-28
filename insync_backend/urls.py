@@ -12,7 +12,7 @@ from django.conf.urls.static import static
 from config import get_settings
 
 # Import RAG API views
-from app.views.teacher import upload_files, upload_assignment_pdf, check_job_status
+from app.views.teacher import upload_files, upload_assignment_pdf, upload_guided_assignment, check_job_status
 from app.views.student import (
     list_topics,
     check_cache,
@@ -47,6 +47,7 @@ urlpatterns = [
     path('api/healthcheck', healthcheck, name='rag_healthcheck'),
     path('api/teacher/upload', upload_files, name='upload_files'),
     path('api/teacher/upload-assignment', upload_assignment_pdf, name='upload_assignment_pdf'),
+    path('api/teacher/upload-guided-assignment', upload_guided_assignment, name='upload_guided_assignment'),
     path('api/teacher/upload-status/<str:job_id>', check_job_status, name='check_job_status'),
     path('api/student/topics', list_topics, name='list_topics'),
     path('api/student/check-cache', check_cache, name='check_cache'),

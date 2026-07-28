@@ -65,13 +65,23 @@ class OpenAIVoiceService:
         except Exception as exc:
             logger.warning(f"Could not retrieve Mem0 memories for OpenAI voice: {exc}")
 
+        pdf_context = "No specific context found in uploaded materials."
+        try:
+            from app.services.vector_store import retrieve_global_documents
+            import asyncio
+            docs = await asyncio.to_thread(retrieve_global_documents, query)
+            if docs:
+                pdf_context = "\n\n".join([doc.page_content for doc in docs])
+        except Exception as exc:
+            logger.warning(f"Could not retrieve PDF context for OpenAI voice: {exc}")
+
         session_id = f"openai-voice-{uuid.uuid4()}"
         payload = {
             "session": {
                 "type": "realtime",
                 "model": self.model,
                 "instructions": (
-                    f"{SYSTEM_PROMPT.format(MEMORIES=memories)}\n\n"
+                    f"{SYSTEM_PROMPT.format(MEMORIES=memories, PDF_CONTEXT=pdf_context)}\n\n"
                     f"{VOICE_STYLE_PROMPT}"
                 ),
                 "audio": {

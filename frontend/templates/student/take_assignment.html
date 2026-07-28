@@ -54,9 +54,12 @@
       </a>
       <div class="text-center">
         <h1 class="font-display font-semibold text-xl text-foreground">{{ assignment.title }}</h1>
-        <p class="text-xs text-muted-foreground">{{ assignment.topic }} • {{ assignment.expectedDuration }} mins</p>
+        <p class="text-xs text-muted-foreground">{{ assignment.topic }}</p>
       </div>
-      <div class="w-24"></div> <!-- Spacer for flex alignment -->
+      <div class="w-32 flex items-center justify-end gap-2 text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full font-mono text-sm border border-border/50">
+        <i data-lucide="clock" class="w-4 h-4 text-primary"></i>
+        <span id="timer-display" data-initial-time="{{ time_spent|default:0 }}">00:00</span>
+      </div>
     </div>
   </div>
 
@@ -110,7 +113,7 @@
               <p class="feedback-text font-semibold mb-1"></p>
               <p class="text-sm text-muted-foreground">Correct Answer: <span class="font-bold text-foreground">{{ question.correctAnswer }}</span></p>
             </div>
-            <a href="{% url 'voice_tutor:voice_agent_question' assignment.id question.id %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 whitespace-nowrap shrink-0 shadow-sm">
+            <a href="{% url 'voice_tutor:tutor_chat' %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 whitespace-nowrap shrink-0 shadow-sm">
               <i data-lucide="bot" class="w-4 h-4 mr-2"></i>
               Discuss with AI Tutor
             </a>
@@ -232,7 +235,80 @@
       
       // Scroll to top to see results
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Update backend
+      fetch("{% url 'voice_tutor:api_complete_assignment' assignment.id %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({ score: scorePercentage })
+      }).catch(err => console.error("Failed to update status:", err));
     });
+    
+    // Timer and Heartbeat Logic
+    const timerDisplay = document.getElementById('timer-display');
+    let timeSpentSeconds = parseInt(timerDisplay.getAttribute('data-initial-time')) || 0;
+    let unsavedTimeSeconds = 0;
+    let isAssignmentCompleted = false;
+    
+    // Initialize display immediately
+    updateTimerDisplay();
+
+    const timerInterval = setInterval(() => {
+      if (isAssignmentCompleted) {
+        clearInterval(timerInterval);
+        return;
+      }
+      
+      timeSpentSeconds++;
+      unsavedTimeSeconds++;
+      updateTimerDisplay();
+      
+      // Send heartbeat every 15 seconds
+      if (unsavedTimeSeconds >= 15) {
+        const delta = unsavedTimeSeconds;
+        unsavedTimeSeconds = 0; // Reset eagerly
+        
+        fetch("{% url 'voice_tutor:api_update_time_spent' assignment.id %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken")
+          },
+          body: JSON.stringify({ delta_seconds: delta })
+        }).catch(err => {
+          console.error("Failed to update time spent:", err);
+          unsavedTimeSeconds += delta; // Add back if failed
+        });
+      }
+    }, 1000);
+    
+    function updateTimerDisplay() {
+      const mins = Math.floor(timeSpentSeconds / 60).toString().padStart(2, '0');
+      const secs = (timeSpentSeconds % 60).toString().padStart(2, '0');
+      timerDisplay.textContent = `${mins}:${secs}`;
+    }
+    
+    submitBtn.addEventListener('click', () => {
+        isAssignmentCompleted = true;
+    });
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
   });
 </script>
 {% endblock %}

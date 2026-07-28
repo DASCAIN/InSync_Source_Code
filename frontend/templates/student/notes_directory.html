@@ -1,0 +1,62 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Study Notes Directory — InSync{% endblock %}
+
+{% block inner_content %}
+<div class="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-20">
+  <!-- Header -->
+  <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+    <div class="container mx-auto px-6 py-6 flex items-center justify-between">
+      <div>
+        <h1 class="font-display font-semibold text-2xl text-foreground">Study Notes Directory</h1>
+        <p class="text-sm text-muted-foreground mt-1">Review the AI-generated study notes for your enrolled subjects.</p>
+      </div>
+      <a href="{% url 'voice_tutor:student_dashboard' %}" class="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground font-medium rounded-xl hover:bg-secondary/80 transition-colors">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        <span>Back to Dashboard</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Content Grid -->
+  <div class="container mx-auto px-6 py-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for note in notes %}
+        <button 
+          onclick="location.href='{% url 'voice_tutor:student_note_detail' note.id %}'"
+          class="text-left bg-card rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group border border-border/50 flex flex-col"
+        >
+          <div class="flex items-start justify-between mb-4 w-full">
+            <div class="flex-1">
+              <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary border-primary/20 mb-3">
+                {{ note.topic.subject.name|default:"General Subject" }}
+              </span>
+              <h3 class="font-display font-semibold text-lg text-foreground mb-1 line-clamp-2">{{ note.title }}</h3>
+              <p class="text-sm text-muted-foreground">{{ note.topic.name }}</p>
+            </div>
+            <div class="p-2 rounded-lg bg-secondary group-hover:bg-primary group-hover:text-primary-foreground transition-colors text-muted-foreground">
+              <i data-lucide="arrow-right" class="w-5 h-5"></i>
+            </div>
+          </div>
+          
+          <div class="mt-auto pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+            <div class="flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-4 h-4"></i>
+              <span>Generated {{ note.created_at|date:"M d, Y" }}</span>
+            </div>
+          </div>
+        </button>
+      {% empty %}
+        <div class="col-span-full py-12 text-center bg-card rounded-2xl border border-border/50 shadow-sm">
+          <div class="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="book-x" class="w-8 h-8 text-muted-foreground"></i>
+          </div>
+          <h3 class="text-lg font-semibold text-foreground mb-2">No Study Notes Yet</h3>
+          <p class="text-muted-foreground max-w-md mx-auto">Your professors haven't generated any study notes for your enrolled batches yet.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

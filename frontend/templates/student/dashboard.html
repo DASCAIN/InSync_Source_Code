@@ -57,7 +57,7 @@
         </div>
       </div>
       <h3 class="text-3xl font-display font-bold mb-1">{{ engagement_score }}%</h3>
-      <p class="text-muted-foreground text-sm">Engagement</p>
+      <p class="text-muted-foreground text-sm">Engagement Rate</p>
     </div>
   </div>
 
@@ -196,10 +196,15 @@
                 <i data-lucide="help-circle" class="w-4 h-4"></i>
                 <span><span class="font-semibold text-foreground">{{ item.questions|length }}</span> questions</span>
               </div>
-              <div class="flex items-center gap-2 text-muted-foreground text-sm">
-                <i data-lucide="clock" class="w-4 h-4"></i>
-                <span><span class="font-semibold text-foreground">{{ item.expectedDuration }}</span> min</span>
-              </div>
+              
+              {% if item.has_notes %}
+              <button 
+                onclick="event.stopPropagation(); location.href='{% url 'voice_tutor:view_assignment_notes' item.id %}'"
+                class="px-3 py-1 bg-secondary text-secondary-foreground text-xs font-semibold rounded hover:bg-secondary/80 transition-colors"
+              >
+                View Notes
+              </button>
+              {% endif %}
 
               {% if item.progress %}
                 <div class="flex items-center gap-2 ml-auto {% if item.progress.status == 'completed' %}text-success{% else %}text-warning{% endif %} text-sm font-medium">
@@ -294,7 +299,7 @@
         </p>
         <div class="flex flex-wrap gap-3">
           <a
-            href="{% url 'voice_tutor:take_assignment' voice_assignment_id %}"
+            href="{% url 'voice_tutor:openai_voice_tutor' %}"
             class="inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all bg-white/20 hover:bg-white/30 text-white h-8 px-3"
           >
             Talk with AI Tutor

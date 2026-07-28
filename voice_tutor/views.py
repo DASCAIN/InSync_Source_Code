@@ -534,8 +534,8 @@ def student_dashboard(request):
     total_time_spent = sum([p.time_spent for p in all_progress])
     
     avg_engagement = 0
-    if all_progress.exists():
-        avg_engagement = round(sum([p.engagement_score for p in all_progress]) / all_progress.count())
+    if student_assignments:
+        avg_engagement = round((completed_count / len(student_assignments)) * 100)
     
     voice_assignment_id = 'A001'
     if student_assignments:
@@ -595,10 +595,34 @@ def take_assignment_view(request, assignment_id):
             'expectedDuration': assignment_obj.expected_duration,
             'createdAt': assignment_obj.created_at
         }
+        
+        # Set status to in_progress when the student starts the assignment
+        user = get_session_user(request)
+        time_spent = 0
+        if user:
+            student_profile = models.UserProfile.objects.filter(user__username=user['id']).first()
+            if not student_profile:
+                student_profile = models.UserProfile.objects.filter(role__role_code='student').first()
+                
+            if student_profile:
+                prog_obj, created = models.StudentTopicAssessmentReview.objects.get_or_create(
+                    student=student_profile,
+                    assignment=assignment_obj,
+                    topic=assignment_obj.topic,
+                    defaults={
+                        'status': 'in_progress',
+                        'total_questions': assignment_obj.questions.count()
+                    }
+                )
+                if not created and prog_obj.status == 'not_started':
+                    prog_obj.status = 'in_progress'
+                    prog_obj.save()
+                time_spent = prog_obj.time_spent
 
     context = {
         'active_tab': 'assignments',
         'assignment': assignment,
+        'time_spent': time_spent,
     }
     return render(request, 'student/take_assignment.html', context)
 
@@ -668,7 +692,7 @@ def voice_agent_view(request, assignment_id, question_id='Q001'):
 
 @login_required_custom()
 def tutor_chat_view(request):
-    return render(request, 'student/tutor_chat.html', {'active_tab': 'dashboard'})
+    return render(request, 'student/tutor_chat.html', {'active_tab': 'tutor_chat'})
 
 @login_required_custom()
 def openai_voice_tutor_view(request):
@@ -1267,7 +1291,34 @@ def professor_assignment_detail(request, assignment_id):
     }
     return render(request, 'professor/assignment_detail.html', context)
 
+
 @login_required_custom(role='professor')
+def professor_assignment_delete(request, assignment_id):
+    if request.method != 'POST':
+        return redirect('voice_tutor:professor_assignments')
+
+    assignment_obj = models.Assignment.objects.filter(code=assignment_id).first()
+    if not assignment_obj:
+        return redirect('voice_tutor:professor_assignments')
+
+    # Delete the associated vectors from Qdrant if a PDF was uploaded
+    if assignment_obj.source_pdf_path:
+        from pathlib import Path
+        from app.services.vector_store import delete_documents_by_source
+        source_filename = Path(assignment_obj.source_pdf_path).name
+        delete_documents_by_source(source_filename)
+        
+    # Delete the associated study notes if they exist
+    if assignment_obj.topic:
+        models.SummaryNotes.objects.filter(topic=assignment_obj.topic).delete()
+        
+    # Delete the assignment (cascades to questions and options)
+    assignment_obj.delete()
+    
+    return redirect('voice_tutor:professor_assignments')
+
+
+@login_required_custom()
 def serve_assignment_pdf(request, assignment_id):
     from django.http import FileResponse, Http404
     import os
@@ -1748,4 +1799,185 @@ async def api_store_openai_voice_recording(request):
         return JsonResponse({'detail': 'Failed to store voice recording'}, status=500)
 
 
+@login_required_custom()
+def api_complete_assignment(request, assignment_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+    try:
+        import json
+        data = json.loads(request.body)
+        score = data.get('score', 0)
+        
+        user = get_session_user(request)
+        if not user:
+            return JsonResponse({'error': 'Unauthorized'}, status=401)
+            
+        student_profile = models.UserProfile.objects.filter(user__username=user['id']).first()
+        if not student_profile:
+            student_profile = models.UserProfile.objects.filter(role__role_code='student').first()
+            
+        assignment_obj = models.Assignment.objects.filter(code=assignment_id).first()
+        
+        if student_profile and assignment_obj:
+            prog_obj = models.StudentTopicAssessmentReview.objects.filter(
+                student=student_profile,
+                assignment=assignment_obj
+            ).first()
+            
+            if prog_obj:
+                prog_obj.status = 'completed'
+                prog_obj.score = score
+                prog_obj.questions_completed = prog_obj.total_questions
+                prog_obj.save()
+                return JsonResponse({'success': True, 'status': 'completed', 'score': score})
+                
+        return JsonResponse({'error': 'Assessment record not found'}, status=404)
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error("Failed to update assignment status: %s", str(e))
+        return JsonResponse({'error': 'Server error'}, status=500)
 
+
+@login_required_custom()
+def api_update_time_spent(request, assignment_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+    try:
+        import json
+        data = json.loads(request.body)
+        delta_seconds = data.get('delta_seconds', 0)
+        
+        user = get_session_user(request)
+        if not user:
+            return JsonResponse({'error': 'Unauthorized'}, status=401)
+            
+        student_profile = models.UserProfile.objects.filter(user__username=user['id']).first()
+        if not student_profile:
+            student_profile = models.UserProfile.objects.filter(role__role_code='student').first()
+            
+        assignment_obj = models.Assignment.objects.filter(code=assignment_id).first()
+        
+        if student_profile and assignment_obj:
+            prog_obj = models.StudentTopicAssessmentReview.objects.filter(
+                student=student_profile,
+                assignment=assignment_obj
+            ).first()
+            
+            if prog_obj:
+                prog_obj.time_spent += delta_seconds
+                prog_obj.save()
+                return JsonResponse({'success': True, 'time_spent': prog_obj.time_spent})
+                
+        return JsonResponse({'error': 'Assessment record not found'}, status=404)
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error("Failed to update time spent: %s", str(e))
+        return JsonResponse({'error': 'Server error'}, status=500)
+
+
+
+
+def guided_assignment_view(request, session_id):
+    if f'guided_session_{session_id}' not in request.session:
+        # If session not found, redirect to dashboard
+        return redirect('voice_tutor:professor_dashboard')
+        
+    session_data = request.session[f'guided_session_{session_id}']
+    context = {
+        'session_id': session_id,
+        'subject': session_data.get('subject'),
+        'topic': session_data.get('topic'),
+        'files': session_data.get('files', [])
+    }
+    return render(request, 'professor/guided_assignment_chat.html', context)
+
+@csrf_exempt
+async def api_guided_assignment_chat(request, session_id):
+    import json
+    from services.guided_assignment_agent import get_guided_assignment_agent_service
+    
+    if request.method != "POST":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    try:
+        body = json.loads(request.body)
+        message = body.get("message", "").strip()
+
+        if not message:
+            return JsonResponse({"detail": "Message is empty"}, status=400)
+
+        # Get session context
+        from asgiref.sync import sync_to_async
+        @sync_to_async(thread_sensitive=False)
+        def get_session_data():
+            return request.session.get(f'guided_session_{session_id}')
+            
+        session_data = await get_session_data()
+        
+        if not session_data:
+            return JsonResponse({"detail": "Session expired or invalid"}, status=400)
+
+        subject = session_data.get('subject')
+        topic = session_data.get('topic')
+        batch_id = session_data.get('batch_id')
+
+        # Run the agent
+        agent_service = get_guided_assignment_agent_service()
+        response_text, assignment_created = await agent_service.chat(
+            message=message,
+            session_id=session_id,
+            subject=subject,
+            topic=topic,
+            batch_id=batch_id
+        )
+
+        return JsonResponse({"response": response_text, "assignment_created": assignment_created})
+    except Exception as e:
+        logger.error("Guided assignment chat error: %s", str(e), exc_info=True)
+        return JsonResponse({"detail": str(e)}, status=500)
+
+@login_required_custom(role='student')
+def student_notes_directory(request):
+    user = get_session_user(request)
+    student_profile = models.UserProfile.objects.filter(user__username=user['id']).first()
+    if not student_profile:
+        student_profile = models.UserProfile.objects.filter(role__role_code='student').first()
+        
+    student_batchs_qs = models.Batch.objects.filter(students=student_profile)
+    # Get all subjects the student is enrolled in
+    student_subjects = models.SubjectMaster.objects.filter(
+        allocations__batch__in=student_batchs_qs
+    ).distinct()
+
+    # Get notes for those subjects
+    notes = models.SummaryNotes.objects.filter(
+        topic__subject__in=student_subjects
+    ).select_related('topic', 'topic__subject').order_by('-created_at')
+
+    context = {
+        'notes': notes,
+        'active_tab': 'notes'
+    }
+    return render(request, 'student/notes_directory.html', context)
+
+@login_required_custom(role='student')
+def student_note_detail(request, note_id):
+    note = get_object_or_404(models.SummaryNotes, id=note_id)
+    
+    source_assignment = models.Assignment.objects.filter(
+        topic=note.topic, 
+        source_pdf_path__isnull=False
+    ).exclude(source_pdf_path='').first()
+    
+    context = {
+        'note': note,
+        'active_tab': 'notes',
+        'source_assignment': source_assignment
+    }
+    return render(request, 'student/view_notes.html', context)
