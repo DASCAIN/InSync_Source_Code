@@ -19,11 +19,15 @@ urlpatterns = [
     path('professor/topics/<int:topic_id>/delete', views.professor_topic_delete, name='professor_topic_delete'),
     path('professor/assignments', views.professor_assignments, name='professor_assignments'),
     path('professor/assignments/<str:assignment_id>', views.professor_assignment_detail, name='professor_assignment_detail'),
+    path('professor/assignments/<str:assignment_id>/delete', views.professor_assignment_delete, name='professor_assignment_delete'),
     path('professor/assignments/<str:assignment_id>/pdf', views.serve_assignment_pdf, name='serve_assignment_pdf'),
     path('professor/analytics', views.professor_analytics, name='professor_analytics'),
     path('professor/messages', views.professor_messages, name='professor_messages'),
+    path('professor/guided-assignment/<str:session_id>', views.guided_assignment_view, name='guided_assignment_view'),
     
     path('student', views.student_dashboard, name='student_dashboard'),
+    path('student/notes', views.student_notes_directory, name='student_notes_directory'),
+    path('student/notes/<int:note_id>', views.student_note_detail, name='student_note_detail'),
     path('student/assignments/<str:assignment_id>/take', views.take_assignment_view, name='take_assignment'),
     path('student/assignments/<str:assignment_id>', views.voice_agent_view, name='voice_agent_assignment'),
     path('student/voice/<str:assignment_id>/<str:question_id>', views.voice_agent_view, name='voice_agent_question'),
@@ -39,8 +43,11 @@ urlpatterns = [
     path('api/voice/history', views.api_get_call_history, name='api_get_call_history'),
     path('api/voice/transfer-lead', views.api_transfer_call_lead, name='api_transfer_call_lead'),
     path('api/tutor/chat', views.api_tutor_chat, name='api_tutor_chat'),
+    path('api/tutor/guided-assignment-chat/<str:session_id>', views.api_guided_assignment_chat, name='api_guided_assignment_chat'),
     path('api/openai-voice/session', views.api_create_openai_voice_session, name='api_create_openai_voice_session'),
     path('api/openai-voice/memory', views.api_store_openai_voice_memory, name='api_store_openai_voice_memory'),
     path('api/openai-voice/recording', views.api_store_openai_voice_recording, name='api_store_openai_voice_recording'),
+    path('api/student/assignment/<str:assignment_id>/complete', views.api_complete_assignment, name='api_complete_assignment'),
+    path('api/student/assignment/<str:assignment_id>/time', views.api_update_time_spent, name='api_update_time_spent'),
 ]
 

@@ -407,6 +407,7 @@ async def generate_structured_assignment(
     subject: str,
     topic: str,
     context: str,
+    custom_instructions: str = None,
 ) -> AssignmentSchema:
     """
     Generate a highly structured JSON assignment object from the provided PDF text chunks.
@@ -422,6 +423,8 @@ async def generate_structured_assignment(
         "You MUST provide exactly 4 options for EVERY question, and set the correct_answer to the correct letter (A, B, C, or D).\n"
         "Ensure all questions are directly answerable using the provided context."
     )
+    if custom_instructions:
+        system_prompt += f"\n\nCRITICAL PROFESSOR INSTRUCTIONS:\n{custom_instructions}"
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
@@ -1053,3 +1056,84 @@ async def generate_video_explanation(
 
 
 
+
+def save_assignment_to_db(assignment_json: dict, subject: str, topic: str, batch_id: str, file_path: str = "") -> str:
+    from voice_tutor.models import (
+        TopicMaster, SubjectMaster, Batch,
+        Assignment, AssignmentQuestion, QuestionOption, ProfessorAllocation
+    )
+    import uuid
+    import json
+
+    subject_obj = SubjectMaster.objects.filter(name=subject).first()
+    if not subject_obj:
+        subject_obj = SubjectMaster.objects.first()
+
+    topic_obj = TopicMaster.objects.filter(name=topic).first()
+    if not topic_obj:
+        topic_obj = TopicMaster.objects.first()
+
+    assign_code = f"A_{uuid.uuid4().hex[:6].upper()}"
+
+    assignment_obj = Assignment.objects.create(
+        topic=topic_obj,
+        code=assign_code,
+        title=assignment_json.get("title", "Generated Assignment"),
+        description=assignment_json.get("description", ""),
+        difficulty=assignment_json.get("difficulty", "intermediate"),
+        expected_duration=assignment_json.get("expected_duration", 30),
+        source_pdf_path=file_path
+    )
+
+    for i, q in enumerate(assignment_json.get("questions", [])):
+        q_code = f"Q{i+1}_{assign_code}"
+        
+        q_obj = AssignmentQuestion.objects.create(
+            assignment=assignment_obj,
+            code=q_code,
+            content=q["content"],
+            question_type=q["question_type"],
+            correct_answer=q["correct_answer"],
+            concept_tags=json.dumps(q.get("concept_tags", [])),
+            difficulty=q.get("difficulty", "intermediate"),
+            order=q.get("order", i+1)
+        )
+
+        options = q.get("options")
+        if options:
+            for opt in options:
+                QuestionOption.objects.create(
+                    question=q_obj,
+                    option_letter=opt["option_letter"],
+                    option_text=opt["option_text"]
+                )
+
+    batch_obj = Batch.objects.filter(code=batch_id).first()
+    if batch_obj:
+        alloc = ProfessorAllocation.objects.filter(batch=batch_obj, subject=subject_obj).first()
+        if alloc:
+            assignment_obj.professor_allocation = alloc
+            assignment_obj.save()
+
+    return assign_code
+
+def save_notes_to_db(notes_content: str, subject: str, topic: str) -> bool:
+    """Save generated summary notes to the database."""
+    from voice_tutor.models import TopicMaster, SubjectMaster, SummaryNotes
+    
+    topic_obj = TopicMaster.objects.filter(name=topic).first()
+    if not topic_obj:
+        # Fallback to first if mismatch
+        topic_obj = TopicMaster.objects.first()
+        
+    if not topic_obj:
+        logger.error("No TopicMaster found to attach summary notes to.")
+        return False
+        
+    SummaryNotes.objects.create(
+        topic=topic_obj,
+        title=f"{topic} Summary Notes",
+        content=notes_content
+    )
+    logger.info("Saved summary notes for %s to database.", topic)
+    return True

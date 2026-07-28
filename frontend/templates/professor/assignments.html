@@ -163,12 +163,17 @@
       </div>
       <div>
         <label class="block text-sm font-medium text-foreground mb-1">PDF File</label>
-        <input type="file" name="file" accept="application/pdf" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-primary file:text-primary-foreground file:h-full file:px-4 file:mr-4 file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer" required>
+        <input type="file" name="file" multiple accept="application/pdf" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-primary file:text-primary-foreground file:h-full file:px-4 file:mr-4 file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer" required>
       </div>
       <div id="upload-status" class="text-sm font-medium hidden"></div>
       <div class="pt-4 flex justify-end gap-3">
-        <button type="button" onclick="document.getElementById('upload-assignment-modal').classList.add('hidden')" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Cancel</button>
-        <button type="submit" id="upload-submit-btn" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">Upload & Generate</button>
+        <button type="button" onclick="document.getElementById('upload-assignment-modal').classList.add('hidden')" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-5 py-2">Cancel</button>
+        <button type="submit" id="guided-assignment-btn" name="action" value="guided" class="inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-all duration-300 text-white hover:-translate-y-0.5 h-10 px-6 py-2" style="background: linear-gradient(to right, #6366f1, #a855f7, #ec4899); box-shadow: 0 4px 6px -1px rgba(168, 85, 247, 0.25);">
+          <i data-lucide="sparkles" class="w-4 h-4 mr-2"></i> Guided Assignment
+        </button>
+        <button type="submit" id="upload-submit-btn" name="action" value="generate" class="inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-all duration-300 text-white hover:-translate-y-0.5 h-10 px-6 py-2" style="background: linear-gradient(to right, #10b981, #0d9488); box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.25);">
+          <i data-lucide="zap" class="w-4 h-4 mr-2"></i> Upload & Generate
+        </button>
       </div>
     </form>
   </div>
@@ -268,41 +273,65 @@
 
   document.getElementById('upload-assignment-form').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const btn = document.getElementById('upload-submit-btn');
+    const btn = e.submitter; // get the button that triggered the submit
+    const isGuided = btn.value === 'guided';
+    
     const status = document.getElementById('upload-status');
     const formData = new FormData(this);
-    const filename = document.querySelector('input[type=file]').files[0].name;
+    const fileInput = document.querySelector('input[type=file]');
+    const files = fileInput.files;
+    
+    if (files.length > 5) {
+      status.classList.remove('hidden', 'text-muted-foreground', 'text-success');
+      status.classList.add('text-destructive');
+      status.innerText = 'You can only upload up to 5 PDFs at a time.';
+      return;
+    }
 
+    const originalBtnHTML = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Uploading...';
     lucide.createIcons();
     
     status.classList.remove('hidden', 'text-destructive', 'text-success');
     status.classList.add('text-muted-foreground');
-    status.innerText = 'Uploading file to server...';
+    status.innerText = `Uploading ${files.length} file(s) to server...`;
 
     try {
-      const response = await fetch('/api/teacher/upload-assignment', {
+      const endpoint = isGuided ? '/api/teacher/upload-guided-assignment' : '/api/teacher/upload-assignment';
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData
       });
       const data = await response.json();
 
-      if (response.ok && data.job_id) {
+      if (response.ok) {
         status.classList.remove('text-muted-foreground');
         status.classList.add('text-success');
-        status.innerText = data.message || 'Successfully queued for generation!';
+        status.innerText = data.message || `Successfully queued ${files.length} file(s)!`;
+        
+        if (isGuided && data.session_id) {
+          status.innerText = "Redirecting to Guided Agent...";
+          setTimeout(() => {
+            window.location.href = `/professor/guided-assignment/${data.session_id}`;
+          }, 1000);
+          return; // Don't reset form, we are redirecting
+        }
+
         setTimeout(() => {
           document.getElementById('upload-assignment-modal').classList.add('hidden');
           btn.disabled = false;
-          btn.innerText = 'Upload & Generate';
+          btn.innerHTML = originalBtnHTML;
           this.reset();
           status.classList.add('hidden');
         }, 2000);
 
-        // Track job progress
-        addActiveJob(data.job_id, filename);
-
+        // Track job progress for all returned jobs
+        if (data.jobs) {
+          data.jobs.forEach(job => {
+            addActiveJob(job.job_id, job.filename);
+          });
+        }
       } else {
         throw new Error(data.detail || 'Upload failed');
       }
@@ -311,7 +340,7 @@
       status.classList.add('text-destructive');
       status.innerText = err.message;
       btn.disabled = false;
-      btn.innerText = 'Upload & Generate';
+      btn.innerHTML = originalBtnHTML;
     }
   });
 

@@ -267,3 +267,28 @@ def register_topic(subject: str, topic: str) -> None:
 
     with open(metadata_file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+def delete_documents_by_source(source_file: str) -> None:
+    """
+    Delete all documents from Qdrant that match the given source file.
+    """
+    client = get_qdrant_client()
+    
+    qdrant_filter = models.Filter(
+        must=[
+            models.FieldCondition(
+                key="metadata.source_file",
+                match=models.MatchValue(value=source_file),
+            )
+        ]
+    )
+    
+    try:
+        client.delete(
+            collection_name=COLLECTION_NAME,
+            points_selector=models.FilterSelector(filter=qdrant_filter)
+        )
+        logger.info("Successfully deleted documents for source file '%s'", source_file)
+    except Exception as e:
+        logger.error("Failed to delete documents for source file '%s': %s", source_file, str(e))

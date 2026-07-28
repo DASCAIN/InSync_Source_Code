@@ -1,0 +1,91 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Notes: {{ note.title }} — InSync{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]'], ['[', ']']],
+    processEscapes: true
+  }
+};
+</script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  .prose {
+    color: hsl(var(--foreground));
+    line-height: 1.75;
+  }
+  .prose h1 { font-size: 2.25rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: hsl(var(--foreground)); }
+  .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: hsl(var(--foreground)); border-bottom: 1px solid hsl(var(--border)); padding-bottom: 0.5rem; }
+  .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+  .prose p { margin-bottom: 1.25rem; }
+  .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+  .prose ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+  .prose li { margin-bottom: 0.5rem; }
+  .prose strong { font-weight: 600; color: hsl(var(--primary)); }
+  .prose em { font-style: italic; }
+  .prose blockquote { border-left: 4px solid hsl(var(--primary)); padding-left: 1rem; color: hsl(var(--muted-foreground)); font-style: italic; background-color: hsl(var(--muted)/0.3); padding: 1rem; border-radius: 0.5rem; }
+  .prose code { background-color: hsl(var(--muted)); padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.875em; }
+  .prose pre { background-color: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1.25rem; }
+  .prose pre code { background-color: transparent; padding: 0; color: inherit; }
+  .prose hr { border: 0; border-top: 1px solid hsl(var(--border)); margin: 2rem 0; }
+</style>
+{% endblock %}
+
+{% block inner_content %}
+<div class="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-20">
+  <!-- Header -->
+  <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+    <div class="container mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="{% url 'voice_tutor:student_notes_directory' %}" class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        <span>Back to Notes Directory</span>
+      </a>
+      <div class="text-center">
+        <h1 class="font-display font-semibold text-xl text-foreground">{{ note.title }}</h1>
+        <p class="text-xs text-muted-foreground">{{ note.topic.subject.name|default:"General Subject" }} — {{ note.topic.name }}</p>
+      </div>
+      <div class="w-auto flex justify-end">
+        {% if source_assignment %}
+        <a href="{% url 'voice_tutor:serve_assignment_pdf' source_assignment.code %}" target="_blank" class="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary font-medium text-sm rounded-lg hover:bg-primary/20 transition-colors">
+          <i data-lucide="file-text" class="w-4 h-4"></i>
+          <span>View Source PDF</span>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="container mx-auto px-6 mt-8 max-w-4xl">
+    <div class="bg-card rounded-2xl shadow-xl border border-border/50 p-8 md:p-12">
+      
+      <div id="notes-content" class="prose max-w-none">
+        <!-- Markdown content will be injected here -->
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const rawMarkdown = '{{ note.content|escapejs }}';
+    const htmlContent = marked.parse(rawMarkdown);
+    document.getElementById('notes-content').innerHTML = htmlContent;
+    
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      MathJax.typesetPromise([document.getElementById('notes-content')]).catch(function (err) {
+        console.log('MathJax error: ', err.message);
+      });
+    }
+  });
+</script>
+{% endblock %}

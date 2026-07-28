@@ -1,0 +1,176 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Guided Assignment Chat — InSync{% endblock %}
+
+{% block inner_content %}
+<div class="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
+  <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+    <div class="container mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="{% url 'voice_tutor:professor_dashboard' %}" class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        <span>Back to Dashboard</span>
+      </a>
+      <div class="text-center">
+        <h1 class="font-display font-semibold text-lg text-foreground">Guided Assignment: {{ subject }} - {{ topic }}</h1>
+        <p class="text-xs text-muted-foreground">Instruct the AI to customize the assignment generation.</p>
+      </div>
+      <div class="w-16"></div>
+    </div>
+  </div>
+
+  <div class="container mx-auto px-6 py-8 flex-1 flex flex-col max-w-4xl">
+    <div class="bg-card rounded-2xl shadow-lg border border-border/60 flex flex-col flex-1 p-6 gap-4 min-h-[500px]">
+      
+      <div id="chat-container" class="flex flex-col gap-4 overflow-y-auto flex-1 pr-2 max-h-[55vh]">
+        <div id="empty-state-msg" class="text-muted-foreground text-sm text-center my-auto">
+          Connected to Guided Assignment Agent.<br>
+          <span class="text-xs">Context loaded from {{ files|length }} file(s).</span><br><br>
+          Tell the agent how to build the assignment. E.g., "Create 5 multiple choice questions focused on the mathematical formulas in this topic."
+        </div>
+      </div>
+
+      <div id="thinking-indicator" class="hidden flex justify-start">
+        <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm bg-background border border-border text-muted-foreground">
+          Agent is thinking<span id="thinking-dots">...</span>
+        </div>
+      </div>
+
+      <div class="flex items-end gap-3 mt-auto border-t pt-4 border-border/40">
+        <textarea
+          id="chat-input"
+          placeholder="Type your instructions..."
+          class="flex min-h-[44px] w-full rounded-xl border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary resize-none transition-all"
+          rows="1"
+          oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+        ></textarea>
+        <button
+          id="send-btn"
+          class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-[44px] w-[44px] shrink-0"
+        >
+          <i data-lucide="send" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+  const sessionId = "{{ session_id }}";
+  const chatContainer = document.getElementById('chat-container');
+  const chatInput = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('send-btn');
+  const emptyStateMsg = document.getElementById('empty-state-msg');
+  const thinkingIndicator = document.getElementById('thinking-indicator');
+  
+  let thinkingInterval;
+
+  function appendMessage(role, content, assignmentCreated = false) {
+    if (emptyStateMsg) emptyStateMsg.remove();
+    
+    // Strip "**" from the content to remove raw markdown bold tags
+    const cleanContent = content.replace(/\*\*/g, '');
+    
+    const div = document.createElement('div');
+    div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+    
+    let bubbleClass = role === 'user' 
+      ? 'bg-primary text-primary-foreground rounded-br-sm' 
+      : 'bg-muted/50 text-black border border-border/50 rounded-bl-sm';
+      
+    if (assignmentCreated) {
+        bubbleClass = 'bg-success/20 text-black border border-success/30 rounded-bl-sm';
+    }
+
+    div.innerHTML = `
+      <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm ${bubbleClass} shadow-sm">
+        <p class="whitespace-pre-wrap leading-relaxed message-text"></p>
+        ${assignmentCreated ? '<a href="/professor/assignments" class="mt-2 text-xs underline font-medium block">View Assignments</a>' : ''}
+      </div>
+    `;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    const textNode = div.querySelector('.message-text');
+    
+    if (role === 'assistant') {
+      let index = 0;
+      const speed = 16;
+      const interval = setInterval(() => {
+        index++;
+        textNode.textContent = cleanContent.slice(0, index);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        if (index >= cleanContent.length) {
+          clearInterval(interval);
+        }
+      }, speed);
+    } else {
+      textNode.textContent = cleanContent;
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+  }
+
+  function startThinking() {
+    thinkingIndicator.classList.remove('hidden');
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    let dots = 0;
+    const dotSpan = document.getElementById('thinking-dots');
+    thinkingInterval = setInterval(() => {
+      dots = (dots + 1) % 4;
+      dotSpan.innerText = '.'.repeat(dots);
+    }, 400);
+  }
+
+  function stopThinking() {
+    thinkingIndicator.classList.add('hidden');
+    clearInterval(thinkingInterval);
+  }
+
+  async function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    appendMessage('user', text);
+    chatInput.value = '';
+    chatInput.style.height = '';
+    
+    sendBtn.disabled = true;
+    chatInput.disabled = true;
+    startThinking();
+
+    try {
+      const response = await fetch(`/api/tutor/guided-assignment-chat/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+      
+      const data = await response.json();
+      stopThinking();
+      
+      if (response.ok) {
+        appendMessage('assistant', data.response, data.assignment_created);
+      } else {
+        appendMessage('assistant', "Error: " + (data.detail || "Something went wrong"));
+      }
+    } catch (err) {
+      stopThinking();
+      appendMessage('assistant', "Network Error: Could not connect to the agent.");
+    } finally {
+      sendBtn.disabled = false;
+      chatInput.disabled = false;
+      chatInput.focus();
+    }
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+</script>
+{% endblock %}

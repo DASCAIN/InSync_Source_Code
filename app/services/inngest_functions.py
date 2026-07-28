@@ -284,78 +284,29 @@ async def rag_generate_assignment(*args, **kwargs) -> dict:
 
     assignment_json = await step.run("generate_json", _generate_json)
     
+    update_job_status(job_id, "Generating study notes...", 70)
+
+    # Step 3.5: Generate and Save Notes
+    async def _generate_and_save_notes():
+        from app.services.generator import generate_notes, save_notes_to_db
+        from asgiref.sync import sync_to_async
+        
+        notes_md = await generate_notes(subject, topic, focus="Summary & Bullets")
+        await sync_to_async(save_notes_to_db, thread_sensitive=False)(notes_md, subject, topic)
+        return True
+        
+    await step.run("generate_and_save_notes", _generate_and_save_notes)
+    
     update_job_status(job_id, "Saving to database...", 85)
 
     # Step 4: Persist to Django DB
+    from app.services.generator import save_assignment_to_db
     from asgiref.sync import sync_to_async
 
-    @sync_to_async
-    def _save_to_db():
-        from voice_tutor.models import (
-            TopicMaster, SubjectMaster, Batch,
-            Assignment, AssignmentQuestion, QuestionOption
-        )
-        import uuid
-        import json
+    async def _save_to_db_wrapper():
+        return await sync_to_async(save_assignment_to_db, thread_sensitive=False)(assignment_json, subject, topic, batch_id, file_path)
 
-        # Get or create Subject & Topic
-        subject_obj = SubjectMaster.objects.filter(name=subject).first()
-        if not subject_obj:
-            subject_obj = SubjectMaster.objects.first()
-
-        topic_obj = TopicMaster.objects.filter(name=topic).first()
-        if not topic_obj:
-            topic_obj = TopicMaster.objects.first()
-
-        # Generate a unique code
-        assign_code = f"A_{uuid.uuid4().hex[:6].upper()}"
-
-        assignment_obj = Assignment.objects.create(
-            topic=topic_obj,
-            code=assign_code,
-            title=assignment_json.get("title", "Generated Assignment"),
-            description=assignment_json.get("description", ""),
-            difficulty=assignment_json.get("difficulty", "intermediate"),
-            expected_duration=assignment_json.get("expected_duration", 30),
-            source_pdf_path=file_path
-        )
-
-        for i, q in enumerate(assignment_json.get("questions", [])):
-            q_code = f"Q{i+1}_{assign_code}"
-            
-            q_obj = AssignmentQuestion.objects.create(
-                assignment=assignment_obj,
-                code=q_code,
-                content=q["content"],
-                question_type=q["question_type"],
-                correct_answer=q["correct_answer"],
-                concept_tags=json.dumps(q.get("concept_tags", [])),
-                difficulty=q.get("difficulty", "intermediate"),
-                order=q.get("order", i+1)
-            )
-
-            # Create options if MCQ
-            options = q.get("options")
-            if options:
-                for opt in options:
-                    QuestionOption.objects.create(
-                        question=q_obj,
-                        option_letter=opt["option_letter"],
-                        option_text=opt["option_text"]
-                    )
-
-        # Link to batch
-        batch_obj = Batch.objects.filter(code=batch_id).first()
-        if batch_obj:
-            from voice_tutor.models import ProfessorAllocation
-            alloc = ProfessorAllocation.objects.filter(batch=batch_obj, subject=subject_obj).first()
-            if alloc:
-                assignment_obj.professor_allocation = alloc
-                assignment_obj.save()
-
-        return assign_code
-
-    assign_code = await step.run("save_to_db", _save_to_db)
+    assign_code = await step.run("save_to_db", _save_to_db_wrapper)
     
     update_job_status(job_id, "Completed!", 100)
 
