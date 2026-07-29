@@ -102,7 +102,7 @@ def index_view(request):
         if user.get('role') == 'professor':
             return redirect('voice_tutor:professor_dashboard')
         return redirect('voice_tutor:student_dashboard')
-    return render(request, 'landing.html')
+    return render(request, 'website_landing.html')
 
 def auto_seed_if_empty():
     if models.SubjectMaster.objects.exists():

@@ -3,9 +3,6 @@ import logging
 from pathlib import Path
 import re
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -37,6 +34,11 @@ def parse_and_run_infographic(content: str, output_path: Path) -> str:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         try:
+            import matplotlib
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+            import numpy as np
+            
             # Clear previous plots
             plt.close('all')
             
@@ -44,7 +46,6 @@ def parse_and_run_infographic(content: str, output_path: Path) -> str:
             local_vars = {
                 "OUTPUT_PATH": str(output_path),
             }
-            import numpy as np
             global_vars = {
                 "plt": plt,
                 "np": np,
@@ -52,10 +53,13 @@ def parse_and_run_infographic(content: str, output_path: Path) -> str:
             }
             exec(script_content, global_vars, local_vars)
             logger.info("Successfully executed infographic script and saved to %s", output_path)
+        except ImportError:
+            logger.error("Matplotlib is not available. Skipping infographic generation.")
         except Exception as e:
             logger.error("Failed to run infographic script: %s", str(e), exc_info=True)
             # Ensure cleanup
             try:
+                import matplotlib.pyplot as plt
                 plt.close('all')
             except Exception:
                 pass

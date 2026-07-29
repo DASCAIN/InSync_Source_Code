@@ -1,0 +1,1820 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>InSync — The Learning Intelligence Platform</title>
+  <meta name="description"
+    content="InSync is the world's first Learning Intelligence Platform. Beyond LMS. Beyond AI tutors. Understand how students think, reason, struggle and improve.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Tailwind CSS v4 Browser -->
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+
+  <style type="text/tailwindcss">
+    @custom-variant dark (&:is(.dark *));
+
+    @theme inline {
+      --font-sans: "Inter", "SF Pro Display", ui-sans-serif, system-ui, sans-serif;
+      --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+      --radius-sm: calc(var(--radius) - 4px);
+      --radius-md: calc(var(--radius) - 2px);
+      --radius-lg: var(--radius);
+      --radius-xl: calc(var(--radius) + 4px);
+      --radius-2xl: calc(var(--radius) + 8px);
+      --radius-3xl: calc(var(--radius) + 12px);
+
+      --color-background: var(--background);
+      --color-foreground: var(--foreground);
+      --color-card: var(--card);
+      --color-card-foreground: var(--card-foreground);
+      --color-popover: var(--popover);
+      --color-popover-foreground: var(--popover-foreground);
+      --color-primary: var(--primary);
+      --color-primary-foreground: var(--primary-foreground);
+      --color-secondary: var(--secondary);
+      --color-secondary-foreground: var(--secondary-foreground);
+      --color-muted: var(--muted);
+      --color-muted-foreground: var(--muted-foreground);
+      --color-accent: var(--accent);
+      --color-accent-foreground: var(--accent-foreground);
+      --color-destructive: var(--destructive);
+      --color-destructive-foreground: var(--destructive-foreground);
+      --color-border: var(--border);
+      --color-input: var(--input);
+      --color-ring: var(--ring);
+
+      --color-navy: var(--navy);
+      --color-navy-deep: var(--navy-deep);
+      --color-electric: var(--electric);
+      --color-violet: var(--violet);
+      --color-grey-mist: var(--grey-mist);
+
+      --shadow-glow: 0 20px 60px -20px color-mix(in oklab, var(--electric) 45%, transparent);
+      --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.6) inset, 0 20px 40px -24px oklch(0.35 0.08 265 / 0.18);
+    }
+
+    :root {
+      --radius: 0.875rem;
+
+      --background: oklch(0.995 0.002 260);
+      --foreground: oklch(0.18 0.04 265);
+
+      --card: oklch(1 0 0);
+      --card-foreground: oklch(0.18 0.04 265);
+      --popover: oklch(1 0 0);
+      --popover-foreground: oklch(0.18 0.04 265);
+
+      --primary: oklch(0.24 0.09 265);        /* navy */
+      --primary-foreground: oklch(0.98 0.003 250);
+
+      --secondary: oklch(0.96 0.01 250);
+      --secondary-foreground: oklch(0.24 0.09 265);
+      --muted: oklch(0.965 0.008 255);
+      --muted-foreground: oklch(0.5 0.03 260);
+      --accent: oklch(0.62 0.22 265);         /* electric blue */
+      --accent-foreground: oklch(0.99 0.003 250);
+      --destructive: oklch(0.58 0.24 27);
+      --destructive-foreground: oklch(0.98 0 0);
+      --border: oklch(0.92 0.012 255);
+      --input: oklch(0.92 0.012 255);
+      --ring: oklch(0.62 0.22 265);
+
+      --navy: oklch(0.24 0.09 265);
+      --navy-deep: oklch(0.16 0.07 265);
+      --electric: oklch(0.66 0.22 258);
+      --violet: oklch(0.62 0.24 300);
+      --grey-mist: oklch(0.96 0.008 255);
+    }
+
+    @layer base {
+      * {
+        border-color: var(--color-border);
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background-color: var(--color-background);
+        color: var(--color-foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+      }
+      ::selection {
+        background: color-mix(in oklab, var(--electric) 30%, transparent);
+      }
+    }
+
+    @utility text-gradient {
+      background: linear-gradient(100deg, var(--navy-deep) 0%, var(--electric) 55%, var(--violet) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    @utility bg-gradient-hero {
+      background:
+        radial-gradient(1000px 500px at 15% -10%, color-mix(in oklab, var(--electric) 22%, transparent), transparent 60%),
+        radial-gradient(900px 500px at 90% 10%, color-mix(in oklab, var(--violet) 20%, transparent), transparent 55%),
+        linear-gradient(180deg, oklch(0.995 0.002 260) 0%, oklch(0.98 0.01 260) 100%);
+    }
+
+    @utility bg-gradient-dark {
+      background:
+        radial-gradient(700px 400px at 20% 0%, color-mix(in oklab, var(--electric) 25%, transparent), transparent 60%),
+        radial-gradient(700px 400px at 100% 100%, color-mix(in oklab, var(--violet) 22%, transparent), transparent 60%),
+        linear-gradient(180deg, var(--navy-deep), oklch(0.12 0.06 265));
+    }
+
+    @utility glass {
+      background: color-mix(in oklab, white 70%, transparent);
+      backdrop-filter: blur(18px) saturate(140%);
+      border: 1px solid color-mix(in oklab, white 60%, transparent);
+      box-shadow: var(--shadow-card);
+    }
+
+    @utility glass-dark {
+      background: color-mix(in oklab, white 6%, transparent);
+      backdrop-filter: blur(18px) saturate(140%);
+      border: 1px solid color-mix(in oklab, white 12%, transparent);
+    }
+
+    @utility grid-bg {
+      background-image:
+        linear-gradient(to right, color-mix(in oklab, var(--navy) 8%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in oklab, var(--navy) 8%, transparent) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+    }
+
+    @utility btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.75rem;
+      font-weight: 500;
+      font-size: 0.9375rem;
+      color: white;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--electric) 100%);
+      box-shadow: 0 10px 30px -10px color-mix(in oklab, var(--electric) 55%, transparent);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    }
+    @utility btn-primary-hover {
+      &:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+        box-shadow: 0 16px 40px -12px color-mix(in oklab, var(--electric) 65%, transparent);
+      }
+    }
+
+    @utility btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.75rem;
+      font-weight: 500;
+      font-size: 0.9375rem;
+      color: var(--navy);
+      background: color-mix(in oklab, white 70%, transparent);
+      backdrop-filter: blur(12px);
+      border: 1px solid color-mix(in oklab, var(--navy) 14%, transparent);
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    @keyframes float-slow {
+      0%, 100% { transform: translateY(0) }
+      50% { transform: translateY(-10px) }
+    }
+    @utility animate-float {
+      animation: float-slow 6s ease-in-out infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--electric) 55%, transparent) }
+      70% { box-shadow: 0 0 0 22px transparent }
+      100% { box-shadow: 0 0 0 0 transparent }
+    }
+    @utility pulse-ring {
+      animation: pulse-ring 2.4s cubic-bezier(0.66, 0, 0, 1) infinite;
+    }
+
+    @keyframes shimmer-line {
+      0% { stroke-dashoffset: 400 }
+      100% { stroke-dashoffset: 0 }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-background text-foreground">
+
+  <!-- Nav -->
+  <header class="fixed left-1/2 top-4 z-50 -translate-x-1/2">
+    <nav class="glass flex items-center gap-1 rounded-full px-2 py-1.5 text-sm">
+      <a href="#top" class="flex items-center gap-2 px-3 py-1.5 font-semibold">
+        <img src="{% static 'images/insync-logo.png' %}" alt="InSync" class="h-6 w-auto object-contain" />
+        InSync
+      </a>
+      <div class="hidden items-center gap-1 md:flex">
+        <a href="#engine"
+          class="rounded-full px-3 py-1.5 text-muted-foreground transition hover:bg-white/70 hover:text-foreground">Platform</a>
+        <a href="#dna"
+          class="rounded-full px-3 py-1.5 text-muted-foreground transition hover:bg-white/70 hover:text-foreground">Learning
+          DNA</a>
+        <a href="#professor"
+          class="rounded-full px-3 py-1.5 text-muted-foreground transition hover:bg-white/70 hover:text-foreground">Professors</a>
+        <a href="#institution"
+          class="rounded-full px-3 py-1.5 text-muted-foreground transition hover:bg-white/70 hover:text-foreground">Institutions</a>
+        <a href="#about"
+          class="rounded-full px-3 py-1.5 text-muted-foreground transition hover:bg-white/70 hover:text-foreground">Company</a>
+      </div>
+      <a href="login" target="_blank" rel="noopener noreferrer"
+        class="btn-primary btn-primary-hover ml-2 !py-1.5 !text-xs">
+        Login <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+      </a>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section id="top" class="bg-gradient-hero relative overflow-hidden pt-32 pb-24">
+    <div class="grid-bg absolute inset-0 -z-10"></div>
+
+    <!-- Floating particles -->
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 0%; top: 0%; animation-duration: 4s; animation-delay: 0s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 73%; top: 47%; animation-duration: 5s; animation-delay: 0.2s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 46%; top: 4%; animation-duration: 6s; animation-delay: 0.4s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 19%; top: 51%; animation-duration: 7s; animation-delay: 0.6s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 92%; top: 8%; animation-duration: 8s; animation-delay: 0.8s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 65%; top: 55%; animation-duration: 4s; animation-delay: 1.0s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 38%; top: 12%; animation-duration: 5s; animation-delay: 1.2s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 11%; top: 59%; animation-duration: 6s; animation-delay: 1.4s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 84%; top: 16%; animation-duration: 7s; animation-delay: 1.6s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 57%; top: 63%; animation-duration: 8s; animation-delay: 1.8s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 30%; top: 20%; animation-duration: 4s; animation-delay: 2.0s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 3%; top: 67%; animation-duration: 5s; animation-delay: 2.2s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 76%; top: 24%; animation-duration: 6s; animation-delay: 2.4s;"></span>
+    <span class="animate-float absolute h-1 w-1 rounded-full bg-[var(--electric)]/40"
+      style="left: 49%; top: 71%; animation-duration: 7s; animation-delay: 2.6s;"></span>
+
+    <div class="mx-auto grid max-w-7xl grid-cols-1 items-center gap-14 px-6 lg:grid-cols-[1.05fr_1fr]">
+      <div class="relative z-10">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Learning Intelligence Platform · v1
+        </div>
+        <h1 class="mt-6 text-5xl font-semibold leading-[1.02] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+          Beyond Learning Management.<br />
+          <span class="text-gradient">Understand how learning happens.</span>
+        </h1>
+        <p class="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+          InSync is an AI-powered Learning Intelligence Platform that helps universities
+          understand not only what students learn, but how they think, reason, struggle and
+          improve. Every interaction becomes actionable intelligence for students, professors
+          and institutions.
+        </p>
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+          <a href="https://insync.dascain.com" target="_blank" rel="noopener noreferrer"
+            class="btn-primary btn-primary-hover">
+            Book a Demo <i data-lucide="arrow-right" class="h-4 w-4"></i>
+          </a>
+          <a href="#engine" class="btn-ghost">
+            <i data-lucide="play" class="h-4 w-4"></i> See how Learning Intelligence works
+          </a>
+        </div>
+        <div
+          class="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          <span>Trusted framework for</span>
+          <span class="flex items-center gap-1.5"><i data-lucide="building-2" class="h-3.5 w-3.5"></i>
+            Universities</span>
+          <span class="flex items-center gap-1.5"><i data-lucide="graduation-cap" class="h-3.5 w-3.5"></i>
+            Professors</span>
+          <span class="flex items-center gap-1.5"><i data-lucide="briefcase" class="h-3.5 w-3.5"></i> Enterprise
+            L&D</span>
+        </div>
+      </div>
+
+      <!-- Live Intelligence Stream -->
+      <div class="relative">
+        <div
+          class="absolute -inset-6 -z-10 bg-gradient-to-br from-[color-mix(in_oklab,var(--electric)_18%,transparent)] via-transparent to-[color-mix(in_oklab,var(--violet)_18%,transparent)] blur-2xl">
+        </div>
+        <div class="glass relative overflow-hidden rounded-3xl">
+          <div class="flex items-center justify-between border-b border-white/40 bg-white/50 px-5 py-3 backdrop-blur">
+            <div class="flex items-center gap-2.5">
+              <span class="relative flex h-2 w-2">
+                <span
+                  class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--electric)] opacity-70"></span>
+                <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--electric)]"></span>
+              </span>
+              <span class="text-[13px] font-semibold text-foreground">Live Intelligence Stream</span>
+              <span
+                class="hidden rounded-full border border-border/60 bg-white/70 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground sm:inline">real-time</span>
+            </div>
+            <div class="flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span class="font-mono tabular-nums">1,284 sig/s</span>
+              <span class="h-3 w-px bg-border"></span>
+              <span>ecosystem.insync</span>
+            </div>
+          </div>
+
+          <div
+            class="relative h-14 border-b border-white/40 bg-gradient-to-r from-white/60 via-white/30 to-white/60 px-4">
+            <svg viewBox="0 0 400 56" preserveAspectRatio="none" class="h-full w-full" aria-hidden>
+              <defs>
+                <linearGradient id="lisFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="oklch(0.62 0.22 258)" stop-opacity="0.35" />
+                  <stop offset="1" stop-color="oklch(0.62 0.22 258)" stop-opacity="0" />
+                </linearGradient>
+                <linearGradient id="lisStroke" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="oklch(0.62 0.22 258)" />
+                  <stop offset="1" stop-color="oklch(0.62 0.24 300)" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0,38 L20,32 L40,36 L60,22 L80,28 L100,18 L120,24 L140,14 L160,20 L180,10 L200,18 L220,8 L240,16 L260,6 L280,14 L300,4 L320,12 L340,3 L360,10 L380,2 L400,8 L400,56 L0,56 Z"
+                fill="url(#lisFill)" />
+              <path
+                d="M0,38 L20,32 L40,36 L60,22 L80,28 L100,18 L120,24 L140,14 L160,20 L180,10 L200,18 L220,8 L240,16 L260,6 L280,14 L300,4 L320,12 L340,3 L360,10 L380,2 L400,8"
+                fill="none" stroke="url(#lisStroke)" stroke-width="1.8" stroke-linecap="round"
+                class="stroke-dasharray-anim" />
+            </svg>
+          </div>
+
+          <div class="relative divide-y divide-white/40">
+            <div data-animate="fade-up" data-delay="0.1"
+              class="group relative flex items-center gap-3 px-5 py-3.5 transition hover:bg-white/50">
+              <span
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--violet)] to-[var(--electric)] text-white shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--electric)_60%,transparent)]">
+                <i data-lucide="graduation-cap" class="h-4 w-4"></i>
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-[13px] font-semibold text-foreground">Misconception detected</span>
+                  <span
+                    class="rounded-full border border-border/60 bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Student</span>
+                </div>
+                <div class="mt-0.5 truncate text-[12px] text-muted-foreground">Confuses variance with std. deviation ·
+                  CS3120</div>
+              </div>
+              <div class="flex flex-col items-end gap-0.5">
+                <span class="font-mono text-[11px] tabular-nums text-foreground">+3σ</span>
+                <span class="text-[10px] text-muted-foreground">now</span>
+              </div>
+            </div>
+
+            <div data-animate="fade-up" data-delay="0.19"
+              class="group relative flex items-center gap-3 px-5 py-3.5 transition hover:bg-white/50">
+              <span
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--electric)_60%,transparent)]">
+                <i data-lucide="sparkles" class="h-4 w-4"></i>
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-[13px] font-semibold text-foreground">Socratic prompt served</span>
+                  <span
+                    class="rounded-full border border-border/60 bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">AI
+                    Companion</span>
+                </div>
+                <div class="mt-0.5 truncate text-[12px] text-muted-foreground">Guided reasoning — Bayes theorem</div>
+              </div>
+              <div class="flex flex-col items-end gap-0.5">
+                <span class="font-mono text-[11px] tabular-nums text-foreground">0.42s</span>
+                <span class="text-[10px] text-muted-foreground">2s</span>
+              </div>
+            </div>
+
+            <div data-animate="fade-up" data-delay="0.28"
+              class="group relative flex items-center gap-3 px-5 py-3.5 transition hover:bg-white/50">
+              <span
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--electric)_60%,transparent)]">
+                <i data-lucide="cpu" class="h-4 w-4"></i>
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-[13px] font-semibold text-foreground">Cognitive pattern updated</span>
+                  <span
+                    class="rounded-full border border-border/60 bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Intelligence
+                    Engine</span>
+                </div>
+                <div class="mt-0.5 truncate text-[12px] text-muted-foreground">Analytical ↑ 8% · Retrieval ↓ 3%</div>
+              </div>
+              <div class="flex flex-col items-end gap-0.5">
+                <span class="font-mono text-[11px] tabular-nums text-foreground">live</span>
+                <span class="text-[10px] text-muted-foreground">4s</span>
+              </div>
+            </div>
+
+            <div data-animate="fade-up" data-delay="0.37"
+              class="group relative flex items-center gap-3 px-5 py-3.5 transition hover:bg-white/50">
+              <span
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--violet)] to-[var(--electric)] text-white shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--electric)_60%,transparent)]">
+                <i data-lucide="dna" class="h-4 w-4"></i>
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-[13px] font-semibold text-foreground">Profile re-synced</span>
+                  <span
+                    class="rounded-full border border-border/60 bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Learning
+                    DNA</span>
+                </div>
+                <div class="mt-0.5 truncate text-[12px] text-muted-foreground">1,284 signals · 12 competencies</div>
+              </div>
+              <div class="flex flex-col items-end gap-0.5">
+                <span class="font-mono text-[11px] tabular-nums text-foreground">v218</span>
+                <span class="text-[10px] text-muted-foreground">6s</span>
+              </div>
+            </div>
+
+            <div data-animate="fade-up" data-delay="0.46"
+              class="group relative flex items-center gap-3 px-5 py-3.5 transition hover:bg-white/50">
+              <span
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--electric)_60%,transparent)]">
+                <i data-lucide="brain" class="h-4 w-4"></i>
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-[13px] font-semibold text-foreground">Intervention suggested</span>
+                  <span
+                    class="rounded-full border border-border/60 bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Professor
+                    View</span>
+                </div>
+                <div class="mt-0.5 truncate text-[12px] text-muted-foreground">Reteach Ch. 4 to cohort B (n=23)</div>
+              </div>
+              <div class="flex flex-col items-end gap-0.5">
+                <span class="font-mono text-[11px] tabular-nums text-foreground">high</span>
+                <span class="text-[10px] text-muted-foreground">8s</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-white/40 bg-white/40 px-5 py-3">
+            <div
+              class="mb-2 flex items-center justify-between text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+              <span>Signal path</span>
+              <span>6 layers</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <div class="flex flex-1 items-center gap-1.5">
+                <span data-animate="fade-up" data-delay="0.2"
+                  class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white shadow-sm">
+                  <i data-lucide="graduation-cap" class="h-3.5 w-3.5"></i>
+                </span>
+                <span class="h-px flex-1 bg-gradient-to-r from-[var(--electric)]/60 to-[var(--violet)]/40"></span>
+              </div>
+              <div class="flex flex-1 items-center gap-1.5">
+                <span data-animate="fade-up" data-delay="0.28"
+                  class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white shadow-sm">
+                  <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
+                </span>
+                <span class="h-px flex-1 bg-gradient-to-r from-[var(--electric)]/60 to-[var(--violet)]/40"></span>
+              </div>
+              <div class="flex flex-1 items-center gap-1.5">
+                <span data-animate="fade-up" data-delay="0.36"
+                  class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white shadow-sm">
+                  <i data-lucide="cpu" class="h-3.5 w-3.5"></i>
+                </span>
+                <span class="h-px flex-1 bg-gradient-to-r from-[var(--electric)]/60 to-[var(--violet)]/40"></span>
+              </div>
+              <div class="flex flex-1 items-center gap-1.5">
+                <span data-animate="fade-up" data-delay="0.44"
+                  class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white shadow-sm">
+                  <i data-lucide="dna" class="h-3.5 w-3.5"></i>
+                </span>
+                <span class="h-px flex-1 bg-gradient-to-r from-[var(--electric)]/60 to-[var(--violet)]/40"></span>
+              </div>
+              <div class="flex flex-1 items-center gap-1.5">
+                <span data-animate="fade-up" data-delay="0.52"
+                  class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white shadow-sm">
+                  <i data-lucide="brain" class="h-3.5 w-3.5"></i>
+                </span>
+                <span class="h-px flex-1 bg-gradient-to-r from-[var(--electric)]/60 to-[var(--violet)]/40"></span>
+              </div>
+              <div class="flex flex-1 items-center gap-1.5">
+                <span data-animate="fade-up" data-delay="0.6"
+                  class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white shadow-sm">
+                  <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Problem -->
+  <section class="relative py-28">
+    <div class="mx-auto max-w-7xl px-6">
+      <div data-animate="fade-up" class="max-w-3xl">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          The Problem
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          Current education measures outcomes.<br />
+          <span class="text-muted-foreground">It doesn't understand learning.</span>
+        </h2>
+      </div>
+
+      <div class="mt-14 grid gap-6 lg:grid-cols-2">
+        <div data-animate="fade-up">
+          <div class="glass rounded-2xl p-6 ">
+            <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <i data-lucide="layers" class="h-4 w-4"></i> Traditional LMS
+            </div>
+            <h3 class="mt-3 text-xl font-semibold">Universities know</h3>
+            <ul class="mt-4 space-y-2">
+              <li class="flex items-center gap-2 text-sm text-foreground">
+                <i data-lucide="check" class="h-4 w-4 text-muted-foreground"></i> Attendance
+              </li>
+              <li class="flex items-center gap-2 text-sm text-foreground">
+                <i data-lucide="check" class="h-4 w-4 text-muted-foreground"></i> Assignments
+              </li>
+              <li class="flex items-center gap-2 text-sm text-foreground">
+                <i data-lucide="check" class="h-4 w-4 text-muted-foreground"></i> Grades
+              </li>
+              <li class="flex items-center gap-2 text-sm text-foreground">
+                <i data-lucide="check" class="h-4 w-4 text-muted-foreground"></i> Completion
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div data-animate="fade-up">
+          <div class="rounded-2xl bg-gradient-dark p-[1px]">
+            <div class="rounded-2xl bg-[oklch(0.16_0.07_265)] p-6 text-white">
+              <div class="flex items-center gap-2 text-sm font-medium text-white/70">
+                <i data-lucide="brain" class="h-4 w-4"></i> What's missing
+              </div>
+              <h3 class="mt-3 text-xl font-semibold">Universities don't know</h3>
+              <ul class="mt-4 space-y-2">
+                <li class="flex items-center gap-2 text-sm">
+                  <i data-lucide="x" class="h-4 w-4 text-[var(--electric)]"></i> Why students struggle
+                </li>
+                <li class="flex items-center gap-2 text-sm">
+                  <i data-lucide="x" class="h-4 w-4 text-[var(--electric)]"></i> How students think
+                </li>
+                <li class="flex items-center gap-2 text-sm">
+                  <i data-lucide="x" class="h-4 w-4 text-[var(--electric)]"></i> Where misconceptions begin
+                </li>
+                <li class="flex items-center gap-2 text-sm">
+                  <i data-lucide="x" class="h-4 w-4 text-[var(--electric)]"></i> Which interventions actually work
+                </li>
+                <li class="flex items-center gap-2 text-sm">
+                  <i data-lucide="x" class="h-4 w-4 text-[var(--electric)]"></i> How learning evolves over time
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What is Learning Intelligence -->
+  <section class="relative py-28">
+    <div
+      class="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(600px_300px_at_50%_0%,color-mix(in_oklab,var(--electric)_15%,transparent),transparent)]">
+    </div>
+    <div class="mx-auto max-w-7xl px-6">
+      <div data-animate="fade-up" class="mx-auto max-w-2xl text-center">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          What is Learning Intelligence?
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          Three categories.<br />
+          <span class="text-gradient">One is fundamentally different.</span>
+        </h2>
+      </div>
+      <div class="mt-14 grid gap-6 md:grid-cols-3">
+        <div data-animate="fade-up" data-delay="0.0">
+          <div class="glass rounded-2xl p-8">
+            <i data-lucide="layers" class="h-6 w-6 text-muted-foreground"></i>
+            <h3 class="mt-5 text-lg font-semibold">Learning Management</h3>
+            <p class="mt-2 text-2xl font-medium tracking-tight text-foreground">Manages learning.</p>
+          </div>
+        </div>
+        <div data-animate="fade-up" data-delay="0.08">
+          <div class="glass rounded-2xl p-8">
+            <i data-lucide="sparkles" class="h-6 w-6 text-muted-foreground"></i>
+            <h3 class="mt-5 text-lg font-semibold">AI Tutor</h3>
+            <p class="mt-2 text-2xl font-medium tracking-tight text-foreground">Supports learning.</p>
+          </div>
+        </div>
+        <div data-animate="fade-up" data-delay="0.16"
+          class="rounded-2xl bg-gradient-to-br from-[var(--navy)] via-[oklch(0.28_0.12_270)] to-[var(--violet)] p-[1px] shadow-glow">
+          <div class="rounded-2xl bg-[oklch(0.14_0.06_265)] p-8 text-white">
+            <i data-lucide="brain" class="h-6 w-6 text-[var(--electric)]"></i>
+            <h3 class="mt-5 text-lg font-semibold">Learning Intelligence</h3>
+            <p class="mt-2 text-2xl font-medium tracking-tight text-white">Understands learning.</p>
+            <p class="mt-6 text-sm text-white/70">
+              InSync captures every interaction, extracts reasoning patterns and builds a
+              living cognitive profile of every learner.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Engine -->
+  <section id="engine" class="relative py-28">
+    <div class="mx-auto max-w-7xl px-6">
+      <div data-animate="fade-up" class="max-w-3xl">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Platform Architecture
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          The InSync <span class="text-gradient">Intelligence Engine</span>
+        </h2>
+        <p class="mt-4 text-lg text-muted-foreground">
+          Six interconnected intelligence layers. One continuous learning graph.
+        </p>
+      </div>
+
+      <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <!-- Item 1 -->
+        <div data-animate="fade-up" data-delay="0.0" class="group relative">
+          <div
+            class="glass h-full rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-glow)]">
+            <div class="flex items-center justify-between">
+              <span
+                class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+                <i data-lucide="waves" class="h-5 w-5"></i>
+              </span>
+              <span class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">01</span>
+            </div>
+            <h3 class="mt-5 text-lg font-semibold">Learning Interaction Intelligence</h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Captures every voice conversation, assignment,
+              assessment and AI interaction.</p>
+            <div
+              class="mt-6 flex items-center gap-1.5 text-xs font-medium text-[var(--electric)] opacity-0 transition-opacity group-hover:opacity-100">
+              Explore layer <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+            </div>
+          </div>
+        </div>
+        <!-- Item 2 -->
+        <div data-animate="fade-up" data-delay="0.08" class="group relative">
+          <div
+            class="glass h-full rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-glow)]">
+            <div class="flex items-center justify-between">
+              <span
+                class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+                <i data-lucide="brain" class="h-5 w-5"></i>
+              </span>
+              <span class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">02</span>
+            </div>
+            <h3 class="mt-5 text-lg font-semibold">Understanding Intelligence</h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Measures conceptual understanding instead of
+              memorization.</p>
+            <div
+              class="mt-6 flex items-center gap-1.5 text-xs font-medium text-[var(--electric)] opacity-0 transition-opacity group-hover:opacity-100">
+              Explore layer <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+            </div>
+          </div>
+        </div>
+        <!-- Item 3 -->
+        <div data-animate="fade-up" data-delay="0.16" class="group relative">
+          <div
+            class="glass h-full rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-glow)]">
+            <div class="flex items-center justify-between">
+              <span
+                class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+                <i data-lucide="dna" class="h-5 w-5"></i>
+              </span>
+              <span class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">03</span>
+            </div>
+            <h3 class="mt-5 text-lg font-semibold">Learning DNA</h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Builds a continuously evolving cognitive
+              profile for every learner.</p>
+            <div
+              class="mt-6 flex items-center gap-1.5 text-xs font-medium text-[var(--electric)] opacity-0 transition-opacity group-hover:opacity-100">
+              Explore layer <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+            </div>
+          </div>
+        </div>
+        <!-- Item 4 -->
+        <div data-animate="fade-up" data-delay="0.0" class="group relative">
+          <div
+            class="glass h-full rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-glow)]">
+            <div class="flex items-center justify-between">
+              <span
+                class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+                <i data-lucide="graduation-cap" class="h-5 w-5"></i>
+              </span>
+              <span class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">04</span>
+            </div>
+            <h3 class="mt-5 text-lg font-semibold">Professor Intelligence</h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Identifies misconceptions, recommends
+              interventions, measures teaching effectiveness.</p>
+            <div
+              class="mt-6 flex items-center gap-1.5 text-xs font-medium text-[var(--electric)] opacity-0 transition-opacity group-hover:opacity-100">
+              Explore layer <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+            </div>
+          </div>
+        </div>
+        <!-- Item 5 -->
+        <div data-animate="fade-up" data-delay="0.08" class="group relative">
+          <div
+            class="glass h-full rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-glow)]">
+            <div class="flex items-center justify-between">
+              <span
+                class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+                <i data-lucide="building-2" class="h-5 w-5"></i>
+              </span>
+              <span class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">05</span>
+            </div>
+            <h3 class="mt-5 text-lg font-semibold">Institution Intelligence</h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Curriculum intelligence, cohort intelligence
+              and learning outcome analytics.</p>
+            <div
+              class="mt-6 flex items-center gap-1.5 text-xs font-medium text-[var(--electric)] opacity-0 transition-opacity group-hover:opacity-100">
+              Explore layer <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+            </div>
+          </div>
+        </div>
+        <!-- Item 6 -->
+        <div data-animate="fade-up" data-delay="0.16" class="group relative">
+          <div
+            class="glass h-full rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-glow)]">
+            <div class="flex items-center justify-between">
+              <span
+                class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+                <i data-lucide="briefcase" class="h-5 w-5"></i>
+              </span>
+              <span class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">06</span>
+            </div>
+            <h3 class="mt-5 text-lg font-semibold">Employability Intelligence</h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted-foreground">Maps learning evidence to workforce readiness
+              and future skills.</p>
+            <div
+              class="mt-6 flex items-center gap-1.5 text-xs font-medium text-[var(--electric)] opacity-0 transition-opacity group-hover:opacity-100">
+              Explore layer <i data-lucide="chevron-right" class="h-3.5 w-3.5"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Learning DNA -->
+  <section id="dna" class="relative overflow-hidden bg-[var(--navy-deep)] py-28">
+    <div
+      class="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(800px_500px_at_20%_0%,color-mix(in_oklab,var(--electric)_22%,transparent),transparent_60%),radial-gradient(700px_450px_at_100%_100%,color-mix(in_oklab,var(--violet)_18%,transparent),transparent_60%)]">
+    </div>
+
+    <div class="mx-auto grid max-w-7xl grid-cols-1 gap-14 px-6 lg:grid-cols-2 lg:items-center">
+      <div data-animate="fade-up" class="text-white">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Signature Capability
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          Every learner has a unique <span class="text-gradient">Learning DNA.</span>
+        </h2>
+        <p class="mt-5 max-w-lg text-lg leading-relaxed text-white/80">
+          Not biological DNA. An evolving fingerprint of how they learn.
+        </p>
+        <p class="mt-4 max-w-lg text-sm leading-relaxed text-white/60">
+          Learning DNA combines hundreds of learning signals to understand the whole learner — not
+          just what they scored, but how they think, persist, adapt and grow.
+        </p>
+
+        <div class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div data-animate="fade-up" data-delay="0.1"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Curiosity
+          </div>
+          <div data-animate="fade-up" data-delay="0.15"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Confidence
+          </div>
+          <div data-animate="fade-up" data-delay="0.2"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Concept mastery
+          </div>
+          <div data-animate="fade-up" data-delay="0.25"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Learning velocity
+          </div>
+          <div data-animate="fade-up" data-delay="0.3"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Persistence
+          </div>
+          <div data-animate="fade-up" data-delay="0.35"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Engagement
+          </div>
+          <div data-animate="fade-up" data-delay="0.4"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Collaboration
+          </div>
+          <div data-animate="fade-up" data-delay="0.45"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Critical thinking
+          </div>
+          <div data-animate="fade-up" data-delay="0.5"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Adaptability
+          </div>
+          <div data-animate="fade-up" data-delay="0.55"
+            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)]"></span> Growth over time
+          </div>
+        </div>
+
+        <div class="mt-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-5">
+          <p class="text-base leading-relaxed text-white/90">
+            Just as medical diagnostics transformed healthcare <span class="text-white/50">—</span> Learning
+            Intelligence can transform education.
+          </p>
+        </div>
+      </div>
+
+      <div data-animate="fade-up" class="glass-dark rounded-3xl p-6 text-white">
+        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+          <div class="flex items-center gap-3">
+            <div
+              class="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[var(--electric)] to-[var(--violet)]">
+              <i data-lucide="dna" class="h-5 w-5"></i>
+            </div>
+            <div>
+              <div class="text-sm font-semibold">Cognitive Learning Profile</div>
+              <div class="text-xs text-white/50">Student · CS3120 · Updated live</div>
+            </div>
+          </div>
+          <span
+            class="rounded-full border border-white/20 px-2 py-0.5 text-[10px] uppercase tracking-widest text-white/70">
+            Misconception risk · Low
+          </span>
+        </div>
+
+        <div class="mt-6 grid gap-4 sm:grid-cols-2">
+          <!-- Metrics loop converted to HTML -->
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Concept Mastery</span><span
+                class="font-mono text-white">92%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 92%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Critical Thinking</span><span
+                class="font-mono text-white">86%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 86%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Reasoning</span><span
+                class="font-mono text-white">84%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 84%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Problem Solving</span><span
+                class="font-mono text-white">88%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 88%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Collaboration</span><span
+                class="font-mono text-white">79%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 79%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Communication</span><span
+                class="font-mono text-white">74%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 74%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Confidence</span><span
+                class="font-mono text-white">81%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 81%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Curiosity</span><span
+                class="font-mono text-white">89%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 89%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Persistence</span><span
+                class="font-mono text-white">85%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 85%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Adaptability</span><span
+                class="font-mono text-white">78%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 78%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Learning Velocity</span><span
+                class="font-mono text-white">90%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 90%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-white/70"><span>Growth Over Time</span><span
+                class="font-mono text-white">94%</span></div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                class="h-full rounded-full bg-gradient-to-r from-[var(--electric)] to-[var(--violet)] transition-all duration-1000"
+                style="width: 94%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-6 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs">
+          <span class="flex items-center gap-2 text-white/70">
+            <i data-lucide="activity" class="h-3.5 w-3.5 text-[var(--electric)]"></i>
+            Updating from voice viva session…
+          </span>
+          <span class="font-mono text-white/50">+0.3 reasoning</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PEARLS -->
+  <section class="relative py-28">
+    <div class="mx-auto max-w-7xl px-6">
+      <div data-animate="fade-up" class="mx-auto max-w-2xl text-center">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Measurement Framework
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          The <span class="text-gradient">PEARLS</span> Framework
+        </h2>
+        <p class="mt-4 text-muted-foreground">
+          A circular intelligence model that measures the whole of learning — not a moment of it.
+        </p>
+      </div>
+
+      <div class="relative mt-16 mx-auto aspect-square w-full max-w-[560px]">
+        <div class="absolute inset-8 rounded-full border border-dashed border-border"></div>
+        <div class="absolute inset-20 rounded-full border border-border/60"></div>
+        <div
+          class="absolute inset-1/2 -translate-x-1/2 -translate-y-1/2 h-32 w-32 rounded-full bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] shadow-glow grid place-items-center text-white">
+          <div class="text-center">
+            <div class="text-2xl font-semibold">PEARLS</div>
+            <div class="mt-0.5 text-[10px] uppercase tracking-widest text-white/70">Intelligence Model</div>
+          </div>
+        </div>
+
+        <!-- P -->
+        <div data-animate="fade-up" data-delay="0.0"
+          class="glass absolute w-40 -translate-x-1/2 -translate-y-1/2 rounded-2xl p-3 text-center"
+          style="left: 50%; top: 6%;">
+          <div
+            class="mx-auto grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-sm font-bold text-white">
+            P</div>
+          <div class="mt-1.5 text-sm font-semibold">Participation</div>
+          <div class="mt-0.5 text-[11px] leading-snug text-muted-foreground">How actively students engage.</div>
+        </div>
+        <!-- E -->
+        <div data-animate="fade-up" data-delay="0.08"
+          class="glass absolute w-40 -translate-x-1/2 -translate-y-1/2 rounded-2xl p-3 text-center"
+          style="left: 88.1%; top: 28%;">
+          <div
+            class="mx-auto grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-sm font-bold text-white">
+            E</div>
+          <div class="mt-1.5 text-sm font-semibold">Engagement</div>
+          <div class="mt-0.5 text-[11px] leading-snug text-muted-foreground">Depth of learning interactions.</div>
+        </div>
+        <!-- A -->
+        <div data-animate="fade-up" data-delay="0.16"
+          class="glass absolute w-40 -translate-x-1/2 -translate-y-1/2 rounded-2xl p-3 text-center"
+          style="left: 88.1%; top: 72%;">
+          <div
+            class="mx-auto grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-sm font-bold text-white">
+            A</div>
+          <div class="mt-1.5 text-sm font-semibold">Application</div>
+          <div class="mt-0.5 text-[11px] leading-snug text-muted-foreground">Ability to apply knowledge.</div>
+        </div>
+        <!-- R -->
+        <div data-animate="fade-up" data-delay="0.24"
+          class="glass absolute w-40 -translate-x-1/2 -translate-y-1/2 rounded-2xl p-3 text-center"
+          style="left: 50%; top: 94%;">
+          <div
+            class="mx-auto grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-sm font-bold text-white">
+            R</div>
+          <div class="mt-1.5 text-sm font-semibold">Reasoning</div>
+          <div class="mt-0.5 text-[11px] leading-snug text-muted-foreground">Critical thinking and decision making.
+          </div>
+        </div>
+        <!-- L -->
+        <div data-animate="fade-up" data-delay="0.32"
+          class="glass absolute w-40 -translate-x-1/2 -translate-y-1/2 rounded-2xl p-3 text-center"
+          style="left: 11.9%; top: 72%;">
+          <div
+            class="mx-auto grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-sm font-bold text-white">
+            L</div>
+          <div class="mt-1.5 text-sm font-semibold">Learning</div>
+          <div class="mt-0.5 text-[11px] leading-snug text-muted-foreground">Continuous improvement.</div>
+        </div>
+        <!-- S -->
+        <div data-animate="fade-up" data-delay="0.4"
+          class="glass absolute w-40 -translate-x-1/2 -translate-y-1/2 rounded-2xl p-3 text-center"
+          style="left: 11.9%; top: 28%;">
+          <div
+            class="mx-auto grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-sm font-bold text-white">
+            S</div>
+          <div class="mt-1.5 text-sm font-semibold">Success</div>
+          <div class="mt-0.5 text-[11px] leading-snug text-muted-foreground">Academic and career readiness.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Voice Intelligence -->
+  <section class="relative py-28">
+    <div class="mx-auto grid max-w-7xl grid-cols-1 gap-14 px-6 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+      <div data-animate="fade-up">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Voice Intelligence
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          Learning happens through <span class="text-gradient">conversation.</span>
+        </h2>
+        <ul class="mt-8 grid gap-3 sm:grid-cols-2">
+          <li class="glass flex items-center gap-3 rounded-xl px-4 py-3 text-sm">
+            <i data-lucide="mic" class="h-4 w-4 text-[var(--electric)]"></i><span class="font-medium">Voice
+              conversations</span>
+          </li>
+          <li class="glass flex items-center gap-3 rounded-xl px-4 py-3 text-sm">
+            <i data-lucide="sparkles" class="h-4 w-4 text-[var(--electric)]"></i><span class="font-medium">AI
+              viva</span>
+          </li>
+          <li class="glass flex items-center gap-3 rounded-xl px-4 py-3 text-sm">
+            <i data-lucide="shield-check" class="h-4 w-4 text-[var(--electric)]"></i><span
+              class="font-medium">Assignment defence</span>
+          </li>
+          <li class="glass flex items-center gap-3 rounded-xl px-4 py-3 text-sm">
+            <i data-lucide="users" class="h-4 w-4 text-[var(--electric)]"></i><span class="font-medium">Interview
+              practice</span>
+          </li>
+          <li class="glass flex items-center gap-3 rounded-xl px-4 py-3 text-sm">
+            <i data-lucide="brain" class="h-4 w-4 text-[var(--electric)]"></i><span class="font-medium">Socratic
+              questioning</span>
+          </li>
+          <li class="glass flex items-center gap-3 rounded-xl px-4 py-3 text-sm">
+            <i data-lucide="target" class="h-4 w-4 text-[var(--electric)]"></i><span class="font-medium">Personalized
+              coaching</span>
+          </li>
+        </ul>
+      </div>
+
+      <div data-animate="fade-up" class="glass rounded-3xl p-6">
+        <div class="flex items-center gap-3 border-b border-border pb-4">
+          <div
+            class="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+            <i data-lucide="mic" class="h-4 w-4"></i>
+          </div>
+          <div>
+            <div class="text-sm font-semibold">Voice Viva · Machine Learning</div>
+            <div class="text-xs text-muted-foreground">Adaptive Socratic session</div>
+          </div>
+          <span
+            class="ml-auto flex items-center gap-2 rounded-full bg-[var(--electric)]/10 px-2 py-1 text-[11px] font-medium text-[var(--electric)]">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+            Listening
+          </span>
+        </div>
+
+        <div class="mt-6 flex h-24 items-end justify-center gap-1.5">
+          <span
+            class="w-1.5 rounded-full bg-gradient-to-t from-[var(--electric)] to-[var(--violet)] h-[40%] animate-pulse"></span>
+          <span
+            class="w-1.5 rounded-full bg-gradient-to-t from-[var(--electric)] to-[var(--violet)] h-[60%] animate-pulse"
+            style="animation-delay: 0.1s"></span>
+          <span
+            class="w-1.5 rounded-full bg-gradient-to-t from-[var(--electric)] to-[var(--violet)] h-[30%] animate-pulse"
+            style="animation-delay: 0.2s"></span>
+          <span
+            class="w-1.5 rounded-full bg-gradient-to-t from-[var(--electric)] to-[var(--violet)] h-[80%] animate-pulse"
+            style="animation-delay: 0.3s"></span>
+          <span
+            class="w-1.5 rounded-full bg-gradient-to-t from-[var(--electric)] to-[var(--violet)] h-[50%] animate-pulse"
+            style="animation-delay: 0.4s"></span>
+          <span
+            class="w-1.5 rounded-full bg-gradient-to-t from-[var(--electric)] to-[var(--violet)] h-[90%] animate-pulse"
+            style="animation-delay: 0.5s"></span>
+          <span
+            class="w-1.5 rounded-full bg-gradient-to-t from-[var(--electric)] to-[var(--violet)] h-[40%] animate-pulse"
+            style="animation-delay: 0.6s"></span>
+          <span
+            class="w-1.5 rounded-full bg-gradient-to-t from-[var(--electric)] to-[var(--violet)] h-[70%] animate-pulse"
+            style="animation-delay: 0.7s"></span>
+        </div>
+
+        <div class="mt-6 space-y-3">
+          <div class="rounded-2xl bg-secondary px-4 py-3 text-sm">
+            <div class="text-[10px] uppercase tracking-widest text-muted-foreground">InSync</div>
+            Explain why overfitting happens even when training accuracy is high.
+          </div>
+          <div
+            class="ml-8 rounded-2xl bg-gradient-to-br from-[var(--navy)] to-[oklch(0.28_0.12_270)] px-4 py-3 text-sm text-white">
+            <div class="text-[10px] uppercase tracking-widest text-white/60">Student</div>
+            Because the model memorizes noise instead of the underlying pattern…
+          </div>
+          <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <i data-lucide="activity" class="h-3.5 w-3.5 text-[var(--electric)]"></i>
+            Reasoning signal captured · profile updated
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Professor Copilot -->
+  <section id="professor" class="relative py-28">
+    <div class="mx-auto max-w-7xl px-6">
+      <div data-animate="fade-up" class="max-w-3xl">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Professor Copilot
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Insights, not just charts.</h2>
+        <p class="mt-4 text-muted-foreground">InSync turns learning signal into teaching decisions — automatically.</p>
+      </div>
+
+      <div class="mt-12 grid gap-6 lg:grid-cols-[1.15fr_1fr]">
+        <div data-animate="fade-up" class="glass rounded-3xl p-6">
+          <div class="flex items-center justify-between text-xs text-muted-foreground">
+            <span>CS3120 · Machine Learning · Week 6</span>
+            <span class="font-mono">Cohort n=142</span>
+          </div>
+
+          <div class="mt-5 space-y-3">
+            <div class="flex items-start gap-4 rounded-2xl border border-border/70 bg-white/70 px-4 py-3">
+              <div
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] font-mono text-sm font-semibold text-white">
+                24</div>
+              <div class="text-sm">
+                <div class="text-foreground">students understand the theory but cannot apply it.</div>
+                <div class="mt-1 text-[11px] uppercase tracking-widest text-[var(--electric)]">Application gap</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-4 rounded-2xl border border-border/70 bg-white/70 px-4 py-3">
+              <div
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] font-mono text-sm font-semibold text-white">
+                18</div>
+              <div class="text-sm">
+                <div class="text-foreground">students confuse overfitting with underfitting.</div>
+                <div class="mt-1 text-[11px] uppercase tracking-widest text-[var(--electric)]">Misconception</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-4 rounded-2xl border border-border/70 bg-white/70 px-4 py-3">
+              <div
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] font-mono text-sm font-semibold text-white">
+                9</div>
+              <div class="text-sm">
+                <div class="text-foreground">students plateau on evaluation metrics after week 4.</div>
+                <div class="mt-1 text-[11px] uppercase tracking-widest text-[var(--electric)]">At-risk</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 rounded-2xl bg-gradient-to-br from-[var(--navy)] to-[oklch(0.28_0.12_270)] p-5 text-white">
+            <div class="text-[11px] uppercase tracking-widest text-white/60">Recommended intervention</div>
+            <div class="mt-1 text-lg font-medium">15-minute adaptive learning module on regularization</div>
+            <div class="mt-3 flex items-center gap-2 text-xs text-white/70">
+              <i data-lucide="sparkles" class="h-3.5 w-3.5 text-[var(--electric)]"></i>
+              Auto-generated · targeted at 42 identified learners
+            </div>
+          </div>
+        </div>
+
+        <div data-animate="fade-up" class="grid gap-3 self-start sm:grid-cols-2 lg:grid-cols-1">
+          <div class="glass flex items-center gap-4 rounded-2xl p-5">
+            <div
+              class="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-white">
+              <i data-lucide="radio" class="h-5 w-5"></i>
+            </div>
+            <div>
+              <div class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Step 1</div>
+              <div class="text-lg font-semibold">Detect</div>
+            </div>
+            <i data-lucide="chevron-right" class="ml-auto h-4 w-4 text-muted-foreground"></i>
+          </div>
+          <div class="glass flex items-center gap-4 rounded-2xl p-5">
+            <div
+              class="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-white">
+              <i data-lucide="brain" class="h-5 w-5"></i>
+            </div>
+            <div>
+              <div class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Step 2</div>
+              <div class="text-lg font-semibold">Understand</div>
+            </div>
+            <i data-lucide="chevron-right" class="ml-auto h-4 w-4 text-muted-foreground"></i>
+          </div>
+          <div class="glass flex items-center gap-4 rounded-2xl p-5">
+            <div
+              class="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-white">
+              <i data-lucide="zap" class="h-5 w-5"></i>
+            </div>
+            <div>
+              <div class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Step 3</div>
+              <div class="text-lg font-semibold">Intervene</div>
+            </div>
+            <i data-lucide="chevron-right" class="ml-auto h-4 w-4 text-muted-foreground"></i>
+          </div>
+          <div class="glass flex items-center gap-4 rounded-2xl p-5">
+            <div
+              class="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-[var(--electric)] to-[var(--violet)] text-white">
+              <i data-lucide="line-chart" class="h-5 w-5"></i>
+            </div>
+            <div>
+              <div class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Step 4</div>
+              <div class="text-lg font-semibold">Measure</div>
+            </div>
+            <i data-lucide="chevron-right" class="ml-auto h-4 w-4 text-muted-foreground"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- University Dashboard -->
+  <section id="institution" class="relative overflow-hidden py-28">
+    <div class="bg-gradient-dark absolute inset-0 -z-10"></div>
+    <div class="mx-auto max-w-7xl px-6 text-white">
+      <div data-animate="fade-up" class="max-w-3xl">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Institution Intelligence
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          An <span class="text-gradient">executive intelligence layer</span> for the university.
+        </h2>
+        <p class="mt-4 text-white/70">
+          Curriculum intelligence, cohort intelligence and outcome analytics in one place.
+        </p>
+      </div>
+
+      <div data-animate="fade-up" class="glass-dark mt-12 rounded-3xl p-6">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div class="text-xs uppercase tracking-widest text-white/60">Student Success Score</div>
+            <div class="mt-3 flex items-end justify-between">
+              <div class="text-3xl font-semibold tracking-tight">87.4</div>
+              <span class="text-xs font-mono text-[var(--electric)]">+3.2</span>
+            </div>
+            <div class="mt-4 h-10 w-full">
+              <svg viewBox="0 0 120 40" class="h-full w-full">
+                <path d="M0 30 Q 20 10, 40 22 T 80 14 T 120 8" fill="none" stroke="url(#u1)" stroke-width="2" />
+                <defs>
+                  <linearGradient id="u1" x1="0" x2="1">
+                    <stop offset="0" stop-color="oklch(0.66 0.22 258)" />
+                    <stop offset="1" stop-color="oklch(0.62 0.24 300)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div class="text-xs uppercase tracking-widest text-white/60">Learning Quality Index</div>
+            <div class="mt-3 flex items-end justify-between">
+              <div class="text-3xl font-semibold tracking-tight">82.1</div>
+              <span class="text-xs font-mono text-[var(--electric)]">+2.4</span>
+            </div>
+            <div class="mt-4 h-10 w-full">
+              <svg viewBox="0 0 120 40" class="h-full w-full">
+                <path d="M0 30 Q 20 10, 40 22 T 80 14 T 120 8" fill="none" stroke="url(#u2)" stroke-width="2" />
+                <defs>
+                  <linearGradient id="u2" x1="0" x2="1">
+                    <stop offset="0" stop-color="oklch(0.66 0.22 258)" />
+                    <stop offset="1" stop-color="oklch(0.62 0.24 300)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div class="text-xs uppercase tracking-widest text-white/60">Engagement Index</div>
+            <div class="mt-3 flex items-end justify-between">
+              <div class="text-3xl font-semibold tracking-tight">91.6</div>
+              <span class="text-xs font-mono text-[var(--electric)]">+5.1</span>
+            </div>
+            <div class="mt-4 h-10 w-full">
+              <svg viewBox="0 0 120 40" class="h-full w-full">
+                <path d="M0 30 Q 20 10, 40 22 T 80 14 T 120 8" fill="none" stroke="url(#u3)" stroke-width="2" />
+                <defs>
+                  <linearGradient id="u3" x1="0" x2="1">
+                    <stop offset="0" stop-color="oklch(0.66 0.22 258)" />
+                    <stop offset="1" stop-color="oklch(0.62 0.24 300)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div class="text-xs uppercase tracking-widest text-white/60">Faculty Effectiveness</div>
+            <div class="mt-3 flex items-end justify-between">
+              <div class="text-3xl font-semibold tracking-tight">88.9</div>
+              <span class="text-xs font-mono text-[var(--electric)]">+1.8</span>
+            </div>
+            <div class="mt-4 h-10 w-full">
+              <svg viewBox="0 0 120 40" class="h-full w-full">
+                <path d="M0 30 Q 20 10, 40 22 T 80 14 T 120 8" fill="none" stroke="url(#u4)" stroke-width="2" />
+                <defs>
+                  <linearGradient id="u4" x1="0" x2="1">
+                    <stop offset="0" stop-color="oklch(0.66 0.22 258)" />
+                    <stop offset="1" stop-color="oklch(0.62 0.24 300)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div class="text-xs uppercase tracking-widest text-white/60">At-risk Detection</div>
+            <div class="mt-3 flex items-end justify-between">
+              <div class="text-3xl font-semibold tracking-tight">142</div>
+              <span class="text-xs font-mono text-emerald-300">-14</span>
+            </div>
+            <div class="mt-4 h-10 w-full">
+              <svg viewBox="0 0 120 40" class="h-full w-full">
+                <path d="M0 10 Q 20 30, 40 18 T 80 26 T 120 32" fill="none" stroke="url(#u5)" stroke-width="2" />
+                <defs>
+                  <linearGradient id="u5" x1="0" x2="1">
+                    <stop offset="0" stop-color="oklch(0.66 0.22 258)" />
+                    <stop offset="1" stop-color="oklch(0.62 0.24 300)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div class="text-xs uppercase tracking-widest text-white/60">Graduate Readiness</div>
+            <div class="mt-3 flex items-end justify-between">
+              <div class="text-3xl font-semibold tracking-tight">79.3</div>
+              <span class="text-xs font-mono text-[var(--electric)]">+4.6</span>
+            </div>
+            <div class="mt-4 h-10 w-full">
+              <svg viewBox="0 0 120 40" class="h-full w-full">
+                <path d="M0 30 Q 20 10, 40 22 T 80 14 T 120 8" fill="none" stroke="url(#u6)" stroke-width="2" />
+                <defs>
+                  <linearGradient id="u6" x1="0" x2="1">
+                    <stop offset="0" stop-color="oklch(0.66 0.22 258)" />
+                    <stop offset="1" stop-color="oklch(0.62 0.24 300)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison -->
+  <section class="relative py-28">
+    <div class="mx-auto max-w-7xl px-6">
+      <div data-animate="fade-up" class="max-w-3xl">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Why InSync is Different
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          An LMS stores learning. <br />
+          <span class="text-gradient">InSync understands it.</span>
+        </h2>
+      </div>
+
+      <div class="mt-12 grid gap-6 lg:grid-cols-2">
+        <div class="glass rounded-2xl p-6">
+          <div class="text-sm font-medium text-muted-foreground">Traditional LMS</div>
+          <ul class="mt-5 space-y-3">
+            <li class="flex items-center gap-3 border-b border-border/60 pb-3 text-sm"><i data-lucide="x"
+                class="h-4 w-4 text-muted-foreground"></i> Stores content</li>
+            <li class="flex items-center gap-3 border-b border-border/60 pb-3 text-sm"><i data-lucide="x"
+                class="h-4 w-4 text-muted-foreground"></i> Tracks attendance</li>
+            <li class="flex items-center gap-3 border-b border-border/60 pb-3 text-sm"><i data-lucide="x"
+                class="h-4 w-4 text-muted-foreground"></i> Grades assignments</li>
+            <li class="flex items-center gap-3 pb-0 text-sm border-none"><i data-lucide="x"
+                class="h-4 w-4 text-muted-foreground"></i> Provides reports</li>
+          </ul>
+        </div>
+        <div class="rounded-2xl bg-gradient-to-br from-[var(--navy)] to-[var(--violet)] p-[1px] shadow-glow">
+          <div class="rounded-2xl bg-[oklch(0.14_0.06_265)] p-6 text-white">
+            <div class="text-sm font-medium text-white/70">InSync</div>
+            <ul class="mt-5 space-y-3">
+              <li class="flex items-center gap-3 border-b border-white/10 pb-3 text-sm"><i data-lucide="check"
+                  class="h-4 w-4 text-[var(--electric)]"></i> Builds Learning Intelligence</li>
+              <li class="flex items-center gap-3 border-b border-white/10 pb-3 text-sm"><i data-lucide="check"
+                  class="h-4 w-4 text-[var(--electric)]"></i> Measures thinking</li>
+              <li class="flex items-center gap-3 border-b border-white/10 pb-3 text-sm"><i data-lucide="check"
+                  class="h-4 w-4 text-[var(--electric)]"></i> Captures reasoning</li>
+              <li class="flex items-center gap-3 border-b border-white/10 pb-3 text-sm"><i data-lucide="check"
+                  class="h-4 w-4 text-[var(--electric)]"></i> Creates Learning DNA</li>
+              <li class="flex items-center gap-3 border-b border-white/10 pb-3 text-sm"><i data-lucide="check"
+                  class="h-4 w-4 text-[var(--electric)]"></i> Generates teaching intelligence</li>
+              <li class="flex items-center gap-3 border-b border-white/10 pb-3 text-sm"><i data-lucide="check"
+                  class="h-4 w-4 text-[var(--electric)]"></i> Measures intervention effectiveness</li>
+              <li class="flex items-center gap-3 pb-0 text-sm border-none"><i data-lucide="check"
+                  class="h-4 w-4 text-[var(--electric)]"></i> Maps employability readiness</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Choose -->
+  <section class="relative py-28">
+    <div class="mx-auto max-w-7xl px-6">
+      <div data-animate="fade-up" class="max-w-3xl">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Why Universities Choose InSync
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          Outcomes that compound with every interaction.
+        </h2>
+      </div>
+      <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div data-animate="fade-up" data-delay="0.0" class="glass rounded-2xl p-6 transition hover:-translate-y-0.5">
+          <div
+            class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+            <i data-lucide="target" class="h-5 w-5"></i>
+          </div>
+          <div class="mt-5 text-lg font-semibold">Increase Student Success</div>
+        </div>
+        <div data-animate="fade-up" data-delay="0.08" class="glass rounded-2xl p-6 transition hover:-translate-y-0.5">
+          <div
+            class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+            <i data-lucide="users" class="h-5 w-5"></i>
+          </div>
+          <div class="mt-5 text-lg font-semibold">Reduce Faculty Workload</div>
+        </div>
+        <div data-animate="fade-up" data-delay="0.16" class="glass rounded-2xl p-6 transition hover:-translate-y-0.5">
+          <div
+            class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+            <i data-lucide="line-chart" class="h-5 w-5"></i>
+          </div>
+          <div class="mt-5 text-lg font-semibold">Improve Learning Outcomes</div>
+        </div>
+        <div data-animate="fade-up" data-delay="0.0" class="glass rounded-2xl p-6 transition hover:-translate-y-0.5">
+          <div
+            class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+            <i data-lucide="shield-check" class="h-5 w-5"></i>
+          </div>
+          <div class="mt-5 text-lg font-semibold">Evidence-based Teaching</div>
+        </div>
+        <div data-animate="fade-up" data-delay="0.08" class="glass rounded-2xl p-6 transition hover:-translate-y-0.5">
+          <div
+            class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+            <i data-lucide="cpu" class="h-5 w-5"></i>
+          </div>
+          <div class="mt-5 text-lg font-semibold">Future-ready AI Education</div>
+        </div>
+        <div data-animate="fade-up" data-delay="0.16" class="glass rounded-2xl p-6 transition hover:-translate-y-0.5">
+          <div
+            class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] text-white">
+            <i data-lucide="network" class="h-5 w-5"></i>
+          </div>
+          <div class="mt-5 text-lg font-semibold">Continuous Learning Intelligence</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Built By -->
+  <section id="about" class="relative py-28">
+    <div class="mx-auto grid max-w-7xl grid-cols-1 gap-14 px-6 lg:grid-cols-2">
+      <div data-animate="fade-up">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Built by Experts
+        </div>
+        <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+          Built by Data Scientists.<br />
+          Designed with Educators.<br />
+          <span class="text-gradient">Powered by AI.</span>
+        </h2>
+        <p class="mt-6 text-muted-foreground">
+          InSync is built by a seasoned team of Data Scientists, AI Engineers and Learning
+          Technology experts with decades of experience in Artificial Intelligence, Data Science
+          and enterprise analytics.
+        </p>
+        <p class="mt-4 text-muted-foreground">
+          The platform has been designed in close collaboration with professors, academic leaders
+          and students to create a scientifically grounded framework that measures not just
+          academic performance, but the entire learning journey.
+        </p>
+      </div>
+
+      <div data-animate="fade-up" class="glass rounded-3xl p-8">
+        <div class="flex items-center gap-3">
+          <div
+            class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[var(--navy)] to-[var(--violet)] text-white">
+            <i data-lucide="globe-2" class="h-5 w-5"></i>
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-widest text-muted-foreground">About the company</div>
+            <div class="text-lg font-semibold">DASCAIN · Singapore</div>
+          </div>
+        </div>
+        <h3 class="mt-6 text-2xl font-semibold tracking-tight">
+          Building AI that solves real problems.
+        </h3>
+        <p class="mt-4 text-muted-foreground">
+          DASCAIN is a Singapore-based Artificial Intelligence company focused on building
+          scalable AI platforms that solve complex business and societal challenges. With
+          expertise in Machine Learning, Large Language Models, Data Engineering and Enterprise
+          AI, our mission is to transform industries through intelligent systems that augment
+          human potential.
+        </p>
+        <p class="mt-4 text-muted-foreground">
+          InSync represents our vision of bringing Learning Intelligence to higher education.
+        </p>
+        <div class="mt-6 grid grid-cols-3 gap-3 text-center text-xs text-muted-foreground">
+          <div class="rounded-xl border border-border/70 bg-white/60 py-2">Machine Learning</div>
+          <div class="rounded-xl border border-border/70 bg-white/60 py-2">LLMs</div>
+          <div class="rounded-xl border border-border/70 bg-white/60 py-2">Data Engineering</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="relative py-24">
+    <div class="mx-auto max-w-7xl px-6">
+      <div data-animate="fade-up" class="max-w-3xl">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+          Trusted Signal
+        </div>
+        <h2 class="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+          From the field — universities, professors, students, pilots.
+        </h2>
+      </div>
+      <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="text-[11px] uppercase tracking-widest text-[var(--electric)]">University</div>
+            <p class="mt-4 text-sm leading-relaxed text-foreground">
+              "InSync has transformed how we measure learning outcomes across our entire engineering faculty."
+            </p>
+          </div>
+          <div class="mt-6 flex items-center gap-3">
+            <div class="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] grid place-items-center text-white">
+              <span class="text-xs font-semibold">SJ</span>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-foreground">Dr. Sarah Jenkins</div>
+              <div class="text-[10px] text-muted-foreground">Dean of Engineering</div>
+            </div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="text-[11px] uppercase tracking-widest text-[var(--electric)]">Professor</div>
+            <p class="mt-4 text-sm leading-relaxed text-foreground">
+              "I finally have visibility into where my students struggle before the midterm exams even happen."
+            </p>
+          </div>
+          <div class="mt-6 flex items-center gap-3">
+            <div class="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] grid place-items-center text-white">
+              <span class="text-xs font-semibold">AT</span>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-foreground">Prof. Alan Turing</div>
+              <div class="text-[10px] text-muted-foreground">Computer Science</div>
+            </div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="text-[11px] uppercase tracking-widest text-[var(--electric)]">Student</div>
+            <p class="mt-4 text-sm leading-relaxed text-foreground">
+              "The AI tutor doesn't just give answers, it guides me to understand the core concepts myself."
+            </p>
+          </div>
+          <div class="mt-6 flex items-center gap-3">
+            <div class="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] grid place-items-center text-white">
+              <span class="text-xs font-semibold">MG</span>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-foreground">Maria Garcia</div>
+              <div class="text-[10px] text-muted-foreground">Undergraduate Student</div>
+            </div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="text-[11px] uppercase tracking-widest text-[var(--electric)]">Pilot Program</div>
+            <p class="mt-4 text-sm leading-relaxed text-foreground">
+              "Our pilot retention rates improved by 15% in the first semester of deployment alone."
+            </p>
+          </div>
+          <div class="mt-6 flex items-center gap-3">
+            <div class="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-[var(--navy)] to-[var(--electric)] grid place-items-center text-white">
+              <span class="text-xs font-semibold">JW</span>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-foreground">James Wilson</div>
+              <div class="text-[10px] text-muted-foreground">Director of Innovation</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta" class="relative overflow-hidden py-28">
+    <div class="mx-auto max-w-6xl px-6">
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-dark p-12 text-white sm:p-16">
+        <div class="grid-bg absolute inset-0 opacity-30"></div>
+        <div class="relative max-w-2xl">
+          <div
+            class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-white/60 px-3 py-1 text-xs font-medium tracking-wide text-navy backdrop-blur">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--electric)] pulse-ring"></span>
+            Get started
+          </div>
+          <h2 class="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+            The future of education is <span class="text-gradient">Learning Intelligence.</span>
+          </h2>
+          <p class="mt-4 text-lg text-white/70">
+            Stop measuring only grades. Start understanding how every student learns.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href="https://insync.dascain.com" target="_blank" rel="noopener noreferrer"
+              class="btn-primary btn-primary-hover">
+              Book Demo <i data-lucide="arrow-right" class="h-4 w-4"></i>
+            </a>
+            <a href="https://insync.dascain.com" target="_blank" rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/15">
+              <i data-lucide="book-open" class="h-4 w-4"></i> Talk to our team
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-border bg-background">
+    <div class="mx-auto max-w-7xl px-6 py-14">
+      <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+        <!-- Brand -->
+        <div class="lg:col-span-1">
+          <div class="flex items-center gap-2">
+            <img src="{% static 'images/insync-logo.png' %}" alt="InSync" class="h-7 w-auto object-contain" />
+            <span class="text-lg font-semibold">InSync</span>
+          </div>
+          <p class="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            The world's first Learning Intelligence Platform. Built by DASCAIN.
+          </p>
+        </div>
+
+        <!-- Contact -->
+        <div>
+          <h4 class="text-xs font-semibold uppercase tracking-widest text-foreground">Contact</h4>
+          <ul class="mt-4 space-y-3 text-sm text-muted-foreground">
+            <li class="flex items-start gap-2.5">
+              <i data-lucide="mail" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--electric)]"></i>
+              <div class="space-y-1">
+                <a href="mailto:Connect@dascain.com"
+                  class="block transition hover:text-foreground">Connect@dascain.com</a>
+                <a href="mailto:gunjandadheech@dascain.com"
+                  class="block transition hover:text-foreground">gunjandadheech@dascain.com</a>
+              </div>
+            </li>
+            <li class="flex items-center gap-2.5">
+              <i data-lucide="phone" class="h-4 w-4 shrink-0 text-[var(--electric)]"></i>
+              <a href="tel:+91929950092" class="transition hover:text-foreground">+91–929950092</a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Office -->
+        <div>
+          <h4 class="text-xs font-semibold uppercase tracking-widest text-foreground">Singapore Office</h4>
+          <a href="https://maps.google.com/?q=68+Circular+Road+%2302-01+Singapore+049422" target="_blank"
+            rel="noopener noreferrer"
+            class="mt-4 flex items-start gap-2.5 text-sm text-muted-foreground transition hover:text-foreground">
+            <i data-lucide="map-pin" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--electric)]"></i>
+            <span>
+              68 CIRCULAR ROAD, #02-01<br />
+              SINGAPORE 049422
+            </span>
+          </a>
+        </div>
+
+        <!-- Social -->
+        <div>
+          <h4 class="text-xs font-semibold uppercase tracking-widest text-foreground">Follow DASCAIN</h4>
+          <div class="mt-4 flex flex-col gap-3">
+            <a href="https://www.linkedin.com/company/dascain/" target="_blank" rel="noopener noreferrer"
+              class="inline-flex items-center gap-2.5 text-sm text-muted-foreground transition hover:text-foreground">
+              <span class="grid h-8 w-8 place-items-center rounded-lg bg-[var(--navy)]/10 text-[var(--navy)]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+              </span>
+              LinkedIn
+            </a>
+            <a href="https://youtube.com/@dascainpteltd?si=mBijv-v3LdJ2Qkq1" target="_blank" rel="noopener noreferrer"
+              class="inline-flex items-center gap-2.5 text-sm text-muted-foreground transition hover:text-foreground">
+              <span class="grid h-8 w-8 place-items-center rounded-lg bg-red-500/10 text-red-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></svg>
+              </span>
+              YouTube
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+          <span class="font-semibold text-foreground">DASCAIN</span>
+          <span>· Learning Intelligence</span>
+        </div>
+        <div class="text-xs text-muted-foreground">
+          © 2024 DASCAIN PTE. LTD. All rights reserved.
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="{% static 'js/landing_script.js' %}"></script>
+</body>
+
+</html>

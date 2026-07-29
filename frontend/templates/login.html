@@ -5,14 +5,16 @@
 <div class="min-h-screen flex">
   <!-- Left Side - Branding -->
   <div class="hidden lg:flex lg:w-1/2 gradient-hero relative overflow-hidden">
-    <div
-      class="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:4rem_4rem]">
-    </div>
-
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
+    
     <div class="relative z-10 flex flex-col justify-center p-16">
       <div class="flex items-center gap-3 mb-8">
-        <img src="{% static 'images/insync-logo.png' %}" alt="InSync by DASCAIN" class="h-12 w-auto object-contain"
-          style="height: 3rem;" />
+        <img
+          src="{% static 'images/insync-logo.png' %}"
+          alt="InSync by DASCAIN"
+          class="h-12 w-auto object-contain"
+          style="height: 3rem;"
+        />
         <div>
           <span class="font-display font-bold text-3xl text-white">InSync</span>
           <span class="text-white/70 text-sm ml-2">by DASCAIN</span>
@@ -28,15 +30,16 @@
 
       <!-- Floating elements -->
       <div class="absolute bottom-20 right-20 w-32 h-32 bg-white/10 rounded-full blur-2xl animate-float"></div>
-      <div class="absolute top-40 right-40 w-20 h-20 bg-white/10 rounded-full blur-xl animate-float"
-        style="animation-delay: 2s;"></div>
+      <div class="absolute top-40 right-40 w-20 h-20 bg-white/10 rounded-full blur-xl animate-float" style="animation-delay: 2s;"></div>
     </div>
   </div>
 
   <!-- Right Side - Login Form -->
   <div class="flex-1 flex flex-col justify-center p-8 lg:p-16 bg-background">
-    <a href="{% url 'voice_tutor:index' %}"
-      class="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 self-start text-sm font-medium">
+    <a 
+      href="{% url 'voice_tutor:index' %}"
+      class="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 self-start text-sm font-medium"
+    >
       <i data-lucide="arrow-left" class="w-4 h-4"></i>
       Back to home
     </a>
@@ -44,8 +47,12 @@
     <div class="max-w-md w-full mx-auto">
       <!-- Mobile Logo -->
       <div class="lg:hidden flex items-center gap-3 mb-8">
-        <img src="{% static 'images/insync-logo.png' %}" alt="InSync by DASCAIN" class="h-10 w-auto object-contain"
-          style="height: 2.5rem;" />
+        <img
+          src="{% static 'images/insync-logo.png' %}"
+          alt="InSync by DASCAIN"
+          class="h-10 w-auto object-contain"
+          style="height: 2.5rem;"
+        />
         <div>
           <span class="font-display font-bold text-xl">InSync</span>
           <span class="text-xs text-muted-foreground ml-1 block">by DASCAIN</span>
@@ -70,18 +77,25 @@
           <label class="text-sm font-medium text-foreground">I am a...</label>
           <div class="grid grid-cols-2 gap-4">
             <!-- Professor Card -->
-            <button type="button" id="role-btn-professor" onclick="selectRole('professor')"
-              class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center">
-              <i data-lucide="graduation-cap" id="icon-professor"
-                class="w-8 h-8 mx-auto mb-3 text-muted-foreground"></i>
+            <button
+              type="button"
+              id="role-btn-professor"
+              onclick="selectRole('professor')"
+              class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center"
+            >
+              <i data-lucide="graduation-cap" id="icon-professor" class="w-8 h-8 mx-auto mb-3 text-muted-foreground"></i>
               <span class="font-medium text-foreground block">
                 Professor
               </span>
             </button>
-
+            
             <!-- Student Card -->
-            <button type="button" id="role-btn-student" onclick="selectRole('student')"
-              class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center">
+            <button
+              type="button"
+              id="role-btn-student"
+              onclick="selectRole('student')"
+              class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center"
+            >
               <i data-lucide="book-open" id="icon-student" class="w-8 h-8 mx-auto mb-3 text-muted-foreground"></i>
               <span class="font-medium text-foreground block">
                 Student
@@ -92,30 +106,43 @@
 
         <!-- Email Input -->
         <div class="space-y-2 mb-4">
-          <label for="email"
-            class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Email
-            Address</label>
-          <input id="email" type="email" name="email" required placeholder="you@university.edu"
-            class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
+          <label for="email" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Email Address</label>
+          <input
+            id="email"
+            type="email"
+            name="email"
+            required
+            placeholder="you@university.edu"
+            class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          />
         </div>
 
         <!-- Password Input -->
         <div class="space-y-2 mb-6">
-          <label for="password"
-            class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Password</label>
-          <input id="password" type="password" name="password" required placeholder="••••••••"
-            class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
+          <label for="password" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Password</label>
+          <input
+            id="password"
+            type="password"
+            name="password"
+            required
+            placeholder="••••••••"
+            class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          />
         </div>
 
         <!-- Submit Button -->
-        <button type="submit" id="submit-btn" disabled
-          class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 py-3 w-full text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
+        <button 
+          type="submit"
+          id="submit-btn"
+          disabled
+          class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 py-3 w-full text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+        >
           Continue
         </button>
       </form>
 
       <p class="text-center text-sm text-muted-foreground mt-6">
-        Don't have an account?
+        Don't have an account? 
         <a href="{% url 'voice_tutor:signup' %}" class="text-primary hover:underline font-medium">Sign Up</a>
       </p>
     </div>
@@ -139,13 +166,13 @@
     if (role === 'professor') {
       profBtn.className = "p-6 rounded-xl border-2 border-primary bg-primary/5 shadow-lg text-center";
       profIcon.className = "w-8 h-8 mx-auto mb-3 text-primary";
-
+      
       studBtn.className = "p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center";
       studIcon.className = "w-8 h-8 mx-auto mb-3 text-muted-foreground";
     } else {
       studBtn.className = "p-6 rounded-xl border-2 border-primary bg-primary/5 shadow-lg text-center";
       studIcon.className = "w-8 h-8 mx-auto mb-3 text-primary";
-
+      
       profBtn.className = "p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center";
       profIcon.className = "w-8 h-8 mx-auto mb-3 text-muted-foreground";
     }
