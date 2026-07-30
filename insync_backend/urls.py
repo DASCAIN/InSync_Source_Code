@@ -2,7 +2,7 @@
 URL configuration for insync_backend project.
 Merges: voice_tutor app routes + RAG API routes.
 """
-
+import os
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.static import serve
@@ -41,7 +41,13 @@ urlpatterns = [
     path('', include('voice_tutor.urls')),
 
     # Inngest Background Tasks API
-    inngest_serve(inngest_client, [rag_ingest_pdf, rag_query_pdf, rag_generate_assignment, rag_tutor_chat]),
+    # inngest_serve(inngest_client, [rag_ingest_pdf, rag_query_pdf, rag_generate_assignment, rag_tutor_chat]),
+    # --- NEW CODE ---
+    inngest_serve(  
+        client=inngest_client,
+        functions=[rag_ingest_pdf, rag_query_pdf, rag_generate_assignment, rag_tutor_chat],
+        serve_origin=os.getenv("INNGEST_SERVE_ORIGIN", "https://www.dascain.com"),
+    ),
 
     # RAG API endpoints
     path('api/healthcheck', healthcheck, name='rag_healthcheck'),

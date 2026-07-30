@@ -26,7 +26,22 @@ if not DEBUG and SECRET_KEY == 'django-insecure-insync-secret-key-for-dascain-20
 def env_list(name, default=''):
     return [item.strip() for item in os.getenv(name, default).split(',') if item.strip()]
 
-ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS = ['*']
+# --- NEW CODE ---
+ALLOWED_HOSTS = [
+    'dascain.com',
+    'www.dascain.com',
+    'insync-backend-app-env.eba-2qbhpqh.ap-south-1.elasticbeanstalk.com',
+    'localhost',
+    '127.0.0.1',
+    '*',
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://dascain.com',
+    'https://www.dascain.com',
+    'https://insync-backend-app-env.eba-2qbhpqh.ap-south-1.elasticbeanstalk.com',
+] + env_list('CSRF_TRUSTED_ORIGINS')
 # ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1',)
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 
