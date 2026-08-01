@@ -92,11 +92,13 @@ def add_documents(subject: str, topic: str, documents: list[Document]) -> None:
     logger.info("Adding %d documents to Qdrant collection '%s'", len(documents), COLLECTION_NAME)
     
     url = os.getenv("QDRANT_URL")
+    api_key = os.getenv("QDRANT_API_KEY")
     if url:
         QdrantVectorStore.from_documents(
             documents,
             get_embeddings(),
             url=url,
+            api_key=api_key,
             collection_name=COLLECTION_NAME,
         )
     else:
