@@ -44,9 +44,10 @@ def get_qdrant_client() -> QdrantClient:
     global _qdrant_client
     if _qdrant_client is None:
         url = os.getenv("QDRANT_URL")
+        api_key = os.getenv("QDRANT_API_KEY")
         if url:
             logger.info("Connecting to Qdrant at %s", url)
-            _qdrant_client = QdrantClient(url=url)
+            _qdrant_client = QdrantClient(url=url, api_key=api_key)
         else:
             settings = get_settings()
             default_path = str(settings.VECTOR_STORES_DIR / "qdrant_storage")
