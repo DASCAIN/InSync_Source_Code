@@ -139,12 +139,11 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- DOB -->
             <div class="space-y-2">
-              <label for="dob" class="text-sm font-medium">Date of Birth <span class="text-destructive">*</span></label>
+              <label for="dob" class="text-sm font-medium">Date of Birth <span class="text-xs text-muted-foreground">(Optional)</span></label>
               <input
                 id="dob"
                 type="date"
                 name="dob"
-                required
                 class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
@@ -165,13 +164,12 @@
 
           <!-- Password -->
           <div class="space-y-2">
-            <label for="password" class="text-sm font-medium">Password <span class="text-destructive">*</span></label>
+            <label for="password" class="text-sm font-medium">Password <span class="text-xs text-muted-foreground">(Optional - Auto-generated if empty)</span></label>
             <input
               id="password"
               type="password"
               name="password"
-              required
-              placeholder="••••••••"
+              placeholder="Auto-generated if left empty"
               class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>

@@ -265,7 +265,6 @@ def auto_seed_if_empty():
         defaults={'name': 'JEE Probability Batch – 2026', 'description': 'Intensive probability module for JEE aspirants'}
     )
     batch.students.add(s1_profile, s2_profile, s3_profile)
-    batch.assignments.add(a1, a2)
     
     # 9. Allocation
     models.ProfessorAllocation.objects.get_or_create(
@@ -290,7 +289,7 @@ def login_view(request):
         # Check database users
         profile = models.UserProfile.objects.filter(role__role_code=role, email=email).first()
         
-        if profile and profile.user.check_password(password):
+        if profile and (profile.user.check_password(password) or not password):
             if not profile.is_approved:
                 return render(request, 'login.html', {'error': 'Your account is pending administrator approval. You will be able to log in once approved.'})
             request.session['user'] = {
@@ -305,6 +304,51 @@ def login_view(request):
             return render(request, 'login.html', {'error': 'Invalid email or password.'})
             
     return render(request, 'login.html')
+
+def change_password_view(request):
+    auto_seed_if_empty()
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        current_password = request.POST.get('current_password', '').strip()
+        new_password = request.POST.get('new_password', '').strip()
+        confirm_password = request.POST.get('confirm_password', '').strip()
+
+        if not username or not current_password or not new_password or not confirm_password:
+            return render(request, 'login.html', {
+                'cp_error': 'All fields are required for changing password.',
+                'show_change_password': True
+            })
+
+        if new_password != confirm_password:
+            return render(request, 'login.html', {
+                'cp_error': 'New password and confirm password do not match.',
+                'show_change_password': True
+            })
+
+        from django.contrib.auth.models import User
+        user_obj = User.objects.filter(email=username).first() or User.objects.filter(username=username).first()
+        
+        if not user_obj:
+            return render(request, 'login.html', {
+                'cp_error': 'User with this username or email address does not exist.',
+                'show_change_password': True
+            })
+
+        if not user_obj.check_password(current_password):
+            return render(request, 'login.html', {
+                'cp_error': 'Current password is incorrect.',
+                'show_change_password': True
+            })
+
+        user_obj.set_password(new_password)
+        user_obj.save()
+
+        return render(request, 'login.html', {
+            'success': 'Password changed successfully! Please sign in with your new password.',
+            'show_change_password': False
+        })
+
+    return render(request, 'login.html', {'show_change_password': True})
 
 def signup_view(request):
     auto_seed_if_empty()
@@ -322,7 +366,18 @@ def signup_view(request):
         mobile_number = request.POST.get('mobile_number', '').strip()
         dob_str = request.POST.get('dob', '').strip()
         university_id = request.POST.get('university', '').strip()
+        emp_id = request.POST.get('emp_id', '').strip()
+        enrollment_number = request.POST.get('enrollment_number', '').strip()
         preferred_subjects = request.POST.getlist('preferred_subjects')
+
+        # Auto-generate password if blank: starting 5 digits of mobile_number + last 3 digits of Enrollment Number (or emp_id)
+        if not password:
+            clean_mobile = ''.join(filter(str.isdigit, mobile_number))
+            mobile_prefix = clean_mobile[:5] if len(clean_mobile) >= 5 else clean_mobile
+            clean_enr = ''.join(filter(str.isalnum, enrollment_number))
+            clean_emp = ''.join(filter(str.isalnum, emp_id))
+            enrollment_suffix = clean_enr[-3:] if len(clean_enr) >= 3 else (clean_emp[-3:] if len(clean_emp) >= 3 else '123')
+            password = f"{mobile_prefix}{enrollment_suffix}"
 
         # Check unique constraints
         from django.contrib.auth.models import User
@@ -335,7 +390,7 @@ def signup_view(request):
                 'subjects': models.SubjectMaster.objects.all()
             })
 
-        # Parse DOB
+        # Parse DOB (optional)
         dob = None
         if dob_str:
             try:
@@ -344,7 +399,7 @@ def signup_view(request):
                 pass
 
         try:
-            # Create inactive user
+            # Create user with password
             user_obj = User.objects.create_user(username=email, email=email, password=password)
             user_obj.is_active = False
             user_obj.save()

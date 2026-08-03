@@ -218,9 +218,57 @@ class InSyncViewsTestCase(TestCase):
         user = User.objects.get(email='test_student@student.edu')
         self.assertFalse(user.is_active) # Must stay inactive
 
+    def test_signup_student_optional_password_and_dob(self):
+        from voice_tutor import models
+        from django.contrib.auth.models import User
+        self.client.get(reverse('voice_tutor:signup')) # Triggers auto-seed
+        
+        univ = models.UniversityMaster.objects.first()
+        course = models.CourseMaster.objects.first()
+        session = models.SessionMaster.objects.first()
+
+        response = self.client.post(reverse('voice_tutor:signup'), {
+            'role': 'student',
+            'name': 'Arijit Srivastava',
+            'email': 'arijit.autogen@nmims.in',
+            'password': '',  # Left empty for auto-generation
+            'mobile_number': '9833872217',
+            'dob': '',  # Left empty (optional)
+            'university': univ.id,
+            'course': course.id,
+            'session': session.id,
+            'enrollment_number': '70092300023',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Registration Successful!")
+
+        # Verify auto-generated password: 98338 (first 5 of mobile) + 023 (last 3 of enrollment) = 98338023
+        user = User.objects.get(email='arijit.autogen@nmims.in')
+        self.assertTrue(user.check_password('98338023'))
+        self.assertIsNone(user.profile.dob)
+
         profile = models.UserProfile.objects.get(user=user)
         self.assertEqual(profile.name, 'Test Student')
         self.assertEqual(profile.enrollment_number, 'ENR2026999')
+
+    def test_change_password_flow(self):
+        from django.contrib.auth.models import User
+        # Create a user with initial password
+        user = User.objects.create_user(username='change_test@university.edu', email='change_test@university.edu', password='old_password123')
+        
+        # Test change password POST
+        response = self.client.post(reverse('voice_tutor:change_password'), {
+            'username': 'change_test@university.edu',
+            'current_password': 'old_password123',
+            'new_password': 'new_password456',
+            'confirm_password': 'new_password456'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Password changed successfully!")
+
+        # Verify password updated in database
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('new_password456'))
         self.assertFalse(profile.is_approved)
         self.assertEqual(list(profile.preferred_subjects.all()), [subj])
 

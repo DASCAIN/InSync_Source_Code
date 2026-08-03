@@ -59,8 +59,11 @@
         </div>
       </div>
 
-      <h2 class="font-display text-3xl font-bold mb-2">Sign In</h2>
-      <p class="text-muted-foreground mb-8">Choose your role and enter your email to continue</p>
+      {% if success %}
+      <div class="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg p-3 mb-6 text-sm font-medium">
+        {{ success }}
+      </div>
+      {% endif %}
 
       {% if error %}
       <div class="bg-destructive/10 text-destructive border border-destructive/20 rounded-lg p-3 mb-6 text-sm">
@@ -68,83 +71,179 @@
       </div>
       {% endif %}
 
-      <form method="POST" action="{% url 'voice_tutor:login' %}" onsubmit="return validateForm()">
-        {% csrf_token %}
-        <input type="hidden" name="role" id="selected-role-input" value="" />
+      <!-- Sign In Card -->
+      <div id="login-card" style="display: {% if show_change_password %}none{% else %}block{% endif %};">
+        <h2 class="font-display text-3xl font-bold mb-2">Sign In</h2>
+        <p class="text-muted-foreground mb-8">Choose your role and enter your email to continue</p>
 
-        <!-- Role Selection -->
-        <div class="space-y-4 mb-8">
-          <label class="text-sm font-medium text-foreground">I am a...</label>
-          <div class="grid grid-cols-2 gap-4">
-            <!-- Professor Card -->
-            <button
-              type="button"
-              id="role-btn-professor"
-              onclick="selectRole('professor')"
-              class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center"
-            >
-              <i data-lucide="graduation-cap" id="icon-professor" class="w-8 h-8 mx-auto mb-3 text-muted-foreground"></i>
-              <span class="font-medium text-foreground block">
-                Professor
-              </span>
-            </button>
-            
-            <!-- Student Card -->
-            <button
-              type="button"
-              id="role-btn-student"
-              onclick="selectRole('student')"
-              class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center"
-            >
-              <i data-lucide="book-open" id="icon-student" class="w-8 h-8 mx-auto mb-3 text-muted-foreground"></i>
-              <span class="font-medium text-foreground block">
-                Student
-              </span>
-            </button>
+        <form method="POST" action="{% url 'voice_tutor:login' %}" onsubmit="return validateForm()">
+          {% csrf_token %}
+          <input type="hidden" name="role" id="selected-role-input" value="" />
+
+          <!-- Role Selection -->
+          <div class="space-y-4 mb-8">
+            <label class="text-sm font-medium text-foreground">I am a...</label>
+            <div class="grid grid-cols-2 gap-4">
+              <!-- Professor Card -->
+              <button
+                type="button"
+                id="role-btn-professor"
+                onclick="selectRole('professor')"
+                class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center"
+              >
+                <i data-lucide="graduation-cap" id="icon-professor" class="w-8 h-8 mx-auto mb-3 text-muted-foreground"></i>
+                <span class="font-medium text-foreground block">
+                  Professor
+                </span>
+              </button>
+              
+              <!-- Student Card -->
+              <button
+                type="button"
+                id="role-btn-student"
+                onclick="selectRole('student')"
+                class="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted transition-all duration-200 text-center"
+              >
+                <i data-lucide="book-open" id="icon-student" class="w-8 h-8 mx-auto mb-3 text-muted-foreground"></i>
+                <span class="font-medium text-foreground block">
+                  Student
+                </span>
+              </button>
+            </div>
           </div>
+
+          <!-- Email Input -->
+          <div class="space-y-2 mb-4">
+            <label for="email" class="text-sm font-medium leading-none">Email Address</label>
+            <input
+              id="email"
+              type="email"
+              name="email"
+              required
+              placeholder="you@university.edu"
+              class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <!-- Password Input -->
+          <div class="space-y-2 mb-2">
+            <div class="flex items-center justify-between">
+              <label for="password" class="text-sm font-medium leading-none">Password</label>
+              <button type="button" onclick="toggleChangePassword(true)" class="text-xs text-primary hover:underline font-medium">
+                Change Password?
+              </button>
+            </div>
+            <input
+              id="password"
+              type="password"
+              name="password"
+              required
+              placeholder="••••••••"
+              class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <!-- Submit Button -->
+          <button 
+            type="submit"
+            id="submit-btn"
+            disabled
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 py-3 w-full text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md mt-6"
+          >
+            Continue
+          </button>
+        </form>
+
+        <p class="text-center text-sm text-muted-foreground mt-6">
+          Don't have an account? 
+          <a href="{% url 'voice_tutor:signup' %}" class="text-primary hover:underline font-medium">Sign Up</a>
+        </p>
+      </div>
+
+      <!-- Change Password Card -->
+      <div id="change-password-card" style="display: {% if show_change_password %}block{% else %}none{% endif %};">
+        <h2 class="font-display text-3xl font-bold mb-2">Change Password</h2>
+        <p class="text-muted-foreground mb-6">Enter your username/email, current password, and new password.</p>
+
+        {% if cp_error %}
+        <div class="bg-destructive/10 text-destructive border border-destructive/20 rounded-lg p-3 mb-6 text-sm">
+          {{ cp_error }}
         </div>
+        {% endif %}
 
-        <!-- Email Input -->
-        <div class="space-y-2 mb-4">
-          <label for="email" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Email Address</label>
-          <input
-            id="email"
-            type="email"
-            name="email"
-            required
-            placeholder="you@university.edu"
-            class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          />
-        </div>
+        <form method="POST" action="{% url 'voice_tutor:change_password' %}">
+          {% csrf_token %}
 
-        <!-- Password Input -->
-        <div class="space-y-2 mb-6">
-          <label for="password" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Password</label>
-          <input
-            id="password"
-            type="password"
-            name="password"
-            required
-            placeholder="••••••••"
-            class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          />
-        </div>
+          <!-- Username / Email -->
+          <div class="space-y-2 mb-4">
+            <label for="username" class="text-sm font-medium">Username / Email Address</label>
+            <input
+              id="username"
+              type="text"
+              name="username"
+              required
+              placeholder="you@university.edu"
+              class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
 
-        <!-- Submit Button -->
-        <button 
-          type="submit"
-          id="submit-btn"
-          disabled
-          class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 py-3 w-full text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-        >
-          Continue
-        </button>
-      </form>
+          <!-- Current Password -->
+          <div class="space-y-2 mb-4">
+            <label for="current_password" class="text-sm font-medium">Current Password</label>
+            <input
+              id="current_password"
+              type="password"
+              name="current_password"
+              required
+              placeholder="••••••••"
+              class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
 
-      <p class="text-center text-sm text-muted-foreground mt-6">
-        Don't have an account? 
-        <a href="{% url 'voice_tutor:signup' %}" class="text-primary hover:underline font-medium">Sign Up</a>
-      </p>
+          <!-- New Password -->
+          <div class="space-y-2 mb-4">
+            <label for="new_password" class="text-sm font-medium">New Password</label>
+            <input
+              id="new_password"
+              type="password"
+              name="new_password"
+              required
+              placeholder="••••••••"
+              class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="space-y-2 mb-6">
+            <label for="confirm_password" class="text-sm font-medium">Confirm Password</label>
+            <input
+              id="confirm_password"
+              type="password"
+              name="confirm_password"
+              required
+              placeholder="••••••••"
+              class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <!-- Change Button -->
+          <button 
+            type="submit"
+            class="inline-flex items-center justify-center rounded-md text-sm font-semibold transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 py-3 w-full text-lg shadow-md mb-4"
+          >
+            Change Password
+          </button>
+
+          <button
+            type="button"
+            onclick="toggleChangePassword(false)"
+            class="w-full text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+          >
+            ← Back to Sign In
+          </button>
+        </form>
+      </div>
+
     </div>
   </div>
 </div>
@@ -153,6 +252,11 @@
 {% block scripts_extra %}
 <script>
   let selectedRole = null;
+
+  function toggleChangePassword(show) {
+    document.getElementById('login-card').style.display = show ? 'none' : 'block';
+    document.getElementById('change-password-card').style.display = show ? 'block' : 'none';
+  }
 
   function selectRole(role) {
     selectedRole = role;
