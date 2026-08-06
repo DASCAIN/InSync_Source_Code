@@ -81,14 +81,9 @@
 
 {% block dashboard_scripts %}
 <script>
-  const DEFAULT_MEM0_USER_ID = '5033a22d-170c-4ac8-93ec-bf39035cdadb';
+  const DEFAULT_MEM0_USER_ID = '{{ mem0_user_id }}';
 
   function getMem0UserId() {
-    try {
-      const stored = localStorage.getItem('mem0_user_id');
-      if (stored && stored.trim()) return stored.trim();
-      localStorage.setItem('mem0_user_id', DEFAULT_MEM0_USER_ID);
-    } catch (e) {}
     return DEFAULT_MEM0_USER_ID;
   }
 

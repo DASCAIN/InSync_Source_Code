@@ -21,8 +21,15 @@
     border-color: hsl(var(--border));
   }
   .option-btn.selected {
-    background-color: hsl(var(--primary) / 0.1);
-    border-color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.1) !important;
+    border-color: hsl(var(--primary)) !important;
+  }
+  .option-btn.selected .radio-circle {
+    border-color: hsl(var(--primary)) !important;
+    background-color: hsl(var(--primary)) !important;
+  }
+  .option-btn.selected .radio-dot {
+    opacity: 1 !important;
   }
   .option-btn.correct {
     background-color: hsl(var(--success) / 0.15) !important;
@@ -96,8 +103,8 @@
               class="hidden peer"
               data-is-correct="{{ option.is_correct|lower }}"
             >
-            <div class="w-6 h-6 rounded-full border-2 border-muted-foreground flex items-center justify-center mr-4 peer-checked:border-primary peer-checked:bg-primary transition-colors flex-shrink-0">
-              <div class="w-2.5 h-2.5 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+            <div class="radio-circle w-6 h-6 rounded-full border-2 border-muted-foreground flex items-center justify-center mr-4 peer-checked:border-primary peer-checked:bg-primary transition-colors flex-shrink-0">
+              <div class="radio-dot w-2.5 h-2.5 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity"></div>
             </div>
             <span class="text-foreground font-medium group-hover:text-primary transition-colors">
               <span class="mr-2 font-bold">{{ option.letter }}.</span> {{ option.text }}

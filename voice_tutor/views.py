@@ -747,12 +747,17 @@ def voice_agent_view(request, assignment_id, question_id='Q001'):
 
 @login_required_custom()
 def tutor_chat_view(request):
-    return render(request, 'student/tutor_chat.html', {'active_tab': 'tutor_chat'})
+    user = get_session_user(request)
+    mem0_user_id = user['email'] if user and user.get('email') else DEFAULT_MEM0_USER_ID
+    return render(request, 'student/tutor_chat.html', {
+        'active_tab': 'tutor_chat',
+        'mem0_user_id': mem0_user_id
+    })
 
 @login_required_custom()
 def openai_voice_tutor_view(request):
     user = get_session_user(request)
-    mem0_user_id = DEFAULT_MEM0_USER_ID
+    mem0_user_id = user['email'] if user and user.get('email') else DEFAULT_MEM0_USER_ID
     
     context = {
         'active_tab': 'dashboard',

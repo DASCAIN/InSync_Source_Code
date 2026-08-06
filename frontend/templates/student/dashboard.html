@@ -81,36 +81,6 @@
     </div>
   </div>
 
-  <!-- Subjects Section -->
-  <div class="space-y-4">
-    <h2 class="font-display text-xl font-semibold text-foreground">📚 Subjects</h2>
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {% for subject in subjects %}
-        {% for topic in subject.topics %}
-          <a
-            href="{% url 'voice_tutor:topic_page' subject.id topic.id %}"
-            class="bg-card rounded-2xl p-5 shadow-md border border-border/50 hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer group block"
-          >
-            <div class="flex items-center gap-3 mb-3">
-              <div class="p-2 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                <i data-lucide="play" class="w-5 h-5 text-primary"></i>
-              </div>
-              <div>
-                <p class="text-xs text-muted-foreground">{{ subject.name }}</p>
-                <h3 class="font-display font-semibold text-foreground">{{ topic.name }}</h3>
-              </div>
-            </div>
-            <p class="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{{ topic.description }}</p>
-            <div class="flex gap-2 mt-3">
-              <span class="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">{{ topic.videos|length }} videos</span>
-              <span class="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">{{ topic.assignmentQuestions|length }} questions</span>
-            </div>
-          </a>
-        {% endfor %}
-      {% endfor %}
-    </div>
-  </div>
-
   <!-- Main Content Grid -->
   <div class="grid lg:grid-cols-3 gap-8">
     <!-- Assignments Section -->
