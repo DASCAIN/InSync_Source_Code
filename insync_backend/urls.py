@@ -46,7 +46,7 @@ urlpatterns = [
     inngest_serve(  
         client=inngest_client,
         functions=[rag_ingest_pdf, rag_query_pdf, rag_generate_assignment, rag_tutor_chat],
-        serve_origin=os.getenv("INNGEST_SERVE_ORIGIN", "https://www.dascain.com"),
+        serve_origin=None if os.getenv("INNGEST_DEV", "0") == "1" else os.getenv("INNGEST_SERVE_ORIGIN", "https://www.dascain.com"),
     ),
 
     # RAG API endpoints

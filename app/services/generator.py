@@ -1,9 +1,3 @@
-"""
-Content generation service.
-
-Uses Gemini LLM with RAG context to generate educational content:
-study notes, structured assignments, and AI video explanations.
-"""
 
 import asyncio
 import logging
@@ -13,7 +7,6 @@ import urllib.request
 from pathlib import Path
 import json
 import re
-
 from PIL import Image, ImageDraw, ImageFont
 from gtts import gTTS
 from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
@@ -1117,23 +1110,20 @@ def save_assignment_to_db(assignment_json: dict, subject: str, topic: str, batch
 
     return assign_code
 
-def save_notes_to_db(notes_content: str, subject: str, topic: str) -> bool:
-    """Save generated summary notes to the database."""
+
+def save_notes_to_db(notes_md: str, subject_name: str, topic_name: str) -> None:
     from voice_tutor.models import TopicMaster, SubjectMaster, SummaryNotes
     
-    topic_obj = TopicMaster.objects.filter(name=topic).first()
-    if not topic_obj:
-        # Fallback to first if mismatch
-        topic_obj = TopicMaster.objects.first()
+    subject_obj = SubjectMaster.objects.filter(name__iexact=subject_name).first()
+    if not subject_obj:
+        return
         
+    topic_obj = TopicMaster.objects.filter(name__iexact=topic_name, subject=subject_obj).first()
     if not topic_obj:
-        logger.error("No TopicMaster found to attach summary notes to.")
-        return False
+        return
         
     SummaryNotes.objects.create(
         topic=topic_obj,
-        title=f"{topic} Summary Notes",
-        content=notes_content
+        title=f"{topic_name} Notes",
+        content=notes_md
     )
-    logger.info("Saved summary notes for %s to database.", topic)
-    return True
