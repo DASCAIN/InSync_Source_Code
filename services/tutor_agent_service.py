@@ -54,7 +54,7 @@ class TutorAgentService:
         self.api_key = api_key
         self.model = model
 
-    async def chat(self, message: str, user_id: str) -> str:
+    async def chat(self, message: str, user_id: str, question_context: str = "") -> str:
         if not message.strip():
             raise ValueError("Message is empty")
         if not user_id.strip():
@@ -69,8 +69,12 @@ class TutorAgentService:
         docs = await asyncio.to_thread(retrieve_global_documents, message)
         pdf_context = "\n\n".join([doc.page_content for doc in docs]) if docs else "No specific context found in uploaded materials."
 
+        system_content = SYSTEM_PROMPT.format(MEMORIES=memories, PDF_CONTEXT=pdf_context)
+        if question_context:
+            system_content += f"\n\nCURRENT QUESTION CONTEXT (Keep this in mind for the user's questions):\n{question_context}"
+
         prompt = [
-            {"role": "system", "content": SYSTEM_PROMPT.format(MEMORIES=memories, PDF_CONTEXT=pdf_context)},
+            {"role": "system", "content": system_content},
             {"role": "user", "content": message},
         ]
 

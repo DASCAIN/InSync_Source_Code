@@ -120,7 +120,7 @@
               <p class="feedback-text font-semibold mb-1"></p>
               <p class="text-sm text-muted-foreground">Correct Answer: <span class="font-bold text-foreground">{{ question.correctAnswer }}</span></p>
             </div>
-            <a href="{% url 'voice_tutor:tutor_chat' %}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 whitespace-nowrap shrink-0 shadow-sm">
+            <a href="{% url 'voice_tutor:tutor_chat' %}?assignment_id={{ assignment.id }}&question_id={{ question.id }}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 whitespace-nowrap shrink-0 shadow-sm">
               <i data-lucide="bot" class="w-4 h-4 mr-2"></i>
               Discuss with AI Tutor
             </a>
@@ -152,6 +152,9 @@
 {% block dashboard_scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', () => {
+    const savedAnswers = {{ saved_answers_json|safe|default:"{}" }};
+    const assignmentStatus = "{{ assignment_status|default:'not_started' }}";
+
     // Handle radio button selection styling
     const optionLabels = document.querySelectorAll('.option-btn');
     const radios = document.querySelectorAll('input[type="radio"]');
@@ -167,6 +170,26 @@
         if (this.checked) {
           this.closest('.option-btn').classList.add('selected');
         }
+        
+        // Auto-save progress
+        let currentAnswers = {};
+        const allContainers = document.querySelectorAll('.options-container');
+        allContainers.forEach(c => {
+          const qId = c.dataset.questionId;
+          const selected = c.querySelector('input[type="radio"]:checked');
+          if (selected) {
+            currentAnswers[qId] = selected.value;
+          }
+        });
+        
+        fetch("{% url 'voice_tutor:api_save_assignment_progress' assignment.id %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken")
+          },
+          body: JSON.stringify({ answers: currentAnswers })
+        }).catch(err => console.error("Failed to auto-save:", err));
       });
     });
 
@@ -175,9 +198,10 @@
     const form = document.getElementById('assignment-form');
     const totalQuestions = {{ assignment.questions|length }};
 
-    submitBtn.addEventListener('click', () => {
+    const gradeAndSubmit = (isAutoSubmit = false) => {
       let correctAnswers = 0;
       let answeredQuestions = 0;
+      let collectedAnswers = {};
 
       // Grade each question
       const containers = document.querySelectorAll('.options-container');
@@ -195,6 +219,7 @@
 
         if (selectedRadio) {
           answeredQuestions++;
+          collectedAnswers[questionId] = selectedRadio.value;
           const isCorrect = selectedRadio.dataset.isCorrect === 'true';
           const selectedLabel = selectedRadio.closest('.option-btn');
 
@@ -240,25 +265,34 @@
       // Hide submit button
       submitBtn.style.display = 'none';
       
-      // Scroll to top to see results
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Scroll to top to see results if it wasn't an auto-submit on page load
+      if (!isAutoSubmit) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       
-      // Update backend
-      fetch("{% url 'voice_tutor:api_complete_assignment' assignment.id %}", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken")
-        },
-        body: JSON.stringify({ score: scorePercentage })
-      }).catch(err => console.error("Failed to update status:", err));
+      // Update backend if the user explicitly clicked submit
+      if (!isAutoSubmit) {
+        fetch("{% url 'voice_tutor:api_complete_assignment' assignment.id %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken")
+          },
+          body: JSON.stringify({ score: scorePercentage, answers: collectedAnswers })
+        }).catch(err => console.error("Failed to update status:", err));
+      }
+    };
+
+    submitBtn.addEventListener('click', () => {
+      isAssignmentCompleted = true;
+      gradeAndSubmit(false);
     });
     
     // Timer and Heartbeat Logic
     const timerDisplay = document.getElementById('timer-display');
     let timeSpentSeconds = parseInt(timerDisplay.getAttribute('data-initial-time')) || 0;
     let unsavedTimeSeconds = 0;
-    let isAssignmentCompleted = false;
+    let isAssignmentCompleted = (assignmentStatus === 'completed');
     
     // Initialize display immediately
     updateTimerDisplay();
@@ -298,10 +332,6 @@
       timerDisplay.textContent = `${mins}:${secs}`;
     }
     
-    submitBtn.addEventListener('click', () => {
-        isAssignmentCompleted = true;
-    });
-
     function getCookie(name) {
       let cookieValue = null;
       if (document.cookie && document.cookie !== '') {
@@ -315,6 +345,26 @@
         }
       }
       return cookieValue;
+    }
+
+    // Pre-fill saved answers
+    if (savedAnswers && Object.keys(savedAnswers).length > 0) {
+      Object.keys(savedAnswers).forEach(questionId => {
+        const answer = savedAnswers[questionId];
+        const container = document.querySelector(`.options-container[data-question-id="${questionId}"]`);
+        if (container) {
+          const radio = container.querySelector(`input[value="${answer}"]`);
+          if (radio) {
+            radio.checked = true;
+            radio.closest('.option-btn').classList.add('selected');
+          }
+        }
+      });
+    }
+
+    // If already completed, grade and show results immediately
+    if (isAssignmentCompleted) {
+      gradeAndSubmit(true);
     }
   });
 </script>

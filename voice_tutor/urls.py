@@ -49,6 +49,7 @@ urlpatterns = [
     path('api/openai-voice/memory', views.api_store_openai_voice_memory, name='api_store_openai_voice_memory'),
     path('api/openai-voice/recording', views.api_store_openai_voice_recording, name='api_store_openai_voice_recording'),
     path('api/student/assignment/<str:assignment_id>/complete', views.api_complete_assignment, name='api_complete_assignment'),
+    path('api/student/assignment/<str:assignment_id>/save', views.api_save_assignment_progress, name='api_save_assignment_progress'),
     path('api/student/assignment/<str:assignment_id>/time', views.api_update_time_spent, name='api_update_time_spent'),
 ]
 

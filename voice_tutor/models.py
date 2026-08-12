@@ -258,6 +258,7 @@ class StudentTopicAssessmentReview(AuditModel):
     engagement_score = models.IntegerField(default=0)
     status = models.CharField(max_length=50, default='in_progress') # completed, in_progress, not_started
     review_comments = models.TextField(null=True, blank=True)
+    saved_answers = models.JSONField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.student.name} - {self.topic.name} - {self.status}"

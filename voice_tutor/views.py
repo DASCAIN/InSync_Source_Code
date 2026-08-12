@@ -593,8 +593,21 @@ def student_dashboard(request):
         avg_engagement = round((completed_count / len(student_assignments)) * 100)
     
     voice_assignment_id = 'A001'
+    continue_assignment_id = None
     if student_assignments:
         voice_assignment_id = student_assignments[0]['id']
+        continue_assignment_id = student_assignments[0]['id']
+        # Prioritize in-progress assignments, then completed
+        for a in student_assignments:
+            if a['progress'] and a['progress']['status'] == 'in_progress':
+                continue_assignment_id = a['id']
+                break
+        else:
+            for a in student_assignments:
+                if a['progress'] and a['progress']['status'] == 'completed':
+                    continue_assignment_id = a['id']
+                    break
+                
     # Filter options for the UI
     filter_options = get_filter_options_from_mapping(request)
 
@@ -609,6 +622,7 @@ def student_dashboard(request):
         'student_assignments': student_assignments,
         'student_batchs': student_batchs,
         'voice_assignment_id': voice_assignment_id,
+        'continue_assignment_id': continue_assignment_id,
         'filters': filter_options,
     }
     return render(request, 'student/dashboard.html', context)
@@ -654,6 +668,9 @@ def take_assignment_view(request, assignment_id):
         # Set status to in_progress when the student starts the assignment
         user = get_session_user(request)
         time_spent = 0
+        saved_answers = {}
+        assignment_status = 'not_started'
+        
         if user:
             student_profile = models.UserProfile.objects.filter(user__username=user['id']).first()
             if not student_profile:
@@ -673,11 +690,17 @@ def take_assignment_view(request, assignment_id):
                     prog_obj.status = 'in_progress'
                     prog_obj.save()
                 time_spent = prog_obj.time_spent
+                assignment_status = prog_obj.status
+                if prog_obj.saved_answers:
+                    saved_answers = prog_obj.saved_answers
 
+    import json
     context = {
         'active_tab': 'assignments',
         'assignment': assignment,
         'time_spent': time_spent,
+        'assignment_status': assignment_status,
+        'saved_answers_json': json.dumps(saved_answers),
     }
     return render(request, 'student/take_assignment.html', context)
 
@@ -749,9 +772,27 @@ def voice_agent_view(request, assignment_id, question_id='Q001'):
 def tutor_chat_view(request):
     user = get_session_user(request)
     mem0_user_id = user['email'] if user and user.get('email') else DEFAULT_MEM0_USER_ID
+    
+    assignment_id = request.GET.get('assignment_id')
+    question_id = request.GET.get('question_id')
+    question_context = None
+    question_text = None
+    if question_id:
+        qs = models.AssignmentQuestion.objects.filter(code=question_id)
+        if assignment_id:
+            qs = qs.filter(assignment__code=assignment_id)
+        question_obj = qs.first()
+        if question_obj:
+            options = question_obj.options.all().order_by('option_letter')
+            options_text = ", ".join([f"{opt.option_letter}: {opt.option_text}" for opt in options])
+            question_text = question_obj.content
+            question_context = f"The student is asking for help with the following question: '{question_obj.content}'. The options are: {options_text}. The correct answer is {question_obj.correct_answer}. Provide hints and guidance to help them understand the concept, but do not give away the exact answer immediately."
+
     return render(request, 'student/tutor_chat.html', {
         'active_tab': 'tutor_chat',
-        'mem0_user_id': mem0_user_id
+        'mem0_user_id': mem0_user_id,
+        'question_text': question_text,
+        'question_context': question_context
     })
 
 @login_required_custom()
@@ -1734,13 +1775,14 @@ async def api_tutor_chat(request):
         
     message = body.get('message', '')
     user_id = body.get('user_id', '')
+    question_context = body.get('question_context', '')
     
     if not message or not user_id:
         return JsonResponse({'detail': 'message and user_id are required'}, status=400)
         
     service = get_tutor_agent_service()
     try:
-        reply = await service.chat(message, user_id)
+        reply = await service.chat(message, user_id, question_context=question_context)
         
         # Fire Inngest event so the user can review the LLM process in the background
         from app.services.inngest_client import inngest_client
@@ -1860,6 +1902,45 @@ async def api_store_openai_voice_recording(request):
 
 
 @login_required_custom()
+def api_save_assignment_progress(request, assignment_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+    try:
+        import json
+        data = json.loads(request.body)
+        answers = data.get('answers', {})
+        
+        user = get_session_user(request)
+        if not user:
+            return JsonResponse({'error': 'Unauthorized'}, status=401)
+            
+        student_profile = models.UserProfile.objects.filter(user__username=user['id']).first()
+        if not student_profile:
+            student_profile = models.UserProfile.objects.filter(role__role_code='student').first()
+            
+        assignment_obj = models.Assignment.objects.filter(code=assignment_id).first()
+        
+        if student_profile and assignment_obj:
+            prog_obj = models.StudentTopicAssessmentReview.objects.filter(
+                student=student_profile,
+                assignment=assignment_obj
+            ).first()
+            
+            if prog_obj:
+                prog_obj.saved_answers = answers
+                prog_obj.save()
+                return JsonResponse({'success': True})
+                
+        return JsonResponse({'error': 'Assessment record not found'}, status=404)
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error("Failed to save assignment progress: %s", str(e))
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required_custom()
 def api_complete_assignment(request, assignment_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -1868,6 +1949,7 @@ def api_complete_assignment(request, assignment_id):
         import json
         data = json.loads(request.body)
         score = data.get('score', 0)
+        answers = data.get('answers', {})
         
         user = get_session_user(request)
         if not user:
@@ -1889,6 +1971,7 @@ def api_complete_assignment(request, assignment_id):
                 prog_obj.status = 'completed'
                 prog_obj.score = score
                 prog_obj.questions_completed = prog_obj.total_questions
+                prog_obj.saved_answers = answers
                 prog_obj.save()
                 return JsonResponse({'success': True, 'status': 'completed', 'score': score})
                 
