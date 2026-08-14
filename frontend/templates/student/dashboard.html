@@ -290,6 +290,87 @@
       {% endfor %}
     </div>
   </div>
+  {% elif active_tab == 'progress' %}
+  <!-- Progress Section -->
+  <div class="space-y-6 max-w-5xl mx-auto">
+    <div class="flex items-center justify-between">
+      <h1 class="font-display text-3xl font-bold mb-1 text-foreground">My Progress</h1>
+    </div>
+
+    <!-- Score Trend Chart -->
+    <div class="bg-card rounded-2xl shadow-sm border border-border/50 p-6">
+      <h2 class="text-xl font-semibold mb-4 text-foreground">Score Trend</h2>
+      <div class="relative h-80 w-full">
+        <canvas id="scoreTrendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const chartDataRaw = '{{ chart_data_json|escapejs }}';
+      let chartData = { labels: [], scores: [] };
+      if (chartDataRaw) {
+        try {
+          chartData = JSON.parse(chartDataRaw);
+        } catch (e) {
+          console.error("Error parsing chart data", e);
+        }
+      }
+
+      const ctx = document.getElementById('scoreTrendChart');
+      if (ctx) {
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: chartData.labels,
+            datasets: [{
+              label: 'Assignment Score',
+              data: chartData.scores,
+              borderColor: 'hsl(221, 83%, 53%)',
+              backgroundColor: 'hsla(221, 83%, 53%, 0.1)',
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: 'hsl(221, 83%, 53%)',
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                padding: 12,
+                displayColors: false,
+                callbacks: {
+                  label: function(context) { return 'Score: ' + context.parsed.y + '%'; }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                grid: { color: 'rgba(0, 0, 0, 0.05)', drawBorder: false },
+                ticks: { color: '#6b7280' }
+              },
+              x: {
+                grid: { display: false, drawBorder: false },
+                ticks: { color: '#6b7280' }
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
   {% endif %}
 </div>
 {% endblock %}

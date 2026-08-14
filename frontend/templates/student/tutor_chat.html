@@ -4,7 +4,7 @@
 {% block title %}Chat with AI Tutor — InSync{% endblock %}
 
 {% block inner_content %}
-<div class="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
+<div class="h-[calc(100vh-4rem)] lg:h-screen max-h-screen overflow-hidden bg-gradient-to-b from-background to-muted/30 flex flex-col">
   <!-- Header Bar -->
   <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
     <div class="container mx-auto px-6 py-4 flex items-center justify-between">
@@ -15,7 +15,7 @@
         <i data-lucide="arrow-left" class="w-5 h-5"></i>
         <span>Back</span>
       </a>
-      <div class="text-center">
+      <div class="text-center absolute left-1/2 -translate-x-1/2 pointer-events-none">
         <h1 class="font-display font-semibold text-lg text-foreground">Chat with AI Tutor</h1>
         <p class="text-xs text-muted-foreground">Ask questions and get step-by-step help.</p>
       </div>
@@ -23,14 +23,28 @@
     </div>
   </div>
 
-  <!-- Chat Area -->
-  <div class="container mx-auto px-6 py-8 flex-1 flex flex-col max-w-4xl">
-    <div class="bg-card rounded-2xl shadow-lg border border-border/60 flex flex-col flex-1 p-6 gap-4 min-h-[500px]">
+  <!-- Main Content Area -->
+  <div class="container mx-auto px-4 py-4 lg:px-6 lg:py-6 flex-1 flex gap-4 lg:gap-6 max-w-6xl min-h-0 overflow-hidden">
+    <!-- Chat History Sidebar -->
+    <div id="chat-sidebar" class="w-56 shrink-0 hidden md:flex flex-col bg-card rounded-2xl shadow-lg border border-border/60 p-4 transition-all duration-300 min-h-0">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-foreground">Chat History</h2>
+        <button onclick="startNewChat()" class="text-primary bg-primary/10 hover:bg-primary/20 p-1.5 rounded-md transition-colors" title="New Chat">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div id="chat-history-list" class="flex flex-col gap-2 overflow-y-auto pr-1 flex-1 min-h-0">
+         <div class="text-sm text-muted-foreground text-center mt-4">Loading history...</div>
+      </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="bg-card rounded-2xl shadow-lg border border-border/60 flex flex-col flex-1 p-4 lg:p-6 gap-3 lg:gap-4 min-h-0 overflow-hidden">
       
       <!-- Messages List -->
       <div
         id="chat-container"
-        class="flex flex-col gap-4 overflow-y-auto flex-1 pr-2 max-h-[55vh]"
+        class="flex flex-col gap-4 overflow-y-auto flex-1 pr-2 min-h-0 relative"
       >
         <!-- Welcome prompt -->
         {% if question_text %}
@@ -92,7 +106,7 @@
 {% block dashboard_scripts %}
 <script>
   const DEFAULT_MEM0_USER_ID = '{{ mem0_user_id }}';
-
+  
   function getMem0UserId() {
     return DEFAULT_MEM0_USER_ID;
   }
@@ -103,10 +117,144 @@
   const thinkingIndicator = document.getElementById('thinking-indicator');
   const thinkingDotsSpan = document.getElementById('thinking-dots');
   const emptyStateMsg = document.getElementById('empty-state-msg');
+  const historyList = document.getElementById('chat-history-list');
   const mem0UserId = getMem0UserId();
 
   let isLoading = false;
   let dotsInterval = null;
+  let currentSessionId = null;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const assignmentId = urlParams.get('assignment_id');
+  const questionId = urlParams.get('question_id');
+
+  // Load chat sessions on startup
+  async function loadChatSessions() {
+    try {
+      const res = await fetch('/api/tutor/chat-sessions');
+      if (res.ok) {
+        const data = await res.json();
+        renderChatSessions(data.sessions);
+      }
+    } catch(e) {
+      console.error('Failed to load chat sessions:', e);
+      historyList.innerHTML = '<div class="text-sm text-destructive text-center mt-4">Failed to load history</div>';
+    }
+  }
+
+  function renderChatSessions(sessions) {
+    historyList.innerHTML = '';
+    if (sessions.length === 0) {
+      historyList.innerHTML = '<div class="text-sm text-muted-foreground text-center mt-4">No past chats</div>';
+      return;
+    }
+    
+    sessions.forEach(session => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'relative w-full mb-2 flex items-center';
+      
+      const btn = document.createElement('button');
+      btn.className = `flex-1 text-left px-4 py-3 rounded-xl text-sm transition-all duration-200 truncate pr-8 border shadow-sm ${
+        currentSessionId === session.session_id 
+          ? 'bg-primary/5 border-primary/30 font-semibold text-primary ring-1 ring-primary/20' 
+          : 'bg-card border-border/40 hover:border-border/80 hover:bg-muted/30 text-muted-foreground hover:text-foreground hover:shadow-md'
+      }`;
+      btn.textContent = session.title;
+      btn.onclick = () => loadChatHistory(session.session_id);
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'absolute right-2 p-1 text-muted-foreground hover:text-destructive transition-colors bg-card rounded shadow-sm border border-border';
+      delBtn.style.display = 'none';
+      delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>';
+      delBtn.title = "Delete Chat";
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteChatSession(session.session_id);
+      };
+      
+      wrapper.onmouseenter = () => { delBtn.style.display = 'block'; };
+      wrapper.onmouseleave = () => { delBtn.style.display = 'none'; };
+      
+      wrapper.appendChild(btn);
+      wrapper.appendChild(delBtn);
+      historyList.appendChild(wrapper);
+    });
+  }
+
+  async function deleteChatSession(sessionId) {
+    if (!confirm('Are you sure you want to delete this chat?')) return;
+    
+    try {
+      const res = await fetch(`/api/tutor/chat-sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        }
+      });
+      if (res.ok) {
+        if (currentSessionId === sessionId) {
+          startNewChat();
+        } else {
+          loadChatSessions();
+        }
+      } else {
+        alert('Failed to delete chat.');
+      }
+    } catch(e) {
+      console.error(e);
+      alert('Error deleting chat.');
+    }
+  }
+
+  async function loadChatHistory(sessionId) {
+    if (isLoading) return;
+    currentSessionId = sessionId;
+    
+    // Optimistic UI update for sidebar
+    const buttons = historyList.querySelectorAll('button');
+    buttons.forEach(btn => {
+      btn.className = 'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1 truncate hover:bg-muted text-muted-foreground hover:text-foreground';
+    });
+    
+    // Clean chat container
+    chatContainer.innerHTML = '';
+    
+    try {
+      const res = await fetch(`/api/tutor/chat-history/${sessionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        data.messages.forEach(msg => {
+          appendMessage(msg.role, msg.content, false);
+        });
+      }
+    } catch(e) {
+      console.error('Failed to load chat history:', e);
+    }
+    
+    // Reload sessions to update active state
+    loadChatSessions();
+  }
+
+  function startNewChat() {
+    if (isLoading) return;
+    currentSessionId = null;
+    chatContainer.innerHTML = `
+      {% if question_text %}
+        <div class="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-2 text-sm text-foreground my-auto mt-4 mx-4">
+          <div class="font-semibold mb-1 flex items-center gap-2 text-primary">
+            <i data-lucide="help-circle" class="w-4 h-4"></i>
+            Discussing Question
+          </div>
+          <div class="opacity-90">{{ question_text|escapejs }}</div>
+        </div>
+      {% else %}
+        <div id="empty-state-msg" class="text-muted-foreground text-sm text-center my-auto">
+          Start the conversation with a question or problem you want help with.
+        </div>
+      {% endif %}
+    `;
+    loadChatSessions();
+  }
 
   function validateSendButton() {
     const text = chatTextarea.value.trim();
@@ -145,8 +293,9 @@
   }
 
   function appendMessage(role, text, isTypewriter = false) {
-    if (emptyStateMsg) {
-      emptyStateMsg.style.display = 'none';
+    const emptyMsg = document.getElementById('empty-state-msg');
+    if (emptyMsg) {
+      emptyMsg.style.display = 'none';
     }
 
     const wrapper = document.createElement('div');
@@ -204,7 +353,10 @@
         body: JSON.stringify({
           message: trimmed,
           user_id: mem0UserId,
-          question_context: questionContext
+          question_context: questionContext,
+          session_id: currentSessionId,
+          assignment_id: assignmentId,
+          question_id: questionId
         })
       });
 
@@ -215,6 +367,13 @@
 
       const data = await response.json();
       const reply = data?.response || '';
+      
+      if (data.session_id) {
+        const isNewSession = currentSessionId !== data.session_id;
+        currentSessionId = data.session_id;
+        if (isNewSession) loadChatSessions(); // refresh sidebar if a new session was created
+      }
+      
       if (!reply) {
         throw new Error('Tutor returned an empty response.');
       }
@@ -249,5 +408,10 @@
     }
     return cookieValue;
   }
+  
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    loadChatSessions();
+  });
 </script>
 {% endblock %}

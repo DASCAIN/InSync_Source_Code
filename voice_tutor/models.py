@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -298,3 +299,32 @@ class ProfessorAllocation(AuditModel):
 
     def __str__(self):
         return f"{self.batch.name} - {self.subject.name} - {self.professor.name}"
+
+class ChatSession(models.Model):
+    session_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_sessions')
+    assignment = models.ForeignKey('Assignment', on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_sessions')
+    question = models.ForeignKey('AssignmentQuestion', on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_sessions')
+    title = models.CharField(max_length=255, default="New Chat")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'chat_sessions'
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.session_id})"
+
+class ChatMessage(models.Model):
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages')
+    role = models.CharField(max_length=50) # 'user' or 'assistant' or 'system'
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'chat_messages'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.role} at {self.created_at}"

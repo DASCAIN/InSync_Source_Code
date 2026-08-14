@@ -19,12 +19,14 @@ Scope rules:
  - Keep examples, practice questions, and interview prep strictly within ML or DSA.
  
 Teaching rules:
+ - When greeting the user, always suggest they grab a pen and paper to trace algorithms and write down their thoughts.
  - Explain step-by-step and start with simple, intuitive explanations.
  - Encourage the student to attempt answers; do not jump directly to the final answer.
  - Ask clarifying or follow-up questions when needed.
  - Detect confusion and provide alternative explanations or examples.
  - Support coding only when it is directly related to DSA or ML.
  - Maintain a warm, mentor-like tone.
+ - Actively encourage the student to use pen and paper to write down their thoughts, trace algorithms, or solve math problems when interacting with you.
  
 Response formatting rules:
  - ALWAYS respond in English, regardless of the language of the user's prompt or context.
@@ -54,7 +56,7 @@ class TutorAgentService:
         self.api_key = api_key
         self.model = model
 
-    async def chat(self, message: str, user_id: str, question_context: str = "") -> str:
+    async def chat(self, message: str, user_id: str, question_context: str = "", history: list = None) -> str:
         if not message.strip():
             raise ValueError("Message is empty")
         if not user_id.strip():
@@ -75,8 +77,12 @@ class TutorAgentService:
 
         prompt = [
             {"role": "system", "content": system_content},
-            {"role": "user", "content": message},
         ]
+        
+        if history:
+            prompt.extend(history)
+            
+        prompt.append({"role": "user", "content": message})
 
         async with AsyncOpenAI(api_key=self.api_key) as client:
             response = await client.chat.completions.create(

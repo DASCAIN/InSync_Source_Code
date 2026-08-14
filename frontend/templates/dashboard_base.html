@@ -34,6 +34,15 @@
     id="dashboard-sidebar"
     class="fixed top-0 left-0 z-40 h-screen w-64 bg-sidebar transform -translate-x-full lg:translate-x-0 transition-transform duration-300"
   >
+    <!-- Desktop Sidebar Close Tab (Visible when sidebar is open) -->
+    <button
+      onclick="toggleDesktopSidebar()"
+      class="hidden lg:flex absolute top-1/2 -translate-y-1/2 right-0 translate-x-full z-50 pr-1.5 pl-2 py-6 rounded-r-2xl bg-sidebar border border-l-0 border-sidebar-border shadow-md hover:pr-3 hover:bg-sidebar-accent text-sidebar-foreground transition-all duration-300"
+      title="Close Sidebar"
+    >
+      <i data-lucide="chevron-left" class="w-5 h-5"></i>
+    </button>
+
     <div class="flex flex-col h-full">
       <!-- Logo -->
       <div class="h-16 px-6 flex items-center gap-3 border-b border-sidebar-border">
@@ -188,8 +197,18 @@
     </div>
   </aside>
 
+  <!-- Desktop Sidebar Open Button (Visible when sidebar is closed) -->
+  <button
+    id="desktop-sidebar-open"
+    onclick="toggleDesktopSidebar()"
+    class="hidden lg:flex fixed top-1/2 -translate-y-1/2 left-0 z-50 pl-1.5 pr-2 py-6 rounded-r-2xl bg-card border border-l-0 border-border shadow-md hover:pr-3 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300 opacity-0 pointer-events-none"
+    title="Open Sidebar"
+  >
+    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+  </button>
+
   <!-- Main Content wrapper -->
-  <main class="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
+  <main id="main-content" class="lg:ml-64 pt-16 lg:pt-0 min-h-screen transition-all duration-300">
     {% block inner_content %}{% endblock %}
   </main>
 </div>
@@ -199,6 +218,7 @@
 <script>
   let isSidebarOpen = false;
 
+  // Mobile toggle
   function toggleSidebar() {
     const sidebar = document.getElementById('dashboard-sidebar');
     const overlay = document.getElementById('sidebar-overlay');
@@ -215,6 +235,58 @@
       icon.setAttribute('data-lucide', 'menu');
     }
     lucide.createIcons();
+  }
+
+  // Desktop toggle
+  let isDesktopSidebarOpen = localStorage.getItem('desktopSidebarState') !== 'closed';
+
+  // Initialize state immediately to avoid UI flashing
+  (function initSidebarState() {
+    const sidebar = document.getElementById('dashboard-sidebar');
+    const mainContent = document.getElementById('main-content');
+    const openBtn = document.getElementById('desktop-sidebar-open');
+    
+    if (!sidebar || !mainContent || !openBtn) return;
+
+    // Temporarily remove transition classes to instantly apply state
+    sidebar.classList.remove('transition-transform', 'duration-300');
+    mainContent.classList.remove('transition-all', 'duration-300');
+
+    if (!isDesktopSidebarOpen) {
+      sidebar.classList.remove('lg:translate-x-0');
+      mainContent.classList.remove('lg:ml-64');
+      openBtn.classList.remove('opacity-0', 'pointer-events-none');
+      openBtn.classList.add('opacity-100', 'pointer-events-auto');
+    }
+
+    // Restore transition classes for future toggles
+    setTimeout(() => {
+      sidebar.classList.add('transition-transform', 'duration-300');
+      mainContent.classList.add('transition-all', 'duration-300');
+    }, 10);
+  })();
+
+  function toggleDesktopSidebar() {
+    const sidebar = document.getElementById('dashboard-sidebar');
+    const mainContent = document.getElementById('main-content');
+    const openBtn = document.getElementById('desktop-sidebar-open');
+
+    isDesktopSidebarOpen = !isDesktopSidebarOpen;
+    localStorage.setItem('desktopSidebarState', isDesktopSidebarOpen ? 'open' : 'closed');
+    
+    if (isDesktopSidebarOpen) {
+      // Open sidebar
+      sidebar.classList.add('lg:translate-x-0');
+      mainContent.classList.add('lg:ml-64');
+      openBtn.classList.add('opacity-0', 'pointer-events-none');
+      openBtn.classList.remove('opacity-100', 'pointer-events-auto');
+    } else {
+      // Close sidebar
+      sidebar.classList.remove('lg:translate-x-0');
+      mainContent.classList.remove('lg:ml-64');
+      openBtn.classList.remove('opacity-0', 'pointer-events-none');
+      openBtn.classList.add('opacity-100', 'pointer-events-auto');
+    }
   }
 </script>
 {% block dashboard_scripts %}{% endblock %}

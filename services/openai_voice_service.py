@@ -18,6 +18,7 @@ TRANSCRIPTS_DIR = ARTIFACTS_DIR / "transcripts"
 RECORDINGS_DIR = ARTIFACTS_DIR / "recordings"
 
 VOICE_STYLE_PROMPT = """Voice delivery rules:
+ - At the very beginning of the session, warmly suggest that the student grabs a pen and paper to trace their thoughts and solve problems.
  - Sound deeply calm, uplifting, and motivating, like a patient mentor who believes the student can improve.
  - Use a warm, reassuring voice with a steady relaxed pace; never sound rushed, stern, flat, or robotic.
  - Add gentle energy when encouraging progress, but keep the overall delivery peaceful and grounded.

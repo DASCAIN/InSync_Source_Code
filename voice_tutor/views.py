@@ -584,6 +584,22 @@ def student_dashboard(request):
     # Calculate stats
     all_progress = models.StudentTopicAssessmentReview.objects.filter(student=student_profile)
     completed_count = all_progress.filter(status='completed').count()
+    
+    # Prepare Chart Data for Progress Tab
+    chart_data = {
+        'labels': [],
+        'scores': []
+    }
+    completed_assessments = all_progress.filter(status='completed', score__isnull=False).order_by('updated_at')
+    for assessment in completed_assessments:
+        title = assessment.assignment.title if assessment.assignment else assessment.topic.name
+        if len(title) > 20:
+            title = title[:17] + "..."
+        chart_data['labels'].append(title)
+        chart_data['scores'].append(assessment.score)
+        
+    chart_data_json = json.dumps(chart_data)
+    completed_count = all_progress.filter(status='completed').count()
     in_progress_count = all_progress.filter(status='in_progress').count()
     
     total_time_spent = sum([p.time_spent for p in all_progress])
@@ -624,6 +640,7 @@ def student_dashboard(request):
         'voice_assignment_id': voice_assignment_id,
         'continue_assignment_id': continue_assignment_id,
         'filters': filter_options,
+        'chart_data_json': chart_data_json,
     }
     return render(request, 'student/dashboard.html', context)
 
@@ -1776,13 +1793,82 @@ async def api_tutor_chat(request):
     message = body.get('message', '')
     user_id = body.get('user_id', '')
     question_context = body.get('question_context', '')
+    session_id = body.get('session_id')
+    assignment_id = body.get('assignment_id')
+    question_id = body.get('question_id')
     
     if not message or not user_id:
         return JsonResponse({'detail': 'message and user_id are required'}, status=400)
         
+    from asgiref.sync import sync_to_async
+    from django.contrib.auth.models import User
+    from .models import ChatSession, ChatMessage, Assignment, AssignmentQuestion
+
+    @sync_to_async
+    def process_chat_session():
+        user = User.objects.filter(email=user_id).first()
+        if not user:
+            user = request.user if request.user.is_authenticated else None
+            
+        session = None
+        if session_id:
+            session = ChatSession.objects.filter(session_id=session_id, user=user).first()
+            
+        if not session and user:
+            assignment = Assignment.objects.filter(code=assignment_id).first() if assignment_id else None
+            question = AssignmentQuestion.objects.filter(code=question_id).first() if question_id else None
+            title = f"Chat about {question.code}" if question else "New Chat"
+            
+            # If session_id was provided but not found, use it, else let default kick in
+            if session_id:
+                session = ChatSession.objects.create(session_id=session_id, user=user, assignment=assignment, question=question, title=title)
+            else:
+                session = ChatSession.objects.create(user=user, assignment=assignment, question=question, title=title)
+                
+        history = []
+        if session:
+            # fetch history
+            history = [{"role": msg.role, "content": msg.content} for msg in session.messages.all().order_by('created_at')]
+            # save user message
+            ChatMessage.objects.create(session=session, role="user", content=message)
+            
+        return session, history
+
+    session, history = await process_chat_session()
+        
     service = get_tutor_agent_service()
     try:
-        reply = await service.chat(message, user_id, question_context=question_context)
+        reply = await service.chat(message, user_id, question_context=question_context, history=history)
+        
+        if session:
+            @sync_to_async
+            def save_ai_message():
+                ChatMessage.objects.create(session=session, role="assistant", content=reply)
+                return session.title == "New Chat"
+            needs_title = await save_ai_message()
+            
+            if needs_title:
+                try:
+                    from openai import AsyncOpenAI
+                    import os
+                    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+                    title_response = await client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant that generates extremely short (2-4 words) titles for chat conversations based on the user's first message. Just return the title, no quotes, no punctuation."},
+                            {"role": "user", "content": message}
+                        ],
+                        max_tokens=10
+                    )
+                    new_title = title_response.choices[0].message.content.strip().strip('"').strip("'")
+                    @sync_to_async
+                    def save_title():
+                        session.title = new_title
+                        session.save()
+                    await save_title()
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Failed to generate title: {e}")
         
         # Fire Inngest event so the user can review the LLM process in the background
         from app.services.inngest_client import inngest_client
@@ -1797,7 +1883,7 @@ async def api_tutor_chat(request):
             )
         )
 
-        return JsonResponse({"response": reply})
+        return JsonResponse({"response": reply, "session_id": str(session.session_id) if session else None})
     except ValueError as exc:
         return JsonResponse({'detail': str(exc)}, status=400)
     except Exception as exc:
@@ -2124,3 +2210,121 @@ def student_note_detail(request, note_id):
         'source_assignment': source_assignment
     }
     return render(request, 'student/view_notes.html', context)
+
+
+@csrf_exempt
+async def api_get_chat_sessions(request):
+    if request.method != 'GET':
+        return JsonResponse({'detail': 'Method not allowed'}, status=405)
+        
+    from asgiref.sync import sync_to_async
+    from .models import ChatSession
+    from django.contrib.auth.models import User
+    
+    @sync_to_async
+    def fetch_sessions():
+        session_user = request.session.get('user')
+        if not session_user:
+            return None
+        email = session_user.get('id')
+        user = User.objects.filter(username=email).first() or User.objects.filter(email=email).first()
+        if not user:
+            return None
+            
+        sessions = ChatSession.objects.filter(user=user).select_related('assignment', 'question')
+        return [
+            {
+                "session_id": str(s.session_id),
+                "title": s.title,
+                "assignment_id": s.assignment.code if s.assignment else None,
+                "question_id": s.question.code if s.question else None,
+                "updated_at": s.updated_at.isoformat()
+            } for s in sessions
+        ]
+        
+    try:
+        data = await fetch_sessions()
+        if data is None:
+            return JsonResponse({'detail': 'Not authenticated'}, status=401)
+        return JsonResponse({"sessions": data})
+    except Exception as e:
+        return JsonResponse({'detail': str(e)}, status=500)
+
+
+@csrf_exempt
+async def api_get_chat_history(request, session_id):
+    if request.method != 'GET':
+        return JsonResponse({'detail': 'Method not allowed'}, status=405)
+        
+    from asgiref.sync import sync_to_async
+    from .models import ChatSession
+    from django.contrib.auth.models import User
+    
+    @sync_to_async
+    def fetch_history():
+        session_user = request.session.get('user')
+        if not session_user:
+            return "UNAUTH"
+        email = session_user.get('id')
+        user = User.objects.filter(username=email).first() or User.objects.filter(email=email).first()
+        if not user:
+            return "UNAUTH"
+            
+        session = ChatSession.objects.filter(session_id=session_id, user=user).first()
+        if not session:
+            return None
+        return [
+            {
+                "role": msg.role,
+                "content": msg.content,
+                "created_at": msg.created_at.isoformat()
+            } for msg in session.messages.all()
+        ]
+        
+    try:
+        history = await fetch_history()
+        if history == "UNAUTH":
+            return JsonResponse({'detail': 'Not authenticated'}, status=401)
+        if history is None:
+            return JsonResponse({'detail': 'Session not found'}, status=404)
+        return JsonResponse({"messages": history})
+    except Exception as e:
+        return JsonResponse({'detail': str(e)}, status=500)
+
+
+@csrf_exempt
+async def api_delete_chat_session(request, session_id):
+    if request.method != 'DELETE':
+        return JsonResponse({'detail': 'Method not allowed'}, status=405)
+        
+    from asgiref.sync import sync_to_async
+    from .models import ChatSession
+    from django.contrib.auth.models import User
+    
+    @sync_to_async
+    def delete_session():
+        session_user = request.session.get('user')
+        if not session_user:
+            return "UNAUTH"
+        email = session_user.get('id')
+        user = User.objects.filter(username=email).first() or User.objects.filter(email=email).first()
+        if not user:
+            return "UNAUTH"
+            
+        session = ChatSession.objects.filter(session_id=session_id, user=user).first()
+        if not session:
+            return None
+        session.delete()
+        return True
+        
+    try:
+        result = await delete_session()
+        if result == "UNAUTH":
+            return JsonResponse({'detail': 'Not authenticated'}, status=401)
+        if result is None:
+            return JsonResponse({'detail': 'Session not found'}, status=404)
+        return JsonResponse({"detail": "Session deleted"})
+    except Exception as e:
+        return JsonResponse({'detail': str(e)}, status=500)
+
+
