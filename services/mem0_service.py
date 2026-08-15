@@ -30,7 +30,11 @@ class Mem0Service:
     async def retrieve_memories(self, message: str, user_id: str) -> str:
         if not message.strip():
             raise ValueError("Search message is empty")
-        results = await self._client().search(message, filters={"user_id": user_id})
+        
+        # Append a broad context string to ensure vector search matches general learning preferences and weak topics
+        search_query = f"{message} user learning preferences, weak topics, and academic subjects"
+        
+        results = await self._client().search(search_query, filters={"user_id": user_id})
         memories = self._extract_memories(results)
         return "\n".join(memories) if memories else "No memories found"
 
