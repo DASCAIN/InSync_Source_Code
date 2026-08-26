@@ -3,55 +3,171 @@
 
 {% block title %}Guided Assignment Chat — InSync{% endblock %}
 
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
+<style>
+  .guided-chat-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 2rem);
+    background-color: var(--prof-bg);
+  }
+  .guided-chat-topbar {
+    background-color: var(--prof-card-bg);
+    border-bottom: 1px solid var(--prof-border);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .guided-chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    max-width: 64rem;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .guided-chat-card {
+    background-color: var(--prof-card-bg);
+    border-radius: var(--prof-radius-xl);
+    border: 1px solid var(--prof-border);
+    box-shadow: var(--prof-shadow-lg);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .chat-input-area {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--prof-border);
+    background-color: var(--prof-card-bg);
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+  }
+  .chat-textarea {
+    flex: 1;
+    min-height: 2.75rem;
+    max-height: 8rem;
+    border-radius: var(--prof-radius-lg);
+    border: 1px solid var(--prof-border);
+    background-color: var(--prof-bg);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    transition: var(--prof-transition);
+  }
+  .chat-textarea:focus {
+    border-color: var(--prof-primary);
+    box-shadow: 0 0 0 2px var(--prof-primary-light);
+  }
+  .msg-bubble-wrapper {
+    display: flex;
+  }
+  .msg-bubble-wrapper.user {
+    justify-content: flex-end;
+  }
+  .msg-bubble-wrapper.assistant {
+    justify-content: flex-start;
+  }
+  .msg-bubble {
+    max-width: 80%;
+    border-radius: var(--prof-radius-xl);
+    padding: 0.75rem 1rem;
+    box-shadow: var(--prof-shadow-sm);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .msg-bubble.user {
+    background-color: var(--prof-primary);
+    color: white;
+    border-bottom-right-radius: 0.25rem;
+  }
+  .msg-bubble.assistant {
+    background-color: var(--prof-bg);
+    color: var(--prof-text-main);
+    border: 1px solid var(--prof-border);
+    border-bottom-left-radius: 0.25rem;
+  }
+  .msg-bubble.success {
+    background-color: var(--prof-success-light);
+    color: var(--prof-text-main);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-bottom-left-radius: 0.25rem;
+  }
+</style>
+{% endblock %}
+
 {% block inner_content %}
-<div class="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
-  <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-    <div class="container mx-auto px-6 py-4 flex items-center justify-between">
-      <a href="{% url 'voice_tutor:professor_dashboard' %}" class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-        <i data-lucide="arrow-left" class="w-5 h-5"></i>
-        <span>Back to Dashboard</span>
+<div class="prof-scope">
+  <div class="guided-chat-layout">
+    
+    <div class="guided-chat-topbar">
+      <a href="{% url 'voice_tutor:professor_dashboard' %}" class="prof-icon-button" style="background: transparent; color: var(--prof-text-muted); display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid transparent;">
+        <i data-lucide="arrow-left" style="width: 1.25rem; height: 1.25rem;"></i>
+        <span style="font-weight: 500; font-size: 0.875rem;">Back to Dashboard</span>
       </a>
-      <div class="text-center">
-        <h1 class="font-display font-semibold text-lg text-foreground">Guided Assignment: {{ subject }} - {{ topic }}</h1>
-        <p class="text-xs text-muted-foreground">Instruct the AI to customize the assignment generation.</p>
+      <div style="text-align: center;">
+        <h1 class="prof-header-title" style="font-size: 1.125rem; margin-bottom: 0.25rem;">Guided Assignment: {{ subject }} - {{ topic }}</h1>
+        <p class="prof-stat-subtext" style="margin: 0;">Instruct the AI to customize the assignment generation.</p>
       </div>
-      <div class="w-16"></div>
+      <div style="width: 6rem;"></div>
     </div>
-  </div>
 
-  <div class="container mx-auto px-6 py-8 flex-1 flex flex-col max-w-4xl">
-    <div class="bg-card rounded-2xl shadow-lg border border-border/60 flex flex-col flex-1 p-6 gap-4 min-h-[500px]">
-      
-      <div id="chat-container" class="flex flex-col gap-4 overflow-y-auto flex-1 pr-2 max-h-[55vh]">
-        <div id="empty-state-msg" class="text-muted-foreground text-sm text-center my-auto">
-          Connected to Guided Assignment Agent.<br>
-          <span class="text-xs">Context loaded from {{ files|length }} file(s).</span><br><br>
-          Tell the agent how to build the assignment. E.g., "Create 5 multiple choice questions focused on the mathematical formulas in this topic."
+    <div class="guided-chat-main">
+      <div class="guided-chat-card">
+        
+        <div id="chat-container" class="chat-messages">
+          <div id="empty-state-msg" style="text-align: center; margin: auto 0; color: var(--prof-text-muted); font-size: 0.875rem; padding: 2rem;">
+            Connected to Guided Assignment Agent.<br>
+            <span style="font-size: 0.75rem;">Context loaded from {{ files|length }} file(s).</span><br><br>
+            Tell the agent how to build the assignment. E.g., "Create 5 multiple choice questions focused on the mathematical formulas in this topic."
+          </div>
         </div>
-      </div>
 
-      <div id="thinking-indicator" class="hidden flex justify-start">
-        <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm bg-background border border-border text-muted-foreground">
-          Agent is thinking<span id="thinking-dots">...</span>
+        <div id="thinking-indicator" style="display: none; padding: 0 1.5rem 1rem 1.5rem;">
+          <div class="msg-bubble-wrapper assistant">
+            <div class="msg-bubble assistant" style="color: var(--prof-text-muted);">
+              Agent is thinking<span id="thinking-dots">...</span>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="flex items-end gap-3 mt-auto border-t pt-4 border-border/40">
-        <textarea
-          id="chat-input"
-          placeholder="Type your instructions..."
-          class="flex min-h-[44px] w-full rounded-xl border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary resize-none transition-all"
-          rows="1"
-          oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
-        ></textarea>
-        <button
-          id="send-btn"
-          class="inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-[44px] w-[44px] shrink-0"
-        >
-          <i data-lucide="send" class="w-5 h-5"></i>
-        </button>
+        <div class="chat-input-area">
+          <textarea
+            id="chat-input"
+            placeholder="Type your instructions..."
+            class="chat-textarea"
+            rows="1"
+            oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+          ></textarea>
+          <button
+            id="send-btn"
+            class="prof-btn-primary"
+            style="width: 2.75rem; height: 2.75rem; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
+          >
+            <i data-lucide="send" style="width: 1.25rem; height: 1.25rem; margin: 0;"></i>
+          </button>
+        </div>
+        
       </div>
     </div>
+    
   </div>
 </div>
 {% endblock %}
@@ -68,26 +184,22 @@
   let thinkingInterval;
 
   function appendMessage(role, content, assignmentCreated = false) {
-    if (emptyStateMsg) emptyStateMsg.remove();
+    if (emptyStateMsg) emptyStateMsg.style.display = 'none';
     
-    // Strip "**" from the content to remove raw markdown bold tags
     const cleanContent = content.replace(/\*\*/g, '');
     
     const div = document.createElement('div');
-    div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+    div.className = `msg-bubble-wrapper ${role}`;
     
-    let bubbleClass = role === 'user' 
-      ? 'bg-primary text-primary-foreground rounded-br-sm' 
-      : 'bg-muted/50 text-black border border-border/50 rounded-bl-sm';
-      
+    let bubbleClass = role;
     if (assignmentCreated) {
-        bubbleClass = 'bg-success/20 text-black border border-success/30 rounded-bl-sm';
+        bubbleClass = 'success';
     }
 
     div.innerHTML = `
-      <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm ${bubbleClass} shadow-sm">
-        <p class="whitespace-pre-wrap leading-relaxed message-text"></p>
-        ${assignmentCreated ? '<a href="/professor/assignments" class="mt-2 text-xs underline font-medium block">View Assignments</a>' : ''}
+      <div class="msg-bubble ${bubbleClass}">
+        <p class="message-text" style="margin: 0; white-space: pre-wrap;"></p>
+        ${assignmentCreated ? '<a href="/professor/assignments" style="display: block; margin-top: 0.75rem; font-size: 0.75rem; font-weight: 600; text-decoration: underline; color: var(--prof-primary);">View Assignments</a>' : ''}
       </div>
     `;
     chatContainer.appendChild(div);
@@ -113,7 +225,7 @@
   }
 
   function startThinking() {
-    thinkingIndicator.classList.remove('hidden');
+    thinkingIndicator.style.display = 'block';
     chatContainer.scrollTop = chatContainer.scrollHeight;
     let dots = 0;
     const dotSpan = document.getElementById('thinking-dots');
@@ -124,7 +236,7 @@
   }
 
   function stopThinking() {
-    thinkingIndicator.classList.add('hidden');
+    thinkingIndicator.style.display = 'none';
     clearInterval(thinkingInterval);
   }
 

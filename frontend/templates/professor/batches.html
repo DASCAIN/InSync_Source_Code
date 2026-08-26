@@ -3,88 +3,94 @@
 
 {% block title %}Batches — InSync{% endblock %}
 
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
+{% endblock %}
+
 {% block inner_content %}
-<div class="p-6 lg:p-8 space-y-8">
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div>
-      <h1 class="font-display text-3xl font-bold mb-1 text-foreground">Batches</h1>
-      <p class="text-muted-foreground">Manage your student groups and batches.</p>
-    </div>
-  </div>
-
-  <form method="GET" class="bg-card p-4 rounded-2xl shadow-sm border border-border/50 flex flex-wrap gap-4 items-end mb-6">
-    <div class="flex-1 min-w-[200px]">
-      <label class="block text-xs font-medium text-muted-foreground mb-1">University</label>
-      <select name="university_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
-        <option value="">All Universities</option>
-        {% for u in filters.universities %}
-          <option value="{{ u.id }}" {% if filters.selected_university == u.id|stringformat:"s" %}selected{% endif %}>{{ u.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="flex-1 min-w-[200px]">
-      <label class="block text-xs font-medium text-muted-foreground mb-1">Session</label>
-      <select name="session_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
-        <option value="">All Sessions</option>
-        {% for s in filters.sessions %}
-          <option value="{{ s.id }}" {% if filters.selected_session == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="flex-1 min-w-[200px]">
-      <label class="block text-xs font-medium text-muted-foreground mb-1">Course</label>
-      <select name="course_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
-        <option value="">All Courses</option>
-        {% for c in filters.courses %}
-          <option value="{{ c.id }}" {% if filters.selected_course == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="flex-none">
-      <a href="?" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
-        Clear
-      </a>
-    </div>
-  </form>
-
-  <div class="grid gap-4" id="batchs-list">
-    {% for batch in batchs %}
-    <div
-      class="batch-item bg-card rounded-2xl p-6 shadow-md border border-border/50 hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer"
-      onclick="location.href='{% url 'voice_tutor:professor_batch_detail' batch.id %}'"
-      data-name="{{ batch.name }}">
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div class="flex items-center gap-4">
-          <div class="p-3 rounded-xl bg-primary/10 text-primary">
-            <i data-lucide="users" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <h3 class="font-display text-lg font-semibold text-foreground batch-name">{{ batch.name }}</h3>
-            <p class="text-sm text-muted-foreground">{{ batch.description }}</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-6 text-sm text-muted-foreground flex-wrap">
-          <span>{{ batch.students|length }} students</span>
-
-          <span>Created {{ batch.createdAt }}</span>
-        </div>
+<div class="prof-scope">
+  <div class="prof-container">
+    <div class="prof-header">
+      <div>
+        <h1 class="prof-header-title">Batches</h1>
+        <p class="prof-header-subtitle">Manage your student groups and batches.</p>
       </div>
+    </div>
 
-      <div class="mt-4 pt-4 border-t border-border/50">
-        <p class="text-xs text-muted-foreground mb-2">Students</p>
-        <div class="flex flex-wrap gap-2">
-          {% for student in batch.students %}
-          <span class="px-3 py-1 text-xs rounded-full bg-muted font-medium text-foreground">
-            {{ student.name }}
-          </span>
+    <form method="GET" class="prof-filter-bar">
+      <div class="prof-form-group">
+        <label class="prof-label">University</label>
+        <select name="university_id" class="prof-select" onchange="this.form.submit()">
+          <option value="">All Universities</option>
+          {% for u in filters.universities %}
+            <option value="{{ u.id }}" {% if filters.selected_university == u.id|stringformat:"s" %}selected{% endif %}>{{ u.name }}</option>
           {% endfor %}
+        </select>
+      </div>
+      <div class="prof-form-group">
+        <label class="prof-label">Session</label>
+        <select name="session_id" class="prof-select" onchange="this.form.submit()">
+          <option value="">All Sessions</option>
+          {% for s in filters.sessions %}
+            <option value="{{ s.id }}" {% if filters.selected_session == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="prof-form-group">
+        <label class="prof-label">Course</label>
+        <select name="course_id" class="prof-select" onchange="this.form.submit()">
+          <option value="">All Courses</option>
+          {% for c in filters.courses %}
+            <option value="{{ c.id }}" {% if filters.selected_course == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="flex-shrink: 0;">
+        <a href="?" class="prof-btn-secondary">
+          Clear
+        </a>
+      </div>
+    </form>
+
+    <div class="prof-stack" id="batchs-list">
+      {% for batch in batchs %}
+      <div
+        class="prof-action-card batch-item"
+        onclick="location.href='{% url 'voice_tutor:professor_batch_detail' batch.id %}'"
+        data-name="{{ batch.name }}">
+        
+        <div class="prof-list-item">
+          <div class="prof-list-item-left">
+            <div class="prof-stat-icon primary">
+              <i data-lucide="users"></i>
+            </div>
+            <div>
+              <h3 class="prof-action-card-title batch-name">{{ batch.name }}</h3>
+              <p class="prof-action-card-desc">{{ batch.description }}</p>
+            </div>
+          </div>
+          <div class="prof-list-item-right" style="flex-direction: row; align-items: center; gap: 1.5rem;">
+            <span class="prof-stat-subtext">{{ batch.students|length }} students</span>
+            <span class="prof-stat-subtext">Created {{ batch.createdAt }}</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--prof-border);">
+          <p class="prof-label" style="margin-bottom: 0.5rem;">Students</p>
+          <div class="prof-tag-group">
+            {% for student in batch.students %}
+            <span class="prof-tag" style="background-color: var(--prof-bg); color: var(--prof-text-main); border: 1px solid var(--prof-border);">
+              {{ student.name }}
+            </span>
+            {% endfor %}
+          </div>
         </div>
       </div>
+      {% empty %}
+      <p style="text-align: center; color: var(--prof-text-muted); padding: 3rem 0;">No batches found.</p>
+      {% endfor %}
+      <p id="no-batchs-found-msg" style="display: none; text-align: center; color: var(--prof-text-muted); padding: 3rem 0;">No batches found.</p>
     </div>
-    {% empty %}
-    <p class="text-center text-muted-foreground py-12">No batchs found.</p>
-    {% endfor %}
-    <p id="no-batchs-found-msg" class="hidden text-center text-muted-foreground py-12">No batchs found.</p>
   </div>
 </div>
 {% endblock %}

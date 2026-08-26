@@ -3,135 +3,172 @@
 
 {% block title %}Analytics — InSync{% endblock %}
 
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
+<style>
+  .prof-table-container {
+    background-color: var(--prof-card-bg);
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-xl);
+    box-shadow: var(--prof-shadow-sm);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+  }
+  .prof-table-wrapper {
+    overflow-x: auto;
+  }
+  .prof-table {
+    width: 100%;
+    text-align: left;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .prof-table th {
+    background-color: var(--prof-bg);
+    color: var(--prof-text-muted);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--prof-border);
+  }
+  .prof-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--prof-border);
+    color: var(--prof-text-muted);
+    background-color: var(--prof-card-bg);
+    transition: var(--prof-transition);
+  }
+  .prof-table tr:last-child td {
+    border-bottom: none;
+  }
+  .prof-table tr:hover td {
+    background-color: var(--prof-bg);
+  }
+</style>
+{% endblock %}
+
 {% block inner_content %}
-<div class="p-6 lg:p-8 space-y-8">
-  <div>
-    <h1 class="font-display text-3xl font-bold mb-1 text-foreground">Analytics</h1>
-    <p class="text-muted-foreground">Track engagement, performance, and learning patterns.</p>
-  </div>
+<div class="prof-scope">
+  <div class="prof-container" style="max-width: 80rem; margin: 0 auto;">
+    
+    <div class="prof-header">
+      <div>
+        <h1 class="prof-header-title">Analytics</h1>
+        <p class="prof-header-subtitle">Track engagement, performance, and learning patterns.</p>
+      </div>
+    </div>
 
-  <!-- Overview Cards -->
-  <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
-      <div class="flex items-center gap-3 mb-3">
-        <div class="p-2 rounded-xl bg-primary/10 text-primary"><i data-lucide="trending-up" class="w-5 h-5"></i></div>
-        <span class="text-sm text-muted-foreground">Overall Engagement</span>
+    <!-- Overview Cards -->
+    <div class="prof-grid-stats">
+      <div class="prof-stat-card" style="padding: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div class="prof-stat-icon primary" style="padding: 0.5rem;"><i data-lucide="trending-up" style="width: 1.25rem; height: 1.25rem;"></i></div>
+          <span class="prof-stat-label">Overall Engagement</span>
+        </div>
+        <p class="prof-stat-value" style="font-size: 1.875rem;">{{ batch_analytics.overallEngagement }}%</p>
       </div>
-      <p class="text-3xl font-bold text-foreground">{{ batch_analytics.overallEngagement }}%</p>
-    </div>
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
-      <div class="flex items-center gap-3 mb-3">
-        <div class="p-2 rounded-xl bg-accent/10 text-primary"><i data-lucide="target" class="w-5 h-5"></i></div>
-        <span class="text-sm text-muted-foreground">Completion Rate</span>
+      <div class="prof-stat-card" style="padding: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div class="prof-stat-icon" style="background-color: var(--prof-bg); color: var(--prof-primary); padding: 0.5rem;"><i data-lucide="target" style="width: 1.25rem; height: 1.25rem;"></i></div>
+          <span class="prof-stat-label">Completion Rate</span>
+        </div>
+        <p class="prof-stat-value" style="font-size: 1.875rem;">{{ assignment_analytics.completionRate }}%</p>
       </div>
-      <p class="text-3xl font-bold text-foreground">{{ assignment_analytics.completionRate }}%</p>
-    </div>
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
-      <div class="flex items-center gap-3 mb-3">
-        <div class="p-2 rounded-xl bg-accent/10 text-primary"><i data-lucide="bar-chart-3" class="w-5 h-5"></i></div>
-        <span class="text-sm text-muted-foreground">Avg. Time per Assignment</span>
+      <div class="prof-stat-card" style="padding: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div class="prof-stat-icon" style="background-color: var(--prof-bg); color: var(--prof-primary); padding: 0.5rem;"><i data-lucide="bar-chart-3" style="width: 1.25rem; height: 1.25rem;"></i></div>
+          <span class="prof-stat-label">Avg. Time per Assignment</span>
+        </div>
+        <p class="prof-stat-value" style="font-size: 1.875rem;">{{ assignment_analytics.averageTime }} min</p>
       </div>
-      <p class="text-3xl font-bold text-foreground">{{ assignment_analytics.averageTime }} min</p>
-    </div>
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
-      <div class="flex items-center gap-3 mb-3">
-        <div class="p-2 rounded-xl bg-warning/10 text-warning"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
-        <span class="text-sm text-muted-foreground">Students Need Help</span>
+      <div class="prof-stat-card" style="padding: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div class="prof-stat-icon warning" style="padding: 0.5rem;"><i data-lucide="alert-triangle" style="width: 1.25rem; height: 1.25rem;"></i></div>
+          <span class="prof-stat-label">Students Need Help</span>
+        </div>
+        <p class="prof-stat-value" style="font-size: 1.875rem;">{{ batch_analytics.outliers|length }}</p>
       </div>
-      <p class="text-3xl font-bold text-foreground">{{ batch_analytics.outliers|length }}</p>
     </div>
-  </div>
 
-  <div class="grid lg:grid-cols-2 gap-8">
-    <!-- Performance Distribution -->
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
-      <h3 class="font-display font-semibold text-foreground mb-6">Performance Distribution</h3>
-      <div class="space-y-4">
-        {% for item in performance_distribution_list %}
-          <div>
-            <div class="flex justify-between text-sm mb-1">
-              <span class="capitalize font-medium text-foreground">{{ item.level }} Performers</span>
-              <span class="text-muted-foreground">{{ item.count }} student{{ item.count|pluralize }} ({{ item.pct }}%)</span>
+    <div class="prof-grid-main" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+      
+      <!-- Performance Distribution -->
+      <div class="prof-panel" style="grid-column: 1 / -1;">
+        <h3 class="prof-panel-title">Performance Distribution</h3>
+        <div class="prof-stack">
+          {% for item in performance_distribution_list %}
+            <div>
+              <div class="prof-flex-between" style="font-size: 0.875rem; margin-bottom: 0.25rem;">
+                <span style="text-transform: capitalize; font-weight: 500; color: var(--prof-text-main);">{{ item.level }} Performers</span>
+                <span class="prof-stat-subtext" style="margin-top: 0;">{{ item.count }} student{{ item.count|pluralize }} ({{ item.pct }}%)</span>
+              </div>
+              <div style="width: 100%; height: 0.5rem; background-color: var(--prof-bg); border-radius: 9999px; overflow: hidden;">
+                <div style="height: 100%; border-radius: 9999px; width: {{ item.pct }}%; background-color: {% if item.level == 'high' %}var(--prof-primary){% elif item.level == 'medium' %}#818cf8{% else %}#cbd5e1{% endif %}; transition: width 1s ease-in-out;"></div>
+              </div>
             </div>
-            <div class="h-3 rounded-full bg-muted overflow-hidden w-full">
-              <div class="h-full rounded-full {% if item.level == 'high' %}bg-success{% elif item.level == 'medium' %}bg-warning{% else %}bg-destructive{% endif %}" style="width: {{ item.pct }}%"></div>
-            </div>
-          </div>
-        {% endfor %}
+          {% endfor %}
+        </div>
       </div>
-    </div>
 
-    <!-- Weak Concepts -->
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
-      <h3 class="font-display font-semibold text-foreground mb-6">Common Weak Concepts</h3>
-      <div class="space-y-3">
-        {% for concept in batch_analytics.commonWeakConcepts %}
-          <div class="flex items-center gap-3 p-3 rounded-xl bg-warning/5 border border-warning/10">
-            <span class="w-8 h-8 rounded-full bg-warning/20 flex items-center justify-center text-warning text-sm font-bold">{{ forloop.counter }}</span>
-            <span class="font-medium text-foreground">{{ concept }}</span>
-          </div>
-        {% endfor %}
-      </div>
-    </div>
 
-    <!-- Student Progress Table -->
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50 lg:col-span-2">
-      <h3 class="font-display font-semibold text-foreground mb-6">Student Progress Overview</h3>
-      <div class="overflow-x-auto w-full">
-        <table id="analytics-table" class="w-full text-sm text-left align-middle" style="width:100%">
-          <thead>
-            <tr class="border-b border-border text-left">
-              <th class="py-3 px-2 font-medium text-muted-foreground">Student</th>
-              <th class="py-3 px-2 font-medium text-muted-foreground">Assignment</th>
-              <th class="py-3 px-2 font-medium text-muted-foreground">Progress</th>
-              <th class="py-3 px-2 font-medium text-muted-foreground">Engagement</th>
-              <th class="py-3 px-2 font-medium text-muted-foreground">Hints Used</th>
-              <th class="py-3 px-2 font-medium text-muted-foreground">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in student_progress_overview %}
-              <tr class="border-b border-border/50">
-                <td class="py-3 px-2 font-medium text-foreground">{{ item.student_name }}</td>
-                <td class="py-3 px-2 text-muted-foreground">{{ item.assignment_title }}</td>
-                <td class="py-3 px-2">
-                  <div class="flex items-center gap-2">
-                    <div class="w-20 bg-muted rounded-full h-2 overflow-hidden shrink-0">
-                      <div class="bg-primary h-2 rounded-full" style="width: {{ item.pct }}%"></div>
-                    </div>
-                    <span class="text-xs text-muted-foreground">{{ item.pct }}%</span>
-                  </div>
-                </td>
-                <td class="py-3 px-2">
-                  <span class="font-medium {% if item.engagement >= 70 %}text-success{% elif item.engagement >= 50 %}text-warning{% else %}text-destructive{% endif %}">
-                    {{ item.engagement }}%
-                  </span>
-                </td>
-                <td class="py-3 px-2 text-foreground">{{ item.hints_used }}</td>
-                <td class="py-3 px-2">
-                  <span class="px-2 py-1 text-xs rounded-full capitalize font-semibold {% if item.status == 'completed' %}bg-success/10 text-success{% else %}bg-warning/10 text-warning{% endif %}">
-                    {{ item.status|cut:"_" }}
-                  </span>
-                </td>
+      <!-- Student Progress Table -->
+      <div class="prof-table-container" style="grid-column: 1 / -1;">
+        <h3 class="prof-panel-title">Student Progress Overview</h3>
+        <div class="prof-table-wrapper">
+          <table id="analytics-table" class="prof-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Assignment</th>
+                <th>Progress</th>
+                <th>Engagement</th>
+                <th>Hints Used</th>
+                <th>Status</th>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {% for item in student_progress_overview %}
+                <tr>
+                  <td style="font-weight: 500; color: var(--prof-text-main);">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div style="width: 2rem; height: 2rem; border-radius: 9999px; background-color: var(--prof-primary-light); color: var(--prof-primary); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">
+                        {{ item.student_name.0 }}
+                      </div>
+                      <span>{{ item.student_name }}</span>
+                    </div>
+                  </td>
+                  <td>{{ item.assignment_title }}</td>
+                  <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <div style="width: 5rem; background-color: var(--prof-bg); border-radius: 9999px; height: 0.375rem; flex-shrink: 0; overflow: hidden;">
+                        <div style="height: 100%; border-radius: 9999px; width: {{ item.pct }}%; background-color: {% if item.pct >= 80 %}var(--prof-primary){% elif item.pct >= 50 %}#818cf8{% else %}#cbd5e1{% endif %}; transition: width 1s ease-in-out;"></div>
+                      </div>
+                      <span style="font-size: 0.75rem; font-weight: 600; color: var(--prof-text-main); min-width: 2rem;">{{ item.pct }}%</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span style="font-weight: 500; color: {% if item.engagement >= 70 %}var(--prof-success){% elif item.engagement >= 50 %}var(--prof-warning){% else %}var(--prof-danger){% endif %};">
+                      {{ item.engagement }}%
+                    </span>
+                  </td>
+                  <td style="color: var(--prof-text-main);">{{ item.hints_used }}</td>
+                  <td>
+                    <span class="prof-badge {% if item.status == 'completed' or item.status == 'Completed' %}success{% else %}warning{% endif %}" style="text-transform: capitalize;">
+                      {% if item.status == 'in_progress' or item.status == 'In_Progress' %}In Progress{% else %}{{ item.status }}{% endif %}
+                    </span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
 
-    <!-- Drop-off Points -->
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50 lg:col-span-2">
-      <h3 class="font-display font-semibold text-foreground mb-6">Assignment Drop-off Points</h3>
-      <div class="flex gap-4 flex-wrap">
-        {% for point in assignment_analytics.dropOffPoints %}
-          <div class="flex-1 min-w-[200px] p-4 rounded-xl bg-destructive/5 border border-destructive/10">
-            <p class="text-sm font-medium text-foreground">Question {{ point.questionId }}</p>
-            <p class="text-2xl font-bold text-destructive mt-1">{{ point.count }}</p>
-            <p class="text-xs text-muted-foreground">students dropped off</p>
-          </div>
-        {% endfor %}
-      </div>
+
+
     </div>
   </div>
 </div>
@@ -143,49 +180,48 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 
-<!-- Custom Tailwind styling for DataTables wrapper -->
 <style>
   .dataTables_wrapper .dataTables_filter input {
-    border: 1px solid hsl(var(--input));
-    border-radius: 0.375rem;
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-md);
     padding: 0.25rem 0.75rem;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background: var(--prof-bg);
+    color: var(--prof-text-main);
     margin-left: 0.5rem;
   }
   .dataTables_wrapper .dataTables_length select {
-    border: 1px solid hsl(var(--input));
-    border-radius: 0.375rem;
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-md);
     padding: 0.25rem 1.5rem 0.25rem 0.75rem;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background: var(--prof-bg);
+    color: var(--prof-text-main);
   }
   .dataTables_wrapper .dataTables_info,
   .dataTables_wrapper .dataTables_length,
   .dataTables_wrapper .dataTables_filter {
-    color: hsl(var(--muted-foreground)) !important;
+    color: var(--prof-text-muted) !important;
     font-size: 0.875rem;
     margin-bottom: 1rem;
     margin-top: 0.5rem;
   }
   .dataTables_wrapper .dataTables_paginate .paginate_button {
-    color: hsl(var(--foreground)) !important;
+    color: var(--prof-text-main) !important;
     border: 1px solid transparent !important;
-    border-radius: 0.375rem !important;
+    border-radius: var(--prof-radius-md) !important;
     margin-left: 2px;
   }
   .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-    background: hsl(var(--accent)) !important;
-    border-color: hsl(var(--border)) !important;
-    color: hsl(var(--accent-foreground)) !important;
+    background: var(--prof-bg) !important;
+    border-color: var(--prof-border) !important;
+    color: var(--prof-text-main) !important;
   }
   .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-    background: hsl(var(--primary)) !important;
-    color: hsl(var(--primary-foreground)) !important;
-    border-color: hsl(var(--primary)) !important;
+    background: var(--prof-primary) !important;
+    color: white !important;
+    border-color: var(--prof-primary) !important;
   }
   table.dataTable.no-footer {
-    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    border-bottom: 1px solid var(--prof-border);
   }
 </style>
 

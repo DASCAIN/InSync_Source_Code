@@ -36,3 +36,6 @@ tracker.dat
 status.dat
 first-index
 open-*
+
+# AI Configuration
+.agents/

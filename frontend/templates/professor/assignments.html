@@ -3,176 +3,187 @@
 
 {% block title %}Assignments — InSync{% endblock %}
 
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
+<style>
+  #active-jobs-container:empty {
+    display: none;
+  }
+</style>
+{% endblock %}
+
 {% block inner_content %}
-<div class="p-6 lg:p-8 space-y-8">
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div>
-      <h1 class="font-display text-3xl font-bold mb-1 text-foreground">Assignments</h1>
-      <p class="text-muted-foreground">Create and manage learning assignments.</p>
+<div class="prof-scope">
+  <div class="prof-container">
+    <div class="prof-header">
+      <div>
+        <h1 class="prof-header-title">Assignments</h1>
+        <p class="prof-header-subtitle">Create and manage learning assignments.</p>
+      </div>
+      <button onclick="document.getElementById('upload-assignment-modal').classList.remove('hidden')" class="prof-btn-primary">
+        <i data-lucide="plus"></i>
+        Create Assignment
+      </button>
     </div>
-    <button onclick="document.getElementById('upload-assignment-modal').classList.remove('hidden')" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-      <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
-      Create Assignment
-    </button>
-  </div>
 
-  <form method="GET" class="bg-card p-4 rounded-2xl shadow-sm border border-border/50 flex flex-wrap gap-4 items-end mb-6">
-    <div class="flex-1 min-w-[200px]">
-      <label class="block text-xs font-medium text-muted-foreground mb-1">Subject</label>
-      <select name="subject_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
-        <option value="">All Subjects</option>
-        {% for s in filters.subjects %}
-          <option value="{{ s.code }}" {% if filters.selected_subject == s.code %}selected{% endif %}>{{ s.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="flex-1 min-w-[200px]">
-      <label class="block text-xs font-medium text-muted-foreground mb-1">Topic</label>
-      <select name="topic_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
-        <option value="">All Topics</option>
-        {% for t in filters.topics %}
-          <option value="{{ t.code }}" {% if filters.selected_topic == t.code %}selected{% endif %}>{{ t.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="flex-1 min-w-[200px]">
-      <label class="block text-xs font-medium text-muted-foreground mb-1">Batch</label>
-      <select name="batch_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
-        <option value="">All Batches</option>
-        {% for b in filters.batches %}
-          <option value="{{ b.code }}" {% if filters.selected_batch == b.code %}selected{% endif %}>{{ b.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="flex-1 min-w-[200px]">
-      <label class="block text-xs font-medium text-muted-foreground mb-1">Professor</label>
-      <select name="professor_id" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
-        <option value="">All Professors</option>
-        {% for p in filters.professors %}
-          <option value="{{ p.user.username }}" {% if filters.selected_professor == p.user.username %}selected{% endif %}>{{ p.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="flex-1 min-w-[200px]">
-      <label class="block text-xs font-medium text-muted-foreground mb-1">Sort By</label>
-      <select name="sort" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onchange="this.form.submit()">
-        <option value="desc" {% if filters.selected_sort == 'desc' %}selected{% endif %}>Newest First (Desc)</option>
-        <option value="asc" {% if filters.selected_sort == 'asc' %}selected{% endif %}>Oldest First (Asc)</option>
-      </select>
-    </div>
-    <div class="flex-none">
-      <a href="?" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
-        Clear
-      </a>
-    </div>
-  </form>
+    <form method="GET" class="prof-filter-bar" style="margin-bottom: 0;">
+      <div class="prof-form-group">
+        <label class="prof-label">Subject</label>
+        <select name="subject_id" class="prof-select" onchange="this.form.submit()">
+          <option value="">All Subjects</option>
+          {% for s in filters.subjects %}
+            <option value="{{ s.code }}" {% if filters.selected_subject == s.code %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="prof-form-group">
+        <label class="prof-label">Topic</label>
+        <select name="topic_id" class="prof-select" onchange="this.form.submit()">
+          <option value="">All Topics</option>
+          {% for t in filters.topics %}
+            <option value="{{ t.code }}" {% if filters.selected_topic == t.code %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="prof-form-group">
+        <label class="prof-label">Batch</label>
+        <select name="batch_id" class="prof-select" onchange="this.form.submit()">
+          <option value="">All Batches</option>
+          {% for b in filters.batches %}
+            <option value="{{ b.code }}" {% if filters.selected_batch == b.code %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="prof-form-group">
+        <label class="prof-label">Professor</label>
+        <select name="professor_id" class="prof-select" onchange="this.form.submit()">
+          <option value="">All Professors</option>
+          {% for p in filters.professors %}
+            <option value="{{ p.user.username }}" {% if filters.selected_professor == p.user.username %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="prof-form-group">
+        <label class="prof-label">Sort By</label>
+        <select name="sort" class="prof-select" onchange="this.form.submit()">
+          <option value="desc" {% if filters.selected_sort == 'desc' %}selected{% endif %}>Newest First (Desc)</option>
+          <option value="asc" {% if filters.selected_sort == 'asc' %}selected{% endif %}>Oldest First (Asc)</option>
+        </select>
+      </div>
+      <div style="flex-shrink: 0;">
+        <a href="?" class="prof-btn-secondary">
+          Clear
+        </a>
+      </div>
+    </form>
 
-  <div id="active-jobs-container" class="space-y-4 mb-4"></div>
+    <div id="active-jobs-container" class="prof-stack" style="margin-bottom: 1rem;"></div>
 
-  <div class="grid gap-4" id="assignments-list">
-    {% for item in assignments %}
-      <a href="{% url 'voice_tutor:professor_assignment_detail' item.id %}"
-        class="assignment-item block bg-card rounded-2xl p-6 shadow-md border border-border/50 hover:border-primary/30 hover:shadow-lg transition-all"
-        data-title="{{ item.title }}"
-        data-topic="{{ item.topic }}"
-      >
-        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div class="flex items-start gap-4">
-            <div class="p-3 rounded-xl bg-accent/10 text-primary">
-              <i data-lucide="book-open" class="w-6 h-6"></i>
-            </div>
-            <div>
-              <h3 class="font-display text-lg font-semibold text-foreground assignment-title">{{ item.title }}</h3>
-              <p class="text-sm text-muted-foreground mt-1">{{ item.description }}</p>
-              <div class="flex flex-wrap gap-2 mt-2">
-                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground capitalize"><i data-lucide="bar-chart" class="w-3 h-3 mr-1"></i>{{ item.difficulty }}</span>
-                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="book" class="w-3 h-3 mr-1"></i>{{ item.subject }}</span>
-                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="bookmark" class="w-3 h-3 mr-1"></i>{{ item.topic }}</span>
-                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="users" class="w-3 h-3 mr-1"></i>{{ item.batch }}</span>
+    <div class="prof-stack" id="assignments-list">
+      {% for item in assignments %}
+        <a href="{% url 'voice_tutor:professor_assignment_detail' item.id %}"
+          class="assignment-item prof-action-card"
+          data-title="{{ item.title }}"
+          data-topic="{{ item.topic }}"
+        >
+          <div class="prof-list-item">
+            <div class="prof-list-item-left">
+              <div class="prof-stat-icon" style="background-color: var(--prof-bg);">
+                <i data-lucide="book-open" style="color: var(--prof-text-muted);"></i>
+              </div>
+              <div>
+                <h3 class="prof-action-card-title assignment-title">{{ item.title }}</h3>
+                <p class="prof-action-card-desc" style="margin-top: 0.25rem;">{{ item.description }}</p>
+                <div class="prof-tag-group" style="margin-top: 0.5rem;">
+                  <span class="prof-tag" style="border: 1px solid var(--prof-border); background: var(--prof-bg); color: var(--prof-text-muted);"><i data-lucide="bar-chart" style="width: 0.75rem; height: 0.75rem; margin-right: 0.25rem; display: inline;"></i>{{ item.difficulty }}</span>
+                  <span class="prof-tag" style="border: 1px solid var(--prof-border); background: var(--prof-bg); color: var(--prof-text-muted);"><i data-lucide="book" style="width: 0.75rem; height: 0.75rem; margin-right: 0.25rem; display: inline;"></i>{{ item.subject }}</span>
+                  <span class="prof-tag" style="border: 1px solid var(--prof-border); background: var(--prof-bg); color: var(--prof-text-muted);"><i data-lucide="bookmark" style="width: 0.75rem; height: 0.75rem; margin-right: 0.25rem; display: inline;"></i>{{ item.topic }}</span>
+                  <span class="prof-tag" style="border: 1px solid var(--prof-border); background: var(--prof-bg); color: var(--prof-text-muted);"><i data-lucide="users" style="width: 0.75rem; height: 0.75rem; margin-right: 0.25rem; display: inline;"></i>{{ item.batch }}</span>
+                </div>
               </div>
             </div>
+            <div class="prof-list-item-right">
+              <span class="prof-stat-subtext" style="display: flex; align-items: center;"><i data-lucide="calendar" style="width: 0.75rem; height: 0.75rem; margin-right: 0.25rem;"></i>{{ item.createdAt|date:"M d, Y" }}</span>
+              <span class="prof-stat-subtext" style="display: flex; align-items: center;"><i data-lucide="user" style="width: 0.75rem; height: 0.75rem; margin-right: 0.25rem;"></i>By {{ item.createdBy }}</span>
+            </div>
           </div>
-          <div class="text-right flex flex-col items-end gap-1 shrink-0 mt-2 md:mt-0">
-            <span class="text-xs text-muted-foreground flex items-center"><i data-lucide="calendar" class="w-3 h-3 mr-1"></i>{{ item.createdAt|date:"M d, Y" }}</span>
-            <span class="text-xs text-muted-foreground flex items-center"><i data-lucide="user" class="w-3 h-3 mr-1"></i>By {{ item.createdBy }}</span>
-          </div>
-        </div>
 
-        <div class="mt-4 pt-4 border-t border-border/50 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
-          <div class="flex items-center gap-2">
-            <i data-lucide="book-open" class="w-4 h-4"></i>
-            <span>{{ item.questions|length }} questions</span>
+          <div class="prof-metric-grid">
+            <div class="prof-metric">
+              <i data-lucide="book-open"></i>
+              <span><span>{{ item.questions|length }}</span> questions</span>
+            </div>
+            <div class="prof-metric">
+              <i data-lucide="clock"></i>
+              <span><span>{{ item.expectedDuration }}</span> min</span>
+            </div>
+            <div class="prof-metric">
+              <i data-lucide="users"></i>
+              <span><span>{{ item.completedCount }}/{{ item.progressCount }}</span> completed</span>
+            </div>
+            <div class="prof-metric">
+              <i data-lucide="bar-chart-3"></i>
+              <span><span>{{ item.avgEngagement }}%</span> engagement</span>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <i data-lucide="clock" class="w-4 h-4"></i>
-            <span>{{ item.expectedDuration }} min</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <i data-lucide="users" class="w-4 h-4"></i>
-            <span>{{ item.completedCount }}/{{ item.progressCount }} completed</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
-            <span>{{ item.avgEngagement }}% engagement</span>
-          </div>
-        </div>
-      </a>
-    {% empty %}
-      <p class="text-center text-muted-foreground py-12">No assignments found.</p>
-    {% endfor %}
-    <p id="no-assignments-found-msg" class="hidden text-center text-muted-foreground py-12">No assignments found.</p>
-  </div>
-  
-  <!-- Pagination Controls -->
-  <div class="mt-8 flex items-center justify-between border-t border-border/50 pt-4">
-    <span class="text-sm text-muted-foreground" id="pagination-info">Showing 0 to 0 of 0 assignments</span>
-    <div class="flex items-center gap-1" id="pagination-controls">
-      <!-- Buttons injected via JS -->
+        </a>
+      {% empty %}
+        <p style="text-align: center; color: var(--prof-text-muted); padding: 3rem 0;">No assignments found.</p>
+      {% endfor %}
+      <p id="no-assignments-found-msg" style="display: none; text-align: center; color: var(--prof-text-muted); padding: 3rem 0;">No assignments found.</p>
+    </div>
+    
+    <!-- Pagination Controls -->
+    <div class="prof-pagination">
+      <span class="prof-pagination-info" id="pagination-info">Showing 0 to 0 of 0 assignments</span>
+      <div class="prof-pagination-controls" id="pagination-controls">
+        <!-- Buttons injected via JS -->
+      </div>
     </div>
   </div>
 </div>
 
 <!-- Upload Assignment Modal -->
-<div id="upload-assignment-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-  <div class="bg-card w-full max-w-md rounded-xl shadow-lg border border-border p-6 relative">
-    <button onclick="document.getElementById('upload-assignment-modal').classList.add('hidden')" class="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
-      <i data-lucide="x" class="w-5 h-5"></i>
+<div id="upload-assignment-modal" class="prof-modal-overlay hidden">
+  <div class="prof-modal">
+    <button onclick="document.getElementById('upload-assignment-modal').classList.add('hidden')" class="prof-modal-close">
+      <i data-lucide="x" style="width: 1.25rem; height: 1.25rem;"></i>
     </button>
-    <h2 class="text-2xl font-display font-bold mb-4 text-foreground">Upload Assignment PDF</h2>
-    <form id="upload-assignment-form" class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Batch</label>
-        <select name="batch_id" id="batch-select" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" required onchange="updateSubjects()">
+    <h2 class="prof-modal-title">Upload Assignment PDF</h2>
+    <form id="upload-assignment-form" class="prof-stack">
+      <div class="prof-form-group">
+        <label class="prof-label">Batch</label>
+        <select name="batch_id" id="batch-select" class="prof-select" required onchange="updateSubjects()">
           <option value="" disabled selected>Select a Batch</option>
           {% for batch in batches %}
             <option value="{{ batch.code }}">{{ batch.name }} ({{ batch.code }})</option>
           {% endfor %}
         </select>
       </div>
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Subject</label>
-        <select name="subject" id="subject-select" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" required onchange="updateTopics()">
+      <div class="prof-form-group">
+        <label class="prof-label">Subject</label>
+        <select name="subject" id="subject-select" class="prof-select" required onchange="updateTopics()">
           <option value="" disabled selected>Select a Subject</option>
         </select>
       </div>
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Topic</label>
-        <select name="topic" id="topic-select" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" required>
+      <div class="prof-form-group">
+        <label class="prof-label">Topic</label>
+        <select name="topic" id="topic-select" class="prof-select" required>
           <option value="" disabled selected>Select a Topic</option>
         </select>
       </div>
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">PDF File</label>
-        <input type="file" name="file" multiple accept="application/pdf" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-primary file:text-primary-foreground file:h-full file:px-4 file:mr-4 file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer" required>
+      <div class="prof-form-group">
+        <label class="prof-label">PDF File</label>
+        <input type="file" name="file" multiple accept="application/pdf" class="prof-file-input" required>
       </div>
-      <div id="upload-status" class="text-sm font-medium hidden"></div>
-      <div class="pt-4 flex justify-end gap-3">
-        <button type="button" onclick="document.getElementById('upload-assignment-modal').classList.add('hidden')" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-5 py-2">Cancel</button>
-        <button type="submit" id="guided-assignment-btn" name="action" value="guided" class="inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-all duration-300 text-white hover:-translate-y-0.5 h-10 px-6 py-2" style="background: linear-gradient(to right, #6366f1, #a855f7, #ec4899); box-shadow: 0 4px 6px -1px rgba(168, 85, 247, 0.25);">
-          <i data-lucide="sparkles" class="w-4 h-4 mr-2"></i> Guided Assignment
+      <div id="upload-status" style="font-size: 0.875rem; font-weight: 500; display: none;"></div>
+      <div class="prof-modal-actions">
+        <button type="button" onclick="document.getElementById('upload-assignment-modal').classList.add('hidden')" class="prof-btn-secondary">Cancel</button>
+        <button type="submit" id="guided-assignment-btn" name="action" value="guided" class="prof-btn-primary" style="background: linear-gradient(to right, #6366f1, #a855f7, #ec4899);">
+          <i data-lucide="sparkles"></i> Guided Assignment
         </button>
-        <button type="submit" id="upload-submit-btn" name="action" value="generate" class="inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-all duration-300 text-white hover:-translate-y-0.5 h-10 px-6 py-2" style="background: linear-gradient(to right, #10b981, #0d9488); box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.25);">
-          <i data-lucide="zap" class="w-4 h-4 mr-2"></i> Upload & Generate
+        <button type="submit" id="upload-submit-btn" name="action" value="generate" class="prof-btn-primary" style="background: linear-gradient(to right, #10b981, #0d9488);">
+          <i data-lucide="zap"></i> Upload & Generate
         </button>
       </div>
     </form>
@@ -221,11 +232,9 @@
     const subjectName = subjectSelect.value;
     if (!subjectName) return;
     
-    // We need to look up subject code by name to get topics from subjectTopicsMap
     const batchSubjectsMap = JSON.parse(document.getElementById('batch-subjects-data').textContent);
     const subjectTopicsMap = JSON.parse(document.getElementById('subject-topics-data').textContent);
     
-    // Find the code
     let subjectCode = null;
     for (const bCode in batchSubjectsMap) {
       const sbjs = batchSubjectsMap[bCode];
@@ -265,15 +274,15 @@
     });
 
     if (visibleCount === 0) {
-      msg.classList.remove('hidden');
+      msg.style.display = 'block';
     } else {
-      msg.classList.add('hidden');
+      msg.style.display = 'none';
     }
   }
 
   document.getElementById('upload-assignment-form').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const btn = e.submitter; // get the button that triggered the submit
+    const btn = e.submitter;
     const isGuided = btn.value === 'guided';
     
     const status = document.getElementById('upload-status');
@@ -282,19 +291,19 @@
     const files = fileInput.files;
     
     if (files.length > 5) {
-      status.classList.remove('hidden', 'text-muted-foreground', 'text-success');
-      status.classList.add('text-destructive');
+      status.style.display = 'block';
+      status.style.color = 'var(--prof-danger)';
       status.innerText = 'You can only upload up to 5 PDFs at a time.';
       return;
     }
 
     const originalBtnHTML = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i> Uploading...';
+    btn.innerHTML = '<i data-lucide="loader-2" style="width: 1rem; height: 1rem; margin-right: 0.5rem;" class="animate-spin"></i> Uploading...';
     lucide.createIcons();
     
-    status.classList.remove('hidden', 'text-destructive', 'text-success');
-    status.classList.add('text-muted-foreground');
+    status.style.display = 'block';
+    status.style.color = 'var(--prof-text-muted)';
     status.innerText = `Uploading ${files.length} file(s) to server...`;
 
     try {
@@ -306,8 +315,7 @@
       const data = await response.json();
 
       if (response.ok) {
-        status.classList.remove('text-muted-foreground');
-        status.classList.add('text-success');
+        status.style.color = 'var(--prof-success)';
         status.innerText = data.message || `Successfully queued ${files.length} file(s)!`;
         
         if (isGuided && data.session_id) {
@@ -315,7 +323,7 @@
           setTimeout(() => {
             window.location.href = `/professor/guided-assignment/${data.session_id}`;
           }, 1000);
-          return; // Don't reset form, we are redirecting
+          return;
         }
 
         setTimeout(() => {
@@ -323,10 +331,9 @@
           btn.disabled = false;
           btn.innerHTML = originalBtnHTML;
           this.reset();
-          status.classList.add('hidden');
+          status.style.display = 'none';
         }, 2000);
 
-        // Track job progress for all returned jobs
         if (data.jobs) {
           data.jobs.forEach(job => {
             addActiveJob(job.job_id, job.filename);
@@ -336,8 +343,7 @@
         throw new Error(data.detail || 'Upload failed');
       }
     } catch (err) {
-      status.classList.remove('text-muted-foreground');
-      status.classList.add('text-destructive');
+      status.style.color = 'var(--prof-danger)';
       status.innerText = err.message;
       btn.disabled = false;
       btn.innerHTML = originalBtnHTML;
@@ -349,26 +355,26 @@
     const jobIdSafe = 'job-' + jobId;
     
     const cardHtml = `
-      <div id="${jobIdSafe}" class="bg-card rounded-2xl p-6 shadow-md border border-primary/30 transition-all relative group">
-        <button onclick="this.parentElement.remove()" class="absolute top-4 right-4 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity" title="Dismiss">
-          <i data-lucide="x" class="w-4 h-4"></i>
+      <div id="${jobIdSafe}" class="prof-panel" style="position: relative; border-color: var(--prof-primary-light);">
+        <button onclick="this.parentElement.remove()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; cursor: pointer; color: var(--prof-text-light);" title="Dismiss">
+          <i data-lucide="x" style="width: 1rem; height: 1rem;"></i>
         </button>
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-3">
-            <div id="${jobIdSafe}-icon-wrapper" class="p-2 rounded-xl bg-primary/10 text-primary">
-              <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+        <div class="prof-flex-between" style="margin-bottom: 0.5rem;">
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <div id="${jobIdSafe}-icon-wrapper" class="prof-stat-icon primary" style="padding: 0.5rem;">
+              <i data-lucide="loader-2" style="width: 1.25rem; height: 1.25rem;" class="animate-spin"></i>
             </div>
             <div>
-              <h3 class="font-display font-semibold text-foreground">Generating Assignment...</h3>
-              <p class="text-sm text-muted-foreground" id="${jobIdSafe}-filename">${filename}</p>
+              <h3 style="font-family: var(--prof-font-display); font-weight: 600;">Generating Assignment...</h3>
+              <p class="prof-stat-subtext" style="margin: 0;" id="${jobIdSafe}-filename">${filename}</p>
             </div>
           </div>
-          <span id="${jobIdSafe}-pct" class="text-sm font-semibold text-primary mr-6">0%</span>
+          <span id="${jobIdSafe}-pct" style="font-weight: 600; font-size: 0.875rem; color: var(--prof-primary); margin-right: 1.5rem;">0%</span>
         </div>
-        <div class="w-full bg-secondary rounded-full h-2 mt-4">
-          <div id="${jobIdSafe}-bar" class="bg-primary h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+        <div style="width: 100%; background-color: var(--prof-border); border-radius: 9999px; height: 0.5rem; margin-top: 1rem;">
+          <div id="${jobIdSafe}-bar" style="background-color: var(--prof-primary); height: 0.5rem; border-radius: 9999px; transition: width 0.5s ease; width: 0%;"></div>
         </div>
-        <p id="${jobIdSafe}-status" class="text-xs text-muted-foreground mt-2">Initializing...</p>
+        <p id="${jobIdSafe}-status" class="prof-stat-subtext" style="margin-top: 0.5rem;">Initializing...</p>
       </div>
     `;
     
@@ -390,18 +396,18 @@
             clearInterval(intervalId);
             const iconWrapper = document.getElementById(`${jobIdSafe}-icon-wrapper`);
             if (jobData.status.toLowerCase().includes('fail')) {
-               iconWrapper.innerHTML = '<i data-lucide="x-circle" class="w-5 h-5"></i>';
-               iconWrapper.classList.replace('text-primary', 'text-destructive');
-               iconWrapper.classList.replace('bg-primary/10', 'bg-destructive/10');
-               document.getElementById(`${jobIdSafe}-pct`).classList.replace('text-primary', 'text-destructive');
-               document.getElementById(`${jobIdSafe}-bar`).classList.replace('bg-primary', 'bg-destructive');
+               iconWrapper.innerHTML = '<i data-lucide="x-circle" style="width: 1.25rem; height: 1.25rem;"></i>';
+               iconWrapper.style.color = 'var(--prof-danger)';
+               iconWrapper.style.backgroundColor = 'var(--prof-danger-light)';
+               document.getElementById(`${jobIdSafe}-pct`).style.color = 'var(--prof-danger)';
+               document.getElementById(`${jobIdSafe}-bar`).style.backgroundColor = 'var(--prof-danger)';
                lucide.createIcons();
             } else {
-               iconWrapper.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i>';
-               iconWrapper.classList.replace('text-primary', 'text-success');
-               iconWrapper.classList.replace('bg-primary/10', 'bg-success/10');
-               document.getElementById(`${jobIdSafe}-pct`).classList.replace('text-primary', 'text-success');
-               document.getElementById(`${jobIdSafe}-bar`).classList.replace('bg-primary', 'bg-success');
+               iconWrapper.innerHTML = '<i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem;"></i>';
+               iconWrapper.style.color = 'var(--prof-success)';
+               iconWrapper.style.backgroundColor = 'var(--prof-success-light)';
+               document.getElementById(`${jobIdSafe}-pct`).style.color = 'var(--prof-success)';
+               document.getElementById(`${jobIdSafe}-bar`).style.backgroundColor = 'var(--prof-success)';
                document.getElementById(`${jobIdSafe}-status`).innerText = "Assignment generation complete! Refreshing...";
                lucide.createIcons();
                
@@ -417,7 +423,6 @@
     }, 2000);
   }
 
-  // Restore active jobs on page load
   document.addEventListener('DOMContentLoaded', () => {
     const existingJobs = {{ active_jobs_json|safe|default:"[]" }};
     existingJobs.forEach(job => {
@@ -426,7 +431,6 @@
   });
 </script>
 
-<!-- Client-side Pagination Script -->
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const items = Array.from(document.querySelectorAll('.assignment-item'));
@@ -463,20 +467,19 @@
     function renderControls() {
       paginationControls.innerHTML = '';
       
-      // Prev button
       const prevBtn = document.createElement('button');
-      prevBtn.className = `w-8 h-8 flex items-center justify-center rounded-md border border-input text-sm ${currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-muted' : 'hover:bg-accent bg-background'}`;
-      prevBtn.innerHTML = '<i data-lucide="chevron-left" class="w-4 h-4"></i>';
+      prevBtn.className = 'prof-page-btn';
+      if (currentPage === 1) prevBtn.disabled = true;
+      prevBtn.innerHTML = '<i data-lucide="chevron-left" style="width: 1rem; height: 1rem;"></i>';
       prevBtn.onclick = () => { if (currentPage > 1) renderPage(currentPage - 1); };
       paginationControls.appendChild(prevBtn);
 
-      // Page buttons
       for (let i = 1; i <= totalPages; i++) {
         if (totalPages > 5) {
           if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
             if (i === 2 || i === totalPages - 1) {
               const dots = document.createElement('span');
-              dots.className = 'px-2 text-muted-foreground';
+              dots.className = 'prof-page-dots';
               dots.textContent = '...';
               paginationControls.appendChild(dots);
             }
@@ -485,16 +488,16 @@
         }
         
         const btn = document.createElement('button');
-        btn.className = `w-8 h-8 flex items-center justify-center rounded-md text-sm transition-colors ${currentPage === i ? 'bg-primary text-primary-foreground font-medium' : 'border border-input hover:bg-accent bg-background text-foreground'}`;
+        btn.className = 'prof-page-btn ' + (currentPage === i ? 'active' : '');
         btn.textContent = i;
         btn.onclick = () => renderPage(i);
         paginationControls.appendChild(btn);
       }
 
-      // Next button
       const nextBtn = document.createElement('button');
-      nextBtn.className = `w-8 h-8 flex items-center justify-center rounded-md border border-input text-sm ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-muted' : 'hover:bg-accent bg-background'}`;
-      nextBtn.innerHTML = '<i data-lucide="chevron-right" class="w-4 h-4"></i>';
+      nextBtn.className = 'prof-page-btn';
+      if (currentPage === totalPages) nextBtn.disabled = true;
+      nextBtn.innerHTML = '<i data-lucide="chevron-right" style="width: 1rem; height: 1rem;"></i>';
       nextBtn.onclick = () => { if (currentPage < totalPages) renderPage(currentPage + 1); };
       paginationControls.appendChild(nextBtn);
 
@@ -505,4 +508,3 @@
   });
 </script>
 {% endblock %}
-

@@ -3,165 +3,234 @@
 
 {% block title %}My Topics — InSync{% endblock %}
 
-{% block inner_content %}
-<div class="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
-  <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div>
-      <h1 class="font-display text-3xl font-bold text-foreground">Topics</h1>
-      <p class="text-muted-foreground mt-1">Manage topics for your assigned subjects.</p>
-    </div>
-    <button onclick="openCreateModal()" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2 shadow-sm">
-      <i data-lucide="plus" class="w-4 h-4"></i> New Topic
-    </button>
-  </div>
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
+<style>
+  .prof-table-container {
+    background-color: var(--prof-card-bg);
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-xl);
+    box-shadow: var(--prof-shadow-sm);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+  }
+  .prof-table-wrapper {
+    overflow-x: auto;
+  }
+  .prof-table {
+    width: 100%;
+    text-align: left;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .prof-table th {
+    background-color: var(--prof-bg);
+    color: var(--prof-text-muted);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--prof-border);
+  }
+  .prof-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--prof-border);
+    color: var(--prof-text-muted);
+    background-color: var(--prof-card-bg);
+    transition: var(--prof-transition);
+  }
+  .prof-table tr:last-child td {
+    border-bottom: none;
+  }
+  .prof-table tr:hover td {
+    background-color: var(--prof-bg);
+  }
+  
+  /* Additional styling for inputs inside modal */
+  .prof-textarea {
+    width: 100%;
+    min-height: 5rem;
+    border-radius: var(--prof-radius-md);
+    border: 1px solid var(--prof-border);
+    background-color: var(--prof-bg);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--prof-text-main);
+    outline: none;
+    transition: var(--prof-transition);
+    resize: vertical;
+  }
+  .prof-textarea:focus {
+    border-color: var(--prof-primary);
+    box-shadow: 0 0 0 2px var(--prof-primary-light);
+  }
+</style>
+{% endblock %}
 
-  <!-- Data Table Container -->
-  <div class="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden p-6">
-    <div class="overflow-x-auto">
-      <table id="topics-table" class="w-full text-sm text-left align-middle" style="width:100%">
-        <thead class="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border/50">
-          <tr>
-            <th class="px-6 py-4 font-semibold">Code</th>
-            <th class="px-6 py-4 font-semibold">Name</th>
-            <th class="px-6 py-4 font-semibold">Subject</th>
-            <th class="px-6 py-4 font-semibold">Added</th>
-            <th class="px-6 py-4 font-semibold text-right no-sort">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-border/50">
-          {% for t in topics %}
-          <tr class="hover:bg-muted/30 transition-colors bg-background group">
-            <td class="px-6 py-4 whitespace-nowrap font-mono text-primary font-medium">{{ t.code }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-foreground font-medium">
-              {{ t.name }}
-              {% if t.description %}
-              <div class="text-xs text-muted-foreground font-normal mt-1 max-w-xs truncate">{{ t.description }}</div>
-              {% endif %}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-muted-foreground">{{ t.subject.name }} ({{ t.subject.code }})</td>
-            <td class="px-6 py-4 whitespace-nowrap text-muted-foreground">{{ t.date_time|date:"Y-m-d" }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-right">
-              <div class="flex items-center justify-end gap-2">
-                <button onclick="openEditModal({{ t.id }}, '{{ t.code|escapejs }}', '{{ t.name|escapejs }}', {{ t.subject.id }}, '{{ t.description|escapejs }}', '{{ t.learning_objectives|escapejs }}')" class="p-2 rounded-md hover:bg-accent text-muted-foreground transition-colors" title="Edit Topic">
-                  <i data-lucide="edit-3" class="w-4 h-4"></i>
-                </button>
-                <button onclick="openDeleteModal({{ t.id }}, '{{ t.name|escapejs }}')" class="p-2 rounded-md hover:bg-destructive/10 text-destructive transition-colors" title="Delete Topic">
-                  <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+{% block inner_content %}
+<div class="prof-scope">
+  <div class="prof-container" style="max-width: 80rem; margin: 0 auto;">
+    <!-- Header -->
+    <div class="prof-header">
+      <div>
+        <h1 class="prof-header-title">Topics</h1>
+        <p class="prof-header-subtitle">Manage topics for your assigned subjects.</p>
+      </div>
+      <button onclick="openCreateModal()" class="prof-btn-primary">
+        <i data-lucide="plus"></i> New Topic
+      </button>
+    </div>
+
+    <!-- Data Table Container -->
+    <div class="prof-table-container">
+      <div class="prof-table-wrapper">
+        <table id="topics-table" class="prof-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Name</th>
+              <th>Subject</th>
+              <th>Added</th>
+              <th class="no-sort" style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in topics %}
+            <tr>
+              <td style="font-family: monospace; color: var(--prof-primary); font-weight: 500;">{{ t.code }}</td>
+              <td>
+                <div style="font-weight: 500; color: var(--prof-text-main);">{{ t.name }}</div>
+                {% if t.description %}
+                <div style="font-size: 0.75rem; color: var(--prof-text-muted); margin-top: 0.25rem; max-width: 20rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.description }}</div>
+                {% endif %}
+              </td>
+              <td>{{ t.subject.name }} ({{ t.subject.code }})</td>
+              <td>{{ t.date_time|date:"Y-m-d" }}</td>
+              <td style="text-align: right;">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+                  <button onclick="openEditModal({{ t.id }}, '{{ t.code|escapejs }}', '{{ t.name|escapejs }}', {{ t.subject.id }}, '{{ t.description|escapejs }}', '{{ t.learning_objectives|escapejs }}')" class="prof-icon-button" style="background: transparent; color: var(--prof-text-muted);" title="Edit Topic">
+                    <i data-lucide="edit-3"></i>
+                  </button>
+                  <button onclick="openDeleteModal({{ t.id }}, '{{ t.name|escapejs }}')" class="prof-icon-button" style="background: transparent; color: var(--prof-danger);" title="Delete Topic">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- Overlay -->
-<div id="modal-overlay" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 hidden transition-opacity opacity-0" onclick="closeModals()"></div>
+<div id="modal-overlay" class="prof-modal-overlay hidden" onclick="closeModals()"></div>
 
 <!-- Create Modal -->
-<div id="create-modal" class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg hidden opacity-0 scale-95 transition-all">
-  <div class="flex flex-col space-y-1.5 text-center sm:text-left">
-    <h2 class="text-lg font-semibold leading-none tracking-tight">Create New Topic</h2>
-    <p class="text-sm text-muted-foreground">Fill in the details for the new topic.</p>
-  </div>
-  <form method="POST" action="{% url 'voice_tutor:professor_topics' %}">
-    {% csrf_token %}
-    <div class="grid gap-4 py-4">
-      <div class="grid gap-2">
-        <label for="create-code" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Topic Code <span class="text-destructive">*</span></label>
-        <input type="text" id="create-code" name="code" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="e.g. TOP101">
+<div id="create-modal" class="prof-modal-overlay hidden">
+  <div class="prof-modal">
+    <div style="margin-bottom: 1.5rem;">
+      <h2 class="prof-modal-title" style="margin-bottom: 0.25rem;">Create New Topic</h2>
+      <p class="prof-stat-label">Fill in the details for the new topic.</p>
+    </div>
+    <form method="POST" action="{% url 'voice_tutor:professor_topics' %}" class="prof-stack">
+      {% csrf_token %}
+      <div class="prof-form-group">
+        <label for="create-code" class="prof-label">Topic Code <span style="color: var(--prof-danger);">*</span></label>
+        <input type="text" id="create-code" name="code" required class="prof-input" placeholder="e.g. TOP101">
       </div>
-      <div class="grid gap-2">
-        <label for="create-name" class="text-sm font-medium leading-none">Topic Name <span class="text-destructive">*</span></label>
-        <input type="text" id="create-name" name="name" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="e.g. Intro to Databases">
+      <div class="prof-form-group">
+        <label for="create-name" class="prof-label">Topic Name <span style="color: var(--prof-danger);">*</span></label>
+        <input type="text" id="create-name" name="name" required class="prof-input" placeholder="e.g. Intro to Databases">
       </div>
-      <div class="grid gap-2">
-        <label for="create-subject" class="text-sm font-medium leading-none">Subject <span class="text-destructive">*</span></label>
-        <select id="create-subject" name="subject_id" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+      <div class="prof-form-group">
+        <label for="create-subject" class="prof-label">Subject <span style="color: var(--prof-danger);">*</span></label>
+        <select id="create-subject" name="subject_id" required class="prof-select">
           <option value="" disabled selected>Select a subject</option>
           {% for s in subjects %}
           <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
           {% endfor %}
         </select>
       </div>
-      <div class="grid gap-2">
-        <label for="create-desc" class="text-sm font-medium leading-none">Description</label>
-        <textarea id="create-desc" name="description" class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="Optional description..."></textarea>
+      <div class="prof-form-group">
+        <label for="create-desc" class="prof-label">Description</label>
+        <textarea id="create-desc" name="description" class="prof-textarea" placeholder="Optional description..."></textarea>
       </div>
-      <div class="grid gap-2">
-        <label for="create-lo" class="text-sm font-medium leading-none">Learning Objectives</label>
-        <textarea id="create-lo" name="learning_objectives" class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" placeholder="Comma separated list..."></textarea>
+      <div class="prof-form-group">
+        <label for="create-lo" class="prof-label">Learning Objectives</label>
+        <textarea id="create-lo" name="learning_objectives" class="prof-textarea" placeholder="Comma separated list..."></textarea>
       </div>
-    </div>
-    <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-      <button type="button" onclick="closeModals()" class="mt-2 sm:mt-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Cancel</button>
-      <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">Create Topic</button>
-    </div>
-  </form>
+      <div class="prof-modal-actions">
+        <button type="button" onclick="closeModals()" class="prof-btn-secondary">Cancel</button>
+        <button type="submit" class="prof-btn-primary">Create Topic</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Edit Modal -->
-<div id="edit-modal" class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg hidden opacity-0 scale-95 transition-all">
-  <div class="flex flex-col space-y-1.5 text-center sm:text-left">
-    <h2 class="text-lg font-semibold leading-none tracking-tight">Edit Topic</h2>
-    <p class="text-sm text-muted-foreground">Update the topic's information.</p>
-  </div>
-  <form id="edit-form" method="POST" action="">
-    {% csrf_token %}
-    <div class="grid gap-4 py-4">
-      <div class="grid gap-2">
-        <label for="edit-code" class="text-sm font-medium leading-none">Topic Code <span class="text-destructive">*</span></label>
-        <input type="text" id="edit-code" name="code" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+<div id="edit-modal" class="prof-modal-overlay hidden">
+  <div class="prof-modal">
+    <div style="margin-bottom: 1.5rem;">
+      <h2 class="prof-modal-title" style="margin-bottom: 0.25rem;">Edit Topic</h2>
+      <p class="prof-stat-label">Update the topic's information.</p>
+    </div>
+    <form id="edit-form" method="POST" action="" class="prof-stack">
+      {% csrf_token %}
+      <div class="prof-form-group">
+        <label for="edit-code" class="prof-label">Topic Code <span style="color: var(--prof-danger);">*</span></label>
+        <input type="text" id="edit-code" name="code" required class="prof-input">
       </div>
-      <div class="grid gap-2">
-        <label for="edit-name" class="text-sm font-medium leading-none">Topic Name <span class="text-destructive">*</span></label>
-        <input type="text" id="edit-name" name="name" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+      <div class="prof-form-group">
+        <label for="edit-name" class="prof-label">Topic Name <span style="color: var(--prof-danger);">*</span></label>
+        <input type="text" id="edit-name" name="name" required class="prof-input">
       </div>
-      <div class="grid gap-2">
-        <label for="edit-subject" class="text-sm font-medium leading-none">Subject <span class="text-destructive">*</span></label>
-        <select id="edit-subject" name="subject_id" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+      <div class="prof-form-group">
+        <label for="edit-subject" class="prof-label">Subject <span style="color: var(--prof-danger);">*</span></label>
+        <select id="edit-subject" name="subject_id" required class="prof-select">
           {% for s in subjects %}
           <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
           {% endfor %}
         </select>
       </div>
-      <div class="grid gap-2">
-        <label for="edit-desc" class="text-sm font-medium leading-none">Description</label>
-        <textarea id="edit-desc" name="description" class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"></textarea>
+      <div class="prof-form-group">
+        <label for="edit-desc" class="prof-label">Description</label>
+        <textarea id="edit-desc" name="description" class="prof-textarea"></textarea>
       </div>
-      <div class="grid gap-2">
-        <label for="edit-lo" class="text-sm font-medium leading-none">Learning Objectives</label>
-        <textarea id="edit-lo" name="learning_objectives" class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"></textarea>
+      <div class="prof-form-group">
+        <label for="edit-lo" class="prof-label">Learning Objectives</label>
+        <textarea id="edit-lo" name="learning_objectives" class="prof-textarea"></textarea>
       </div>
-    </div>
-    <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-      <button type="button" onclick="closeModals()" class="mt-2 sm:mt-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Cancel</button>
-      <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">Save Changes</button>
-    </div>
-  </form>
+      <div class="prof-modal-actions">
+        <button type="button" onclick="closeModals()" class="prof-btn-secondary">Cancel</button>
+        <button type="submit" class="prof-btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Delete Modal -->
-<div id="delete-modal" class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg hidden opacity-0 scale-95 transition-all text-center">
-  <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 mb-2">
-    <i data-lucide="alert-triangle" class="h-6 w-6 text-destructive"></i>
-  </div>
-  <h2 class="text-lg font-semibold leading-none tracking-tight text-foreground">Delete Topic?</h2>
-  <p class="text-sm text-muted-foreground mt-2">Are you sure you want to delete <span id="delete-topic-name" class="font-bold text-foreground"></span>? This action cannot be undone.</p>
-  
-  <form id="delete-form" method="POST" action="" class="mt-4">
-    {% csrf_token %}
-    <div class="flex flex-col sm:flex-row sm:justify-center sm:space-x-2 w-full gap-2 sm:gap-0">
-      <button type="button" onclick="closeModals()" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-auto">Cancel</button>
-      <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 w-full sm:w-auto">Yes, Delete</button>
+<div id="delete-modal" class="prof-modal-overlay hidden">
+  <div class="prof-modal" style="text-align: center; max-width: 24rem;">
+    <div style="margin: 0 auto 1rem auto; width: 3rem; height: 3rem; border-radius: 50%; background-color: var(--prof-danger-light); display: flex; align-items: center; justify-content: center; color: var(--prof-danger);">
+      <i data-lucide="alert-triangle" style="width: 1.5rem; height: 1.5rem;"></i>
     </div>
-  </form>
+    <h2 class="prof-modal-title" style="margin-bottom: 0.5rem; font-size: 1.25rem;">Delete Topic?</h2>
+    <p class="prof-stat-label">Are you sure you want to delete <span id="delete-topic-name" style="font-weight: 600; color: var(--prof-text-main);"></span>? This action cannot be undone.</p>
+    
+    <form id="delete-form" method="POST" action="" style="margin-top: 1.5rem;">
+      {% csrf_token %}
+      <div style="display: flex; gap: 0.75rem; justify-content: center;">
+        <button type="button" onclick="closeModals()" class="prof-btn-secondary" style="flex: 1;">Cancel</button>
+        <button type="submit" class="prof-btn-primary" style="flex: 1; background-color: var(--prof-danger);">Yes, Delete</button>
+      </div>
+    </form>
+  </div>
 </div>
-
 {% endblock %}
 
 {% block dashboard_scripts %}
@@ -170,49 +239,48 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 
-<!-- Custom Tailwind styling for DataTables wrapper -->
 <style>
   .dataTables_wrapper .dataTables_filter input {
-    border: 1px solid hsl(var(--input));
-    border-radius: 0.375rem;
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-md);
     padding: 0.25rem 0.75rem;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background: var(--prof-bg);
+    color: var(--prof-text-main);
     margin-left: 0.5rem;
   }
   .dataTables_wrapper .dataTables_length select {
-    border: 1px solid hsl(var(--input));
-    border-radius: 0.375rem;
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-md);
     padding: 0.25rem 1.5rem 0.25rem 0.75rem;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background: var(--prof-bg);
+    color: var(--prof-text-main);
   }
   .dataTables_wrapper .dataTables_info,
   .dataTables_wrapper .dataTables_length,
   .dataTables_wrapper .dataTables_filter {
-    color: hsl(var(--muted-foreground)) !important;
+    color: var(--prof-text-muted) !important;
     font-size: 0.875rem;
     margin-bottom: 1rem;
     margin-top: 0.5rem;
   }
   .dataTables_wrapper .dataTables_paginate .paginate_button {
-    color: hsl(var(--foreground)) !important;
+    color: var(--prof-text-main) !important;
     border: 1px solid transparent !important;
-    border-radius: 0.375rem !important;
+    border-radius: var(--prof-radius-md) !important;
     margin-left: 2px;
   }
   .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-    background: hsl(var(--accent)) !important;
-    border-color: hsl(var(--border)) !important;
-    color: hsl(var(--accent-foreground)) !important;
+    background: var(--prof-bg) !important;
+    border-color: var(--prof-border) !important;
+    color: var(--prof-text-main) !important;
   }
   .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-    background: hsl(var(--primary)) !important;
-    color: hsl(var(--primary-foreground)) !important;
-    border-color: hsl(var(--primary)) !important;
+    background: var(--prof-primary) !important;
+    color: white !important;
+    border-color: var(--prof-primary) !important;
   }
   table.dataTable.no-footer {
-    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    border-bottom: 1px solid var(--prof-border);
   }
 </style>
 
@@ -230,33 +298,21 @@
     });
   });
 
-  // Modal Handlers
   const overlay = document.getElementById('modal-overlay');
   const createModal = document.getElementById('create-modal');
   const editModal = document.getElementById('edit-modal');
   const deleteModal = document.getElementById('delete-modal');
 
   function openModal(modal) {
-    overlay.classList.remove('hidden');
-    modal.classList.remove('hidden');
-    // small delay for transition
-    setTimeout(() => {
-      overlay.classList.remove('opacity-0');
-      modal.classList.remove('opacity-0', 'scale-95');
-    }, 10);
+    if (overlay) overlay.classList.remove('hidden');
+    if (modal) modal.classList.remove('hidden');
   }
 
   function closeModals() {
-    overlay.classList.add('opacity-0');
-    createModal.classList.add('opacity-0', 'scale-95');
-    editModal.classList.add('opacity-0', 'scale-95');
-    deleteModal.classList.add('opacity-0', 'scale-95');
-    setTimeout(() => {
-      overlay.classList.add('hidden');
-      createModal.classList.add('hidden');
-      editModal.classList.add('hidden');
-      deleteModal.classList.add('hidden');
-    }, 200);
+    if (overlay) overlay.classList.add('hidden');
+    if (createModal) createModal.classList.add('hidden');
+    if (editModal) editModal.classList.add('hidden');
+    if (deleteModal) deleteModal.classList.add('hidden');
   }
 
   function openCreateModal() {
@@ -270,7 +326,6 @@
     document.getElementById('edit-desc').value = description === 'None' ? '' : description;
     document.getElementById('edit-lo').value = learning_objectives === 'None' ? '' : learning_objectives;
     
-    // Set form action dynamically
     document.getElementById('edit-form').action = `/professor/topics/${id}/update`;
     
     openModal(editModal);

@@ -1,196 +1,261 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Assignment Details - {{ assignment.title }}{% endblock %}
 
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
+<style>
+  .detail-card {
+    background-color: var(--prof-card-bg);
+    border-radius: var(--prof-radius-xl);
+    border: 1px solid var(--prof-border);
+    padding: 1.5rem;
+    box-shadow: var(--prof-shadow-sm);
+  }
+  .q-option {
+    padding: 0.75rem 1rem;
+    border-radius: var(--prof-radius-md);
+    border: 1px solid var(--prof-border);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--prof-bg);
+    color: var(--prof-text-muted);
+  }
+  .q-option.correct {
+    background-color: var(--prof-success-light);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--prof-success);
+    font-weight: 500;
+  }
+  .q-letter {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--prof-radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--prof-card-bg);
+    color: var(--prof-text-muted);
+  }
+  .q-option.correct .q-letter {
+    background-color: var(--prof-success);
+    color: white;
+  }
+  .student-row {
+    padding: 1rem;
+    transition: var(--prof-transition);
+    border-bottom: 1px solid var(--prof-border);
+  }
+  .student-row:last-child {
+    border-bottom: none;
+  }
+  .student-row:hover {
+    background-color: var(--prof-bg);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="space-y-6">
-  
-  <!-- Header -->
-  <div class="flex items-center gap-4">
-    <a href="{% url 'voice_tutor:professor_assignments' %}" class="p-2 hover:bg-secondary rounded-full transition-colors text-muted-foreground hover:text-foreground">
-      <i data-lucide="arrow-left" class="w-6 h-6"></i>
-    </a>
-    <div>
-      <h1 class="text-3xl font-display font-bold text-foreground">{{ assignment.title }}</h1>
-      <div class="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-2">
-        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="book" class="w-3 h-3 mr-1"></i>{{ assignment.subject }}</span>
-        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="bookmark" class="w-3 h-3 mr-1"></i>{{ assignment.topic }}</span>
-        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-border text-muted-foreground"><i data-lucide="users" class="w-3 h-3 mr-1"></i>{{ assignment.batch }}</span>
-        <span class="w-1 h-1 rounded-full bg-border ml-1"></span>
-        <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> {{ assignment.createdAt|date:"M d, Y" }}</span>
-        <span class="w-1 h-1 rounded-full bg-border"></span>
-        <span class="flex items-center gap-1"><i data-lucide="user" class="w-3.5 h-3.5"></i> By {{ assignment.createdBy }}</span>
-      </div>
-    </div>
-    <div class="ml-auto flex items-center gap-3">
-      {% if assignment.has_pdf %}
-      <a href="{% url 'voice_tutor:serve_assignment_pdf' assignment.id %}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium">
-        <i data-lucide="file-text" class="w-4 h-4"></i>
-        View Source PDF
-      </a>
-      {% endif %}
-      <form action="{% url 'voice_tutor:professor_assignment_delete' assignment.id %}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this assignment and its vectors?');">
-        {% csrf_token %}
-        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors font-medium">
-          <i data-lucide="trash-2" class="w-4 h-4"></i>
-          Delete
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Stats Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-    <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
-      <div class="p-3 bg-primary/10 text-primary rounded-lg">
-        <i data-lucide="book-open" class="w-6 h-6"></i>
-      </div>
-      <div>
-        <p class="text-sm text-muted-foreground">Difficulty</p>
-        <p class="font-semibold capitalize text-foreground">{{ assignment.difficulty }}</p>
-      </div>
-    </div>
+<div class="prof-scope">
+  <div class="prof-container">
     
-    <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
-      <div class="p-3 bg-secondary text-secondary-foreground rounded-lg">
-        <i data-lucide="clock" class="w-6 h-6"></i>
-      </div>
-      <div>
-        <p class="text-sm text-muted-foreground">Duration</p>
-        <p class="font-semibold text-foreground">{{ assignment.expectedDuration }} mins</p>
-      </div>
-    </div>
-    
-    <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
-      <div class="p-3 bg-success/10 text-success rounded-lg">
-        <i data-lucide="users" class="w-6 h-6"></i>
-      </div>
-      <div>
-        <p class="text-sm text-muted-foreground">Completion Rate</p>
-        <p class="font-semibold text-foreground">
-          {% if assignment.progressCount > 0 %}
-            {% widthratio assignment.completedCount assignment.progressCount 100 %}%
-          {% else %}
-            0%
-          {% endif %}
-        </p>
-      </div>
-    </div>
-    
-    <div class="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
-      <div class="p-3 bg-accent text-accent-foreground rounded-lg">
-        <i data-lucide="zap" class="w-6 h-6"></i>
-      </div>
-      <div>
-        <p class="text-sm text-muted-foreground">Avg Engagement</p>
-        <p class="font-semibold text-foreground">{{ assignment.avgEngagement }}%</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Description -->
-  {% if assignment.description %}
-  <div class="bg-card rounded-2xl p-6 border border-border shadow-sm">
-    <h2 class="text-lg font-semibold mb-2">Description</h2>
-    <p class="text-muted-foreground">{{ assignment.description }}</p>
-  </div>
-  {% endif %}
-
-  <!-- Two Column Layout: Questions & Students -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    
-    <!-- Left Col: Questions -->
-    <div class="lg:col-span-2 space-y-4">
-      <h2 class="text-xl font-display font-bold text-foreground">Generated Questions ({{ assignment.questions|length }})</h2>
-      
-      <div class="space-y-4">
-        {% for q in assignment.questions %}
-        <div class="bg-card rounded-xl border border-border p-5 shadow-sm">
-          <div class="flex items-start justify-between mb-3">
-            <h3 class="font-medium text-foreground"><span class="text-muted-foreground mr-2">{{ forloop.counter }}.</span> {{ q.content }}</h3>
-            <span class="text-xs px-2 py-1 rounded-md bg-secondary text-secondary-foreground uppercase">{{ q.type }}</span>
+    <!-- Header -->
+    <div class="prof-header">
+      <div style="display: flex; gap: 1rem; align-items: flex-start;">
+        <a href="{% url 'voice_tutor:professor_assignments' %}" class="prof-icon-button" style="background: transparent; border: 1px solid var(--prof-border); color: var(--prof-text-muted);">
+          <i data-lucide="arrow-left"></i>
+        </a>
+        <div>
+          <h1 class="prof-header-title">{{ assignment.title }}</h1>
+          <div class="prof-tag-group" style="margin-top: 0.5rem; display: flex; align-items: center; flex-wrap: wrap;">
+            <span class="prof-tag" style="border: 1px solid var(--prof-border); background: var(--prof-bg); color: var(--prof-text-muted);"><i data-lucide="book" style="width: 0.75rem; height: 0.75rem; margin-right: 0.25rem; display: inline;"></i>{{ assignment.subject }}</span>
+            <span class="prof-tag" style="border: 1px solid var(--prof-border); background: var(--prof-bg); color: var(--prof-text-muted);"><i data-lucide="bookmark" style="width: 0.75rem; height: 0.75rem; margin-right: 0.25rem; display: inline;"></i>{{ assignment.topic }}</span>
+            <span class="prof-tag" style="border: 1px solid var(--prof-border); background: var(--prof-bg); color: var(--prof-text-muted);"><i data-lucide="users" style="width: 0.75rem; height: 0.75rem; margin-right: 0.25rem; display: inline;"></i>{{ assignment.batch }}</span>
+            <span style="width: 4px; height: 4px; border-radius: 50%; background-color: var(--prof-border); margin: 0 0.25rem;"></span>
+            <span class="prof-stat-subtext" style="display: flex; align-items: center; margin-top: 0;"><i data-lucide="calendar" style="width: 0.875rem; height: 0.875rem; margin-right: 0.25rem;"></i> {{ assignment.createdAt|date:"M d, Y" }}</span>
+            <span style="width: 4px; height: 4px; border-radius: 50%; background-color: var(--prof-border); margin: 0 0.25rem;"></span>
+            <span class="prof-stat-subtext" style="display: flex; align-items: center; margin-top: 0;"><i data-lucide="user" style="width: 0.875rem; height: 0.875rem; margin-right: 0.25rem;"></i> By {{ assignment.createdBy }}</span>
           </div>
-          
-          {% if q.type == 'mcq' %}
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-            {% for opt in q.options %}
-            <div class="px-4 py-3 rounded-lg border text-sm flex items-center gap-3 {% if opt.is_correct %}bg-success/10 border-success/30 text-success-foreground font-medium{% else %}bg-secondary/30 border-border text-muted-foreground{% endif %}">
-              <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs {% if opt.is_correct %}bg-success text-white{% else %}bg-secondary text-secondary-foreground{% endif %}">
-                {{ opt.letter|upper }}
-              </span>
-              {{ opt.text }}
-              {% if opt.is_correct %}
-                <i data-lucide="check" class="w-4 h-4 ml-auto text-success"></i>
-              {% endif %}
-            </div>
-            {% endfor %}
-          </div>
-          {% else %}
-          <div class="mt-4 p-4 rounded-lg bg-success/10 border border-success/30">
-            <p class="text-sm font-medium text-success-foreground mb-1">Correct Answer:</p>
-            <p class="text-sm text-foreground">{{ q.correctAnswer }}</p>
-          </div>
-          {% endif %}
-          
-          {% if q.conceptTags %}
-          <div class="mt-4 flex flex-wrap gap-2">
-            {% for tag in q.conceptTags %}
-            <span class="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary">{{ tag }}</span>
-            {% endfor %}
-          </div>
-          {% endif %}
         </div>
-        {% empty %}
-        <div class="bg-card rounded-xl border border-border p-8 text-center">
-          <i data-lucide="help-circle" class="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50"></i>
-          <p class="text-muted-foreground">No questions found for this assignment.</p>
-        </div>
-        {% endfor %}
       </div>
-    </div>
-
-    <!-- Right Col: Student Progress -->
-    <div class="space-y-4">
-      <h2 class="text-xl font-display font-bold text-foreground">Student Performance</h2>
-      
-      <div class="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-        {% if assignment.students_progress %}
-          <div class="divide-y divide-border">
-            {% for student in assignment.students_progress %}
-            <div class="p-4 hover:bg-secondary/50 transition-colors">
-              <div class="flex items-center gap-3 mb-3">
-                <img src="{{ student.student_avatar }}" alt="{{ student.student_name }}" class="w-10 h-10 rounded-full object-cover bg-secondary">
-                <div>
-                  <p class="font-medium text-foreground">{{ student.student_name }}</p>
-                  <p class="text-xs text-muted-foreground capitalize">{{ student.status|title }}</p>
-                </div>
-                <div class="ml-auto text-right">
-                  <span class="text-sm font-semibold {% if student.pct >= 80 %}text-success{% elif student.pct >= 50 %}text-warning{% else %}text-destructive{% endif %}">
-                    {{ student.pct }}%
-                  </span>
-                </div>
-              </div>
-              <div class="w-full bg-secondary rounded-full h-1.5 mb-2">
-                <div class="h-1.5 rounded-full {% if student.pct >= 80 %}bg-success{% elif student.pct >= 50 %}bg-warning{% else %}bg-destructive{% endif %}" style="width: {{ student.pct }}%"></div>
-              </div>
-              <div class="flex justify-between text-xs text-muted-foreground">
-                <span title="Engagement"><i data-lucide="zap" class="w-3 h-3 inline mr-1"></i>{{ student.engagement }}%</span>
-                <span title="Hints Used"><i data-lucide="help-circle" class="w-3 h-3 inline mr-1"></i>{{ student.hints_used }}</span>
-                <span title="Time Spent"><i data-lucide="clock" class="w-3 h-3 inline mr-1"></i>{{ student.time_spent }}s</span>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="p-8 text-center">
-            <i data-lucide="users" class="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50"></i>
-            <p class="text-muted-foreground text-sm">No students have started this assignment yet.</p>
-          </div>
+      <div style="display: flex; gap: 0.75rem; align-items: center;">
+        {% if assignment.has_pdf %}
+        <a href="{% url 'voice_tutor:serve_assignment_pdf' assignment.id %}" target="_blank" class="prof-btn-primary">
+          <i data-lucide="file-text"></i>
+          View Source PDF
+        </a>
         {% endif %}
+        <form action="{% url 'voice_tutor:professor_assignment_delete' assignment.id %}" method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this assignment and its vectors?');">
+          {% csrf_token %}
+          <button type="submit" class="prof-btn-primary" style="background-color: var(--prof-danger); color: white;">
+            <i data-lucide="trash-2"></i>
+            Delete
+          </button>
+        </form>
       </div>
     </div>
-    
+
+    <!-- Stats Cards -->
+    <div class="prof-grid-stats">
+      <div class="prof-stat-card" style="display: flex; align-items: center; gap: 1rem; padding: 1rem;">
+        <div class="prof-stat-icon primary">
+          <i data-lucide="book-open"></i>
+        </div>
+        <div>
+          <p class="prof-stat-label">Difficulty</p>
+          <p class="prof-stat-value" style="font-size: 1.125rem; font-weight: 600; text-transform: capitalize;">{{ assignment.difficulty }}</p>
+        </div>
+      </div>
+      
+      <div class="prof-stat-card" style="display: flex; align-items: center; gap: 1rem; padding: 1rem;">
+        <div class="prof-stat-icon" style="background-color: var(--prof-bg); color: var(--prof-text-muted);">
+          <i data-lucide="clock"></i>
+        </div>
+        <div>
+          <p class="prof-stat-label">Duration</p>
+          <p class="prof-stat-value" style="font-size: 1.125rem; font-weight: 600;">{{ assignment.expectedDuration }} mins</p>
+        </div>
+      </div>
+      
+      <div class="prof-stat-card" style="display: flex; align-items: center; gap: 1rem; padding: 1rem;">
+        <div class="prof-stat-icon success">
+          <i data-lucide="users"></i>
+        </div>
+        <div>
+          <p class="prof-stat-label">Completion Rate</p>
+          <p class="prof-stat-value" style="font-size: 1.125rem; font-weight: 600;">
+            {% if assignment.progressCount > 0 %}
+              {% widthratio assignment.completedCount assignment.progressCount 100 %}%
+            {% else %}
+              0%
+            {% endif %}
+          </p>
+        </div>
+      </div>
+      
+      <div class="prof-stat-card" style="display: flex; align-items: center; gap: 1rem; padding: 1rem;">
+        <div class="prof-stat-icon warning">
+          <i data-lucide="zap"></i>
+        </div>
+        <div>
+          <p class="prof-stat-label">Avg Engagement</p>
+          <p class="prof-stat-value" style="font-size: 1.125rem; font-weight: 600;">{{ assignment.avgEngagement }}%</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    {% if assignment.description %}
+    <div class="detail-card">
+      <h2 class="prof-section-title" style="margin-bottom: 0.5rem; font-size: 1.125rem;">Description</h2>
+      <p class="prof-stat-label">{{ assignment.description }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Two Column Layout: Questions & Students -->
+    <div class="prof-grid-main">
+      
+      <!-- Left Col: Questions -->
+      <div class="prof-stack">
+        <h2 class="prof-section-title">Generated Questions ({{ assignment.questions|length }})</h2>
+        
+        <div class="prof-stack">
+          {% for q in assignment.questions %}
+          <div class="detail-card">
+            <div class="prof-flex-between" style="align-items: flex-start; margin-bottom: 1rem;">
+              <h3 style="font-weight: 500; font-size: 1rem;"><span style="color: var(--prof-text-muted); margin-right: 0.5rem;">{{ forloop.counter }}.</span> {{ q.content }}</h3>
+              <span class="prof-badge" style="background-color: var(--prof-bg); color: var(--prof-text-muted); border: 1px solid var(--prof-border); font-size: 0.625rem; text-transform: uppercase;">{{ q.type }}</span>
+            </div>
+            
+            {% if q.type == 'mcq' %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; margin-top: 1rem;">
+              {% for opt in q.options %}
+              <div class="q-option {% if opt.is_correct %}correct{% endif %}">
+                <span class="q-letter">
+                  {{ opt.letter|upper }}
+                </span>
+                {{ opt.text }}
+                {% if opt.is_correct %}
+                  <i data-lucide="check" style="margin-left: auto; color: var(--prof-success); width: 1rem; height: 1rem;"></i>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="prof-insight-box success" style="margin-top: 1rem; margin-bottom: 0;">
+              <p style="font-size: 0.875rem; font-weight: 500; color: var(--prof-success); margin-bottom: 0.25rem;">Correct Answer:</p>
+              <p style="font-size: 0.875rem; color: var(--prof-text-main);">{{ q.correctAnswer }}</p>
+            </div>
+            {% endif %}
+            
+            {% if q.conceptTags %}
+            <div class="prof-tag-group" style="margin-top: 1rem;">
+              {% for tag in q.conceptTags %}
+              <span class="prof-tag primary">{{ tag }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="detail-card" style="text-align: center; padding: 3rem 1.5rem;">
+            <i data-lucide="help-circle" style="width: 3rem; height: 3rem; color: var(--prof-text-light); margin: 0 auto 1rem auto; display: block; opacity: 0.5;"></i>
+            <p class="prof-stat-label">No questions found for this assignment.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Right Col: Student Progress -->
+      <div class="prof-stack">
+        <h2 class="prof-section-title">Student Performance</h2>
+        
+        <div class="detail-card" style="padding: 0; overflow: hidden;">
+          {% if assignment.students_progress %}
+            <div>
+              {% for student in assignment.students_progress %}
+              <div class="student-row">
+                <div class="prof-flex-between" style="margin-bottom: 0.75rem;">
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 2.5rem; height: 2.5rem; border-radius: var(--prof-radius-full); background-color: var(--prof-primary-light); color: var(--prof-primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1rem; flex-shrink: 0; text-transform: uppercase;">
+                      {{ student.student_name.0 }}
+                    </div>
+                    <div>
+                      <p style="font-weight: 500; font-size: 0.875rem;">{{ student.student_name }}</p>
+                      <p class="prof-stat-subtext" style="text-transform: capitalize; margin-top: 0;">{{ student.status|title }}</p>
+                    </div>
+                  </div>
+                  <div style="text-align: right;">
+                    <span style="font-weight: 600; font-size: 0.875rem; color: var(--prof-text-main);">
+                      {{ student.pct }}%
+                    </span>
+                  </div>
+                </div>
+                <div style="width: 100%; background-color: var(--prof-bg); border-radius: 9999px; height: 0.375rem; margin-bottom: 0.5rem; overflow: hidden;">
+                  <div style="height: 100%; border-radius: 9999px; width: {{ student.pct }}%; background-color: {% if student.pct >= 80 %}var(--prof-primary){% elif student.pct >= 50 %}#818cf8{% else %}#cbd5e1{% endif %}; transition: width 1s ease-in-out;"></div>
+                </div>
+                <div class="prof-flex-between" style="font-size: 0.75rem; color: var(--prof-text-muted);">
+                  <span title="Engagement"><i data-lucide="zap" style="width: 0.75rem; height: 0.75rem; display: inline; margin-right: 0.25rem;"></i>{{ student.engagement }}%</span>
+                  <span title="Hints Used"><i data-lucide="help-circle" style="width: 0.75rem; height: 0.75rem; display: inline; margin-right: 0.25rem;"></i>{{ student.hints_used }}</span>
+                  <span title="Time Spent"><i data-lucide="clock" style="width: 0.75rem; height: 0.75rem; display: inline; margin-right: 0.25rem;"></i>{{ student.time_spent }}s</span>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div style="padding: 2rem 1.5rem; text-align: center;">
+              <i data-lucide="users" style="width: 3rem; height: 3rem; color: var(--prof-text-light); margin: 0 auto 1rem auto; display: block; opacity: 0.5;"></i>
+              <p class="prof-stat-label">No students have started this assignment yet.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      
+    </div>
   </div>
 </div>
 {% endblock %}
-

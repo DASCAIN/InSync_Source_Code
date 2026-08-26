@@ -173,6 +173,14 @@
             <span class="font-medium">AI Tutor</span>
             {% if active_tab == 'tutor_chat' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
           </a>
+          <a
+            href="{% url 'voice_tutor:student_messages' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group {% if active_tab == 'messages' %}bg-sidebar-primary text-sidebar-primary-foreground shadow-lg{% else %}text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground{% endif %}"
+          >
+            <i data-lucide="message-square" class="w-5 h-5"></i>
+            <span class="font-medium">Messages</span>
+            {% if active_tab == 'messages' %}<i data-lucide="chevron-right" class="w-4 h-4 ml-auto"></i>{% endif %}
+          </a>
         {% endif %}
       </nav>
 

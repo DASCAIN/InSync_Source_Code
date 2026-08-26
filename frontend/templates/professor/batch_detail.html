@@ -3,77 +3,168 @@
 
 {% block title %}{{ batch.name }} Details — InSync{% endblock %}
 
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
+<style>
+  .prof-table-container {
+    background-color: var(--prof-card-bg);
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-xl);
+    box-shadow: var(--prof-shadow-sm);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .prof-table-header-bar {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--prof-border);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  @media (min-width: 768px) {
+    .prof-table-header-bar {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+  .prof-search-wrapper {
+    position: relative;
+    width: 100%;
+  }
+  @media (min-width: 768px) {
+    .prof-search-wrapper { width: 18rem; }
+  }
+  .prof-search-wrapper i {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--prof-text-muted);
+  }
+  .prof-search-input {
+    width: 100%;
+    height: 2.25rem;
+    border-radius: var(--prof-radius-md);
+    border: 1px solid var(--prof-border);
+    background-color: var(--prof-bg);
+    padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: var(--prof-transition);
+  }
+  .prof-search-input:focus {
+    border-color: var(--prof-primary);
+    box-shadow: 0 0 0 2px var(--prof-primary-light);
+  }
+  .prof-table-wrapper {
+    overflow-x: auto;
+  }
+  .prof-table {
+    width: 100%;
+    text-align: left;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .prof-table th {
+    background-color: var(--prof-bg);
+    color: var(--prof-text-muted);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--prof-border);
+  }
+  .prof-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--prof-border);
+    color: var(--prof-text-muted);
+    background-color: var(--prof-card-bg);
+  }
+  .prof-table tr:last-child td {
+    border-bottom: none;
+  }
+  .prof-table tr:hover td {
+    background-color: var(--prof-bg);
+  }
+</style>
+{% endblock %}
+
 {% block inner_content %}
-<div class="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
-  <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div>
-      <div class="flex items-center gap-3 mb-2">
-        <a href="{% url 'voice_tutor:professor_batchs' %}" class="p-2 rounded-md hover:bg-accent text-muted-foreground transition-colors">
-          <i data-lucide="arrow-left" class="w-5 h-5"></i>
-        </a>
-        <h1 class="font-display text-3xl font-bold text-foreground">{{ batch.name }}</h1>
-      </div>
-      <p class="text-muted-foreground">{{ batch.description|default:"No description provided." }}</p>
-    </div>
-  </div>
-
-  <!-- Meta Stats -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div class="bg-card border border-border/50 rounded-xl p-4 shadow-sm">
-      <div class="text-sm font-medium text-muted-foreground mb-1">University</div>
-      <div class="font-semibold text-foreground">{{ batch.university.name|default:"N/A" }}</div>
-    </div>
-    <div class="bg-card border border-border/50 rounded-xl p-4 shadow-sm">
-      <div class="text-sm font-medium text-muted-foreground mb-1">Session</div>
-      <div class="font-semibold text-foreground">{{ batch.session.name|default:"N/A" }}</div>
-    </div>
-    <div class="bg-card border border-border/50 rounded-xl p-4 shadow-sm">
-      <div class="text-sm font-medium text-muted-foreground mb-1">Course</div>
-      <div class="font-semibold text-foreground">{{ batch.course.name|default:"N/A" }}</div>
-    </div>
-    <div class="bg-card border border-border/50 rounded-xl p-4 shadow-sm">
-      <div class="text-sm font-medium text-muted-foreground mb-1">Total Students</div>
-      <div class="font-semibold text-foreground">{{ students|length }}</div>
-    </div>
-  </div>
-
-  <!-- Students Data Table -->
-  <div class="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-    <div class="p-5 border-b border-border/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <h2 class="font-display text-lg font-bold text-foreground">Students Directory</h2>
-      <div class="relative w-full md:w-72">
-        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"></i>
-        <input type="text" id="dt-search" placeholder="Search students..." class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 pl-9" />
-      </div>
-    </div>
+<div class="prof-scope">
+  <div class="prof-container" style="max-width: 80rem; margin: 0 auto;">
     
-    <div class="overflow-x-auto">
-      <table id="batch-students-table" class="w-full text-sm text-left align-middle" style="width:100%">
-        <thead class="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border/50">
-          <tr>
-            <th class="px-6 py-4 font-semibold">Student</th>
-            <th class="px-6 py-4 font-semibold">Username</th>
-            <th class="px-6 py-4 font-semibold">Email</th>
-            <th class="px-6 py-4 font-semibold">Joined</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-border/50">
-          {% for s in students %}
-          <tr class="hover:bg-muted/30 transition-colors bg-background">
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="flex items-center gap-3">
-                <img src="{% if s.avatar %}{{ s.avatar }}{% else %}https://ui-avatars.com/api/?name={{ s.name|urlencode }}&background=random{% endif %}" class="w-8 h-8 rounded-full object-cover border border-border" alt="avatar" />
-                <span class="font-medium text-foreground">{{ s.name }}</span>
-              </div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-muted-foreground font-mono text-xs">{{ s.id }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-muted-foreground">{{ s.email }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-muted-foreground">{{ s.createdAt }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <!-- Header -->
+    <div class="prof-header">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+          <a href="{% url 'voice_tutor:professor_batchs' %}" class="prof-icon-button" style="background: transparent; color: var(--prof-text-muted); border: 1px solid transparent;">
+            <i data-lucide="arrow-left"></i>
+          </a>
+          <h1 class="prof-header-title" style="margin-bottom: 0;">{{ batch.name }}</h1>
+        </div>
+        <p class="prof-header-subtitle">{{ batch.description|default:"No description provided." }}</p>
+      </div>
+    </div>
+
+    <!-- Meta Stats -->
+    <div class="prof-grid-stats">
+      <div class="prof-stat-card" style="padding: 1.25rem;">
+        <div class="prof-stat-label" style="margin-bottom: 0.25rem;">University</div>
+        <div class="prof-stat-value" style="font-size: 1.125rem;">{{ batch.university.name|default:"N/A" }}</div>
+      </div>
+      <div class="prof-stat-card" style="padding: 1.25rem;">
+        <div class="prof-stat-label" style="margin-bottom: 0.25rem;">Session</div>
+        <div class="prof-stat-value" style="font-size: 1.125rem;">{{ batch.session.name|default:"N/A" }}</div>
+      </div>
+      <div class="prof-stat-card" style="padding: 1.25rem;">
+        <div class="prof-stat-label" style="margin-bottom: 0.25rem;">Course</div>
+        <div class="prof-stat-value" style="font-size: 1.125rem;">{{ batch.course.name|default:"N/A" }}</div>
+      </div>
+      <div class="prof-stat-card" style="padding: 1.25rem;">
+        <div class="prof-stat-label" style="margin-bottom: 0.25rem;">Total Students</div>
+        <div class="prof-stat-value" style="font-size: 1.125rem;">{{ students|length }}</div>
+      </div>
+    </div>
+
+    <!-- Students Data Table -->
+    <div class="prof-table-container">
+      <div class="prof-table-header-bar">
+        <h2 class="prof-section-title" style="margin: 0;">Students Directory</h2>
+        <div class="prof-search-wrapper">
+          <i data-lucide="search" style="width: 1rem; height: 1rem;"></i>
+          <input type="text" id="dt-search" placeholder="Search students..." class="prof-search-input" />
+        </div>
+      </div>
+      
+      <div class="prof-table-wrapper">
+        <table id="batch-students-table" class="prof-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            <tr>
+              <td>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <img src="{% if s.avatar %}{{ s.avatar }}{% else %}https://ui-avatars.com/api/?name={{ s.name|urlencode }}&background=random{% endif %}" style="width: 2rem; height: 2rem; border-radius: 50%; object-fit: cover; border: 1px solid var(--prof-border);" alt="avatar" />
+                  <span style="font-weight: 500; color: var(--prof-text-main);">{{ s.name }}</span>
+                </div>
+              </td>
+              <td style="font-family: monospace; font-size: 0.75rem;">{{ s.id }}</td>
+              <td>{{ s.email }}</td>
+              <td>{{ s.createdAt }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -85,22 +176,19 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 
-<!-- Custom Tailwind styling for DataTables wrapper -->
 <style>
-  /* Hide custom search if DataTables provides it, or hide DataTables search if using custom */
-  /* Here we will let DataTables handle search entirely and hide our custom search input for simplicity, or bind them. We will bind them. */
   .dataTables_wrapper .dataTables_filter { display: none; }
   
   .dataTables_wrapper .dataTables_length select {
-    border: 1px solid hsl(var(--input));
-    border-radius: 0.375rem;
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-md);
     padding: 0.25rem 1.5rem 0.25rem 0.75rem;
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background: var(--prof-bg);
+    color: var(--prof-text-main);
   }
   .dataTables_wrapper .dataTables_info,
   .dataTables_wrapper .dataTables_length {
-    color: hsl(var(--muted-foreground)) !important;
+    color: var(--prof-text-muted) !important;
     font-size: 0.875rem;
     margin-bottom: 1rem;
     margin-top: 1rem;
@@ -115,23 +203,23 @@
     padding-top: 1rem;
   }
   .dataTables_wrapper .dataTables_paginate .paginate_button {
-    color: hsl(var(--foreground)) !important;
+    color: var(--prof-text-main) !important;
     border: 1px solid transparent !important;
-    border-radius: 0.375rem !important;
+    border-radius: var(--prof-radius-md) !important;
     margin-left: 2px;
   }
   .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-    background: hsl(var(--accent)) !important;
-    border-color: hsl(var(--border)) !important;
-    color: hsl(var(--accent-foreground)) !important;
+    background: var(--prof-bg) !important;
+    border-color: var(--prof-border) !important;
+    color: var(--prof-text-main) !important;
   }
   .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-    background: hsl(var(--primary)) !important;
-    color: hsl(var(--primary-foreground)) !important;
-    border-color: hsl(var(--primary)) !important;
+    background: var(--prof-primary) !important;
+    color: white !important;
+    border-color: var(--prof-primary) !important;
   }
   table.dataTable.no-footer {
-    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    border-bottom: 1px solid var(--prof-border);
   }
 </style>
 
@@ -144,7 +232,6 @@
       }
     });
 
-    // Bind custom search input to DataTables search
     $('#dt-search').on('keyup', function() {
       table.search(this.value).draw();
     });

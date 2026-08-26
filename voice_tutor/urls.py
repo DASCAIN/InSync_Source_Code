@@ -34,6 +34,7 @@ urlpatterns = [
     path('student/voice/<str:assignment_id>/<str:question_id>', views.voice_agent_view, name='voice_agent_question'),
     path('student/tutor-chat', views.tutor_chat_view, name='tutor_chat'),
     path('student/tutor-voice', views.openai_voice_tutor_view, name='openai_voice_tutor'),
+    path('student/messages', views.student_messages, name='student_messages'),
     
     path('subject/<str:subject_id>/topic/<str:topic_id>', views.topic_page_view, name='topic_page'),
 

@@ -30,7 +30,14 @@ def login_required_custom(role=None):
                 return redirect('voice_tutor:login')
             if role and user.get('role') != role:
                 return redirect('voice_tutor:professor_dashboard' if user.get('role') == 'professor' else 'voice_tutor:student_dashboard')
-            return view_func(request, *args, **kwargs)
+            
+            response = view_func(request, *args, **kwargs)
+            # Add cache-control headers to prevent caching of authenticated pages
+            if isinstance(response, HttpResponse):
+                response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+                response['Pragma'] = 'no-cache'
+                response['Expires'] = '0'
+            return response
         return _wrapped_view
     return decorator
 
@@ -369,6 +376,44 @@ def signup_view(request):
         emp_id = request.POST.get('emp_id', '').strip()
         enrollment_number = request.POST.get('enrollment_number', '').strip()
         preferred_subjects = request.POST.getlist('preferred_subjects')
+
+        # Basic validation
+        if not role or not name or not email or not mobile_number:
+            return render(request, 'signup.html', {
+                'error': 'Role, Name, Email, and Mobile Number are required fields.',
+                'universities': models.UniversityMaster.objects.all(),
+                'courses': models.CourseMaster.objects.all(),
+                'sessions': models.SessionMaster.objects.all(),
+                'subjects': models.SubjectMaster.objects.all()
+            })
+
+        import re
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            return render(request, 'signup.html', {
+                'error': 'Please provide a valid email address.',
+                'universities': models.UniversityMaster.objects.all(),
+                'courses': models.CourseMaster.objects.all(),
+                'sessions': models.SessionMaster.objects.all(),
+                'subjects': models.SubjectMaster.objects.all()
+            })
+
+        if not re.match(r"^\+?1?\d{9,15}$", mobile_number):
+            return render(request, 'signup.html', {
+                'error': 'Please provide a valid mobile number.',
+                'universities': models.UniversityMaster.objects.all(),
+                'courses': models.CourseMaster.objects.all(),
+                'sessions': models.SessionMaster.objects.all(),
+                'subjects': models.SubjectMaster.objects.all()
+            })
+
+        if password and len(password) < 6:
+            return render(request, 'signup.html', {
+                'error': 'Password must be at least 6 characters long.',
+                'universities': models.UniversityMaster.objects.all(),
+                'courses': models.CourseMaster.objects.all(),
+                'sessions': models.SessionMaster.objects.all(),
+                'subjects': models.SubjectMaster.objects.all()
+            })
 
         # Auto-generate password if blank: starting 5 digits of mobile_number + last 3 digits of Enrollment Number (or emp_id)
         if not password:
@@ -1545,6 +1590,25 @@ def professor_messages(request):
         'students': students
     }
     return render(request, 'professor/messages.html', context)
+@login_required_custom(role='student')
+def student_messages(request):
+    professors_profiles = models.UserProfile.objects.filter(role__role_code='professor')
+    students = []
+    for p in professors_profiles:
+        students.append({
+            'id': p.user.username,
+            'name': p.name,
+            'email': p.email,
+            'role': p.role.role_code,
+            'avatar': p.avatar,
+            'createdAt': p.created_at
+        })
+        
+    context = {
+        'active_tab': 'messages',
+        'students': students  # using 'students' key to reuse template logic
+    }
+    return render(request, 'student/messages.html', context)
 
 # --- Backend API Views (Asynchronous & CSRF-Exempt) ---
 
