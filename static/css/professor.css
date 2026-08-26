@@ -237,13 +237,13 @@
 /* Modals */
 .prof-modal-overlay {
   position: fixed; inset: 0; z-index: 50;
-  display: flex; items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
   padding: 1rem;
 }
 .prof-modal-overlay.hidden { display: none; }
 .prof-modal {
-  background-color: var(--prof-card-bg); width: 100%; max-width: 28rem;
+  background-color: var(--prof-card-bg); width: 100%; max-width: 36rem;
   border-radius: var(--prof-radius-xl); box-shadow: var(--prof-shadow-lg);
   border: 1px solid var(--prof-border); padding: 1.5rem; position: relative;
 }
@@ -261,7 +261,7 @@
   cursor: pointer;
 }
 .prof-modal-actions {
-  margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;
+  margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;
 }
 
 /* Pagination */
