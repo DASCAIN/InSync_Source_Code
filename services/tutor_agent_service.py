@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, AsyncGenerator
 
 from openai import AsyncOpenAI
 
@@ -56,19 +56,23 @@ class TutorAgentService:
         self.api_key = api_key
         self.model = model
 
-    async def chat(self, message: str, user_id: str, question_context: str = "", history: list = None) -> str:
-        if not message.strip():
-            raise ValueError("Message is empty")
-        if not user_id.strip():
-            raise ValueError("User id is empty")
-
+    async def _build_prompt(self, message: str, user_id: str, question_context: str = "", history: list = None):
+        """Build the prompt messages list (shared by chat and chat_stream)."""
         mem0_service = get_mem0_service()
         memories = await mem0_service.retrieve_memories(message, user_id)
         
-        # Retrieve context from uploaded PDFs globally
+        # Check cancellation before vector store retrieval
+        if getattr(self, '_cancel_event', None) and self._cancel_event.is_set():
+            return [], mem0_service
+
         from app.services.vector_store import retrieve_global_documents
         import asyncio
         docs = await asyncio.to_thread(retrieve_global_documents, message)
+        
+        # Check cancellation after vector store retrieval
+        if getattr(self, '_cancel_event', None) and self._cancel_event.is_set():
+            return [], mem0_service
+
         pdf_context = "\n\n".join([doc.page_content for doc in docs]) if docs else "No specific context found in uploaded materials."
 
         system_content = SYSTEM_PROMPT.format(MEMORIES=memories, PDF_CONTEXT=pdf_context)
@@ -78,11 +82,20 @@ class TutorAgentService:
         prompt = [
             {"role": "system", "content": system_content},
         ]
-        
+
         if history:
             prompt.extend(history)
-            
+
         prompt.append({"role": "user", "content": message})
+        return prompt, mem0_service
+
+    async def chat(self, message: str, user_id: str, question_context: str = "", history: list = None) -> str:
+        if not message.strip():
+            raise ValueError("Message is empty")
+        if not user_id.strip():
+            raise ValueError("User id is empty")
+
+        prompt, mem0_service = await self._build_prompt(message, user_id, question_context, history)
 
         async with AsyncOpenAI(api_key=self.api_key) as client:
             response = await client.chat.completions.create(
@@ -98,6 +111,61 @@ class TutorAgentService:
         summary = f"Q: {message}\nA: {cleaned}"
         await mem0_service.add_memory(summary, user_id)
         return cleaned
+
+    async def chat_stream(
+        self, message: str, user_id: str, question_context: str = "", history: list = None,
+        cancel_event=None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream tokens from OpenAI. Yields each delta content string as it arrives.
+
+        If ``cancel_event`` (an asyncio.Event) is set, the generator stops
+        consuming the OpenAI stream immediately.
+
+        After the generator is fully consumed (or closed due to client disconnect),
+        the caller is responsible for saving the accumulated reply via
+        ``save_reply_and_memory``.
+        """
+        if not message.strip():
+            raise ValueError("Message is empty")
+        if not user_id.strip():
+            raise ValueError("User id is empty")
+
+        self._cancel_event = cancel_event
+        try:
+            prompt, _ = await self._build_prompt(message, user_id, question_context, history)
+            if not prompt:  # Cancelled during prompt building
+                return
+
+            async with AsyncOpenAI(api_key=self.api_key) as client:
+                stream = await client.chat.completions.create(
+                    model=self.model,
+                    messages=prompt,
+                    temperature=0.3,
+                    stream=True,
+                )
+                try:
+                    async for chunk in stream:
+                        # Check cancellation between every chunk
+                        if cancel_event and cancel_event.is_set():
+                            break
+                        delta = chunk.choices[0].delta if chunk.choices else None
+                        if delta and delta.content:
+                            # Strip markdown bold markers in real time
+                            token = delta.content.replace("**", "")
+                            yield token
+                finally:
+                    # Ensure the OpenAI stream is closed even on cancellation
+                    await stream.close()
+        finally:
+            self._cancel_event = None
+
+    async def save_reply_and_memory(self, message: str, full_reply: str, user_id: str):
+        """Persist the accumulated streamed reply into mem0 long-term memory."""
+        if not full_reply.strip():
+            return
+        mem0_service = get_mem0_service()
+        summary = f"Q: {message}\nA: {full_reply.strip()}"
+        await mem0_service.add_memory(summary, user_id)
 
 
 _tutor_agent_service: Optional[TutorAgentService] = None

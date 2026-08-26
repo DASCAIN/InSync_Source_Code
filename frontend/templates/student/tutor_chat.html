@@ -52,6 +52,29 @@
     <div class="bg-card rounded-2xl shadow-lg border border-border/60 flex flex-col flex-1 p-4 lg:p-6 gap-3 lg:gap-4 min-h-0 overflow-hidden" style="flex: 1 1 0%; min-height: 0;">
       
       <!-- Messages List -->
+      <!-- Thinking Indicator Styles -->
+      <style>
+        .typing-indicator {
+          display: flex;
+          gap: 4px;
+          align-items: center;
+          padding: 4px 8px;
+        }
+        .typing-indicator .dot {
+          width: 6px;
+          height: 6px;
+          background: currentColor;
+          border-radius: 50%;
+          animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator .dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+          0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+          40% { transform: scale(1); opacity: 1; }
+        }
+      </style>
+
       <div
         id="chat-container"
         class="flex flex-col gap-4 overflow-y-auto flex-1 pr-2 min-h-0 relative"
@@ -70,12 +93,17 @@
           Start the conversation with a question or problem you want help with.
         </div>
         {% endif %}
-      </div>
 
-      <!-- Thinking Dots -->
-      <div id="thinking-indicator" class="hidden flex justify-start">
-        <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm bg-background border border-border text-muted-foreground">
-          Tutor is thinking<span id="thinking-dots">...</span>
+        <!-- Thinking Indicator (inside chat-container so it scrolls with messages) -->
+        <div id="thinking-indicator" class="flex justify-start" style="display: none;">
+          <div class="max-w-[80%] rounded-2xl px-4 py-3 text-sm bg-background border border-border text-muted-foreground flex items-center gap-3">
+            <span>AI Tutor is thinking</span>
+            <div class="typing-indicator text-primary">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -97,11 +125,17 @@
           <button
             id="send-btn"
             disabled
-            onclick="sendMessage()"
-            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick="handleSendOrStop()"
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed w-full"
           >
-            <i data-lucide="send" class="w-4 h-4 mr-2"></i>
-            Send
+            <div id="send-content" class="flex items-center">
+              <i data-lucide="send" class="w-4 h-4 mr-2"></i>
+              <span>Send</span>
+            </div>
+            <div id="stop-content" class="hidden items-center">
+              <i data-lucide="square" class="w-4 h-4 mr-2"></i>
+              <span>Stop</span>
+            </div>
           </button>
         </div>
       </div>
@@ -131,8 +165,9 @@
   const mem0UserId = getMem0UserId();
 
   let isLoading = false;
-  let dotsInterval = null;
   let currentSessionId = null;
+  let currentAbortController = null;  // AbortController for the active stream
+  let currentRequestId = null;        // request_id for server-side cancellation
 
   const urlParams = new URLSearchParams(window.location.search);
   const assignmentId = urlParams.get('assignment_id');
@@ -226,15 +261,17 @@
       btn.className = 'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-1 truncate hover:bg-muted text-muted-foreground hover:text-foreground';
     });
     
-    // Clean chat container
+    // Clean chat container but preserve the thinking indicator
     chatContainer.innerHTML = '';
+    chatContainer.appendChild(thinkingIndicator);
+    thinkingIndicator.style.display = 'none';
     
     try {
       const res = await fetch(`/api/tutor/chat-history/${sessionId}`);
       if (res.ok) {
         const data = await res.json();
         data.messages.forEach(msg => {
-          appendMessage(msg.role, msg.content, false);
+          appendMessage(msg.role, msg.content);
         });
       }
     } catch(e) {
@@ -263,46 +300,107 @@
         </div>
       {% endif %}
     `;
+    // Re-append thinking indicator inside chat container
+    chatContainer.appendChild(thinkingIndicator);
+    thinkingIndicator.style.display = 'none';
     loadChatSessions();
   }
 
+  function handleSendOrStop() {
+    if (isLoading) {
+      stopGeneration();
+    } else {
+      sendMessage();
+    }
+  }
+
   function validateSendButton() {
-    const text = chatTextarea.value.trim();
-    if (text.length > 0 && !isLoading) {
+    if (isLoading) {
+      // In Stop mode, always enabled
       sendBtn.removeAttribute('disabled');
     } else {
-      sendBtn.setAttribute('disabled', 'true');
+      // In Send mode, check text
+      const text = chatTextarea.value.trim();
+      if (text.length > 0) {
+        sendBtn.removeAttribute('disabled');
+      } else {
+        sendBtn.setAttribute('disabled', 'true');
+      }
+    }
+  }
+
+  function setSendButtonMode(isStopMode) {
+    const sendContent = document.getElementById('send-content');
+    const stopContent = document.getElementById('stop-content');
+    
+    if (isStopMode) {
+      sendBtn.classList.remove('bg-primary', 'hover:bg-primary/90', 'text-primary-foreground');
+      sendBtn.classList.add('bg-destructive', 'hover:bg-destructive/90', 'text-destructive-foreground');
+      
+      sendContent.classList.remove('flex');
+      sendContent.classList.add('hidden');
+      stopContent.classList.remove('hidden');
+      stopContent.classList.add('flex');
+    } else {
+      sendBtn.classList.remove('bg-destructive', 'hover:bg-destructive/90', 'text-destructive-foreground');
+      sendBtn.classList.add('bg-primary', 'hover:bg-primary/90', 'text-primary-foreground');
+      
+      stopContent.classList.remove('flex');
+      stopContent.classList.add('hidden');
+      sendContent.classList.remove('hidden');
+      sendContent.classList.add('flex');
     }
   }
 
   function startThinking() {
     isLoading = true;
+    setSendButtonMode(true);
     validateSendButton();
-    thinkingIndicator.classList.remove('hidden');
+    // Move thinking indicator to the end so it appears after the latest message
+    chatContainer.appendChild(thinkingIndicator);
+    thinkingIndicator.style.display = 'flex';
     scrollToBottom();
-    
-    let dots = '';
-    dotsInterval = setInterval(() => {
-      dots = dots.length >= 3 ? '' : dots + '.';
-      thinkingDotsSpan.textContent = dots;
-    }, 400);
   }
 
   function stopThinking() {
     isLoading = false;
+    setSendButtonMode(false);
     validateSendButton();
-    thinkingIndicator.classList.add('hidden');
-    if (dotsInterval) {
-      clearInterval(dotsInterval);
-      dotsInterval = null;
+    thinkingIndicator.style.display = 'none';
+  }
+
+  /** Abort the current streaming response by telling the server to stop */
+  function stopGeneration() {
+    // Tell the backend to stop the OpenAI stream
+    if (currentRequestId) {
+      fetch('/api/tutor/chat-cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ request_id: currentRequestId })
+      }).catch(e => console.error('Failed to send cancel:', e));
     }
+    // Also abort the fetch on the client side
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+    }
+    currentRequestId = null;
+    stopThinking();
   }
 
   function scrollToBottom() {
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
-  function appendMessage(role, text, isTypewriter = false) {
+  /**
+   * Append a chat message bubble.
+   * If `streaming` is true, the bubble is created empty and the returned textDiv
+   * can be used to append tokens incrementally.
+   */
+  function appendMessage(role, text, streaming = false) {
     const emptyMsg = document.getElementById('empty-state-msg');
     if (emptyMsg) {
       emptyMsg.style.display = 'none';
@@ -320,29 +418,27 @@
 
     const textDiv = document.createElement('div');
     textDiv.className = "whitespace-pre-wrap leading-relaxed";
+
+    if (!streaming) {
+      textDiv.textContent = text;
+    }
+    // If streaming, textDiv starts empty — caller will append tokens
+
     bubble.appendChild(textDiv);
     wrapper.appendChild(bubble);
     chatContainer.appendChild(wrapper);
     scrollToBottom();
 
-    if (role === 'assistant' && isTypewriter) {
-      let index = 0;
-      const speed = 16;
-      const interval = setInterval(() => {
-        index++;
-        textDiv.textContent = text.slice(0, index);
-        scrollToBottom();
-        if (index >= text.length) {
-          clearInterval(interval);
-        }
-      }, speed);
-    } else {
-      textDiv.textContent = text;
-      scrollToBottom();
-    }
+    // Return the textDiv so the caller can stream tokens into it
+    return textDiv;
   }
 
   const questionContext = "{{ question_context|escapejs }}";
+
+  /** Generate a unique request ID */
+  function generateRequestId() {
+    return 'req_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+  }
 
   async function sendMessage() {
     const trimmed = chatTextarea.value.trim();
@@ -353,8 +449,15 @@
     validateSendButton();
     startThinking();
 
+    // Create an AbortController so the Stop button can cancel the request
+    currentAbortController = new AbortController();
+    const signal = currentAbortController.signal;
+
+    // Generate a unique request ID for server-side cancellation
+    currentRequestId = generateRequestId();
+
     try {
-      const response = await fetch('/api/tutor/chat', {
+      const response = await fetch('/api/tutor/chat-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -366,8 +469,10 @@
           question_context: questionContext,
           session_id: currentSessionId,
           assignment_id: assignmentId,
-          question_id: questionId
-        })
+          question_id: questionId,
+          request_id: currentRequestId
+        }),
+        signal
       });
 
       if (!response.ok) {
@@ -375,25 +480,161 @@
         throw new Error(err?.detail || 'Failed to reach the tutor.');
       }
 
-      const data = await response.json();
-      const reply = data?.response || '';
-      
-      if (data.session_id) {
-        const isNewSession = currentSessionId !== data.session_id;
-        currentSessionId = data.session_id;
-        if (isNewSession) loadChatSessions(); // refresh sidebar if a new session was created
+      // Defer assistant bubble creation until the first token arrives
+      // so no empty white container is shown during the thinking state.
+      let textDiv = null;
+
+      // Smooth typewriter queue
+      let tokenQueue = [];
+      let streamFinished = false;
+      let typingInterval = null;
+
+      function startTypingInterval() {
+        if (typingInterval) return; // already started
+        typingInterval = setInterval(() => {
+          if (tokenQueue.length > 0) {
+            // Adaptive speed: type faster if backlog builds up
+            const charsToType = tokenQueue.length > 100 ? 5 : (tokenQueue.length > 50 ? 3 : 1);
+            for (let i = 0; i < charsToType && tokenQueue.length > 0; i++) {
+              textDiv.textContent += tokenQueue.shift();
+            }
+            scrollToBottom();
+          } else if (streamFinished) {
+            clearInterval(typingInterval);
+          }
+        }, 15);
       }
-      
-      if (!reply) {
-        throw new Error('Tutor returned an empty response.');
+
+      // Read the SSE stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let firstTokenReceived = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process complete SSE lines
+        const lines = buffer.split('\n');
+        // Keep the last potentially incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const payload = JSON.parse(jsonStr);
+
+            if (payload.error) {
+              throw new Error(payload.error);
+            }
+
+            if (payload.token) {
+              if (!firstTokenReceived) {
+                firstTokenReceived = true;
+                // Hide thinking and mount the bubble with the first character
+                // already rendered so the bubble is never visually empty
+                thinkingIndicator.style.display = 'none';
+                textDiv = appendMessage('assistant', '', true);
+                textDiv.textContent = payload.token.charAt(0);
+                startTypingInterval();
+                // Queue remaining characters of this first token (skip char 0)
+                for (let i = 1; i < payload.token.length; i++) {
+                  tokenQueue.push(payload.token.charAt(i));
+                }
+              } else {
+                // Subsequent tokens: push all characters into the queue
+                for (const char of payload.token) {
+                  tokenQueue.push(char);
+                }
+              }
+            }
+
+            if (payload.cancelled) {
+              // Server confirmed cancellation
+              if (payload.session_id) {
+                currentSessionId = payload.session_id;
+              }
+              loadChatSessions();
+              return;
+            }
+
+            if (payload.tokens_done) {
+              // All tokens sent — switch Stop back to Send immediately
+              // (server is still doing post-processing in background)
+              stopThinking();
+            }
+
+            if (payload.done) {
+              if (payload.session_id) {
+                const isNewSession = currentSessionId !== payload.session_id;
+                currentSessionId = payload.session_id;
+                if (isNewSession) loadChatSessions();
+              }
+            }
+          } catch (parseErr) {
+            // If it's a thrown Error from payload.error, rethrow it
+            if (parseErr.message && !parseErr.message.includes('JSON')) {
+              throw parseErr;
+            }
+            console.warn('Failed to parse SSE payload:', jsonStr, parseErr);
+          }
+        }
       }
-      
-      stopThinking();
-      appendMessage('assistant', reply, true);
+
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        const remaining = buffer.trim();
+        if (remaining.startsWith('data: ')) {
+          try {
+            const payload = JSON.parse(remaining.slice(6).trim());
+            if (payload.token) {
+              if (!firstTokenReceived) {
+                firstTokenReceived = true;
+                thinkingIndicator.style.display = 'none';
+                textDiv = appendMessage('assistant', '', true);
+                startTypingInterval();
+              }
+              for (const char of payload.token) {
+                tokenQueue.push(char);
+              }
+            }
+            if (payload.done && payload.session_id) {
+              const isNewSession = currentSessionId !== payload.session_id;
+              currentSessionId = payload.session_id;
+              if (isNewSession) loadChatSessions();
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+
+      // Refresh sidebar to pick up any title changes
+      loadChatSessions();
+
     } catch (e) {
-      console.error(e);
+      if (e.name === 'AbortError') {
+        // User clicked Stop — this is expected, not an error
+        console.log('Stream aborted by user.');
+        // Refresh sidebar since the session may have been created
+        loadChatSessions();
+      } else {
+        console.error(e);
+        stopThinking();
+        alert(e.message || 'Something went wrong while chatting with the tutor.');
+      }
+    } finally {
+      streamFinished = true;
+      if (typingInterval) clearInterval(typingInterval);
+      currentAbortController = null;
+      currentRequestId = null;
       stopThinking();
-      alert(e.message || 'Something went wrong while chatting with the tutor.');
     }
   }
 
@@ -425,3 +666,4 @@
   });
 </script>
 {% endblock %}
+

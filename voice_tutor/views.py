@@ -1,7 +1,7 @@
 import json
 import datetime
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth import logout as django_logout
@@ -468,6 +468,7 @@ def get_filter_options_from_mapping(request):
     topic_id = request.GET.get('topic_id')
     batch_id = request.GET.get('batch_id')
     professor_id = request.GET.get('professor_id')
+    status = request.GET.get('status')
 
     allocations = models.ProfessorAllocation.objects.select_related('batch', 'subject', 'professor').all()
     
@@ -492,6 +493,7 @@ def get_filter_options_from_mapping(request):
         'selected_batch': batch_id,
         'selected_professor': professor_id,
         'selected_sort': sort,
+        'selected_status': status,
     }
 
 @login_required_custom(role='student')
@@ -521,6 +523,7 @@ def student_dashboard(request):
     topic_id = request.GET.get('topic_id')
     batch_id = request.GET.get('batch_id')
     professor_id = request.GET.get('professor_id')
+    status_filter = request.GET.get('status')
 
     queryset = models.Assignment.objects.all()
 
@@ -541,6 +544,11 @@ def student_dashboard(request):
     student_assignments = []
     for a in queryset:
         prog_obj = models.StudentTopicAssessmentReview.objects.filter(student=student_profile, assignment=a).first()
+        current_status = prog_obj.status if prog_obj else 'not_started'
+        
+        if status_filter and status_filter != current_status:
+            continue
+            
         prog = None
         if prog_obj:
             prog = {
@@ -1878,7 +1886,8 @@ async def api_tutor_chat(request):
                 name="app/tutor.chat",
                 data={
                     "message": message,
-                    "user_id": user_id
+                    "user_id": user_id,
+                    "answer": reply
                 }
             )
         )
@@ -1889,6 +1898,204 @@ async def api_tutor_chat(request):
     except Exception as exc:
         logger.exception("Tutor chat failed for user_id=%s", user_id)
         return JsonResponse({'detail': 'Failed to reach tutor agent'}, status=500)
+
+import asyncio
+import uuid as _uuid
+
+# Registry of active streaming requests: request_id -> asyncio.Event
+_active_streams = {}
+
+@csrf_exempt
+async def api_tutor_chat_stream(request):
+    """SSE endpoint that streams OpenAI tokens to the browser."""
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'detail': 'Invalid JSON body'}, status=400)
+
+    message = body.get('message', '')
+    user_id = body.get('user_id', '')
+    question_context = body.get('question_context', '')
+    session_id = body.get('session_id')
+    assignment_id = body.get('assignment_id')
+    question_id = body.get('question_id')
+    request_id = body.get('request_id', str(_uuid.uuid4()))
+
+    if not message or not user_id:
+        return JsonResponse({'detail': 'message and user_id are required'}, status=400)
+
+    from asgiref.sync import sync_to_async
+    from django.contrib.auth.models import User
+    from .models import ChatSession, ChatMessage, Assignment, AssignmentQuestion
+
+    @sync_to_async
+    def process_chat_session():
+        user = User.objects.filter(email=user_id).first()
+        if not user:
+            user = request.user if request.user.is_authenticated else None
+
+        session = None
+        if session_id:
+            session = ChatSession.objects.filter(session_id=session_id, user=user).first()
+
+        if not session and user:
+            assignment = Assignment.objects.filter(code=assignment_id).first() if assignment_id else None
+            question = AssignmentQuestion.objects.filter(code=question_id).first() if question_id else None
+            title = f"Chat about {question.code}" if question else "New Chat"
+
+            if session_id:
+                session = ChatSession.objects.create(session_id=session_id, user=user, assignment=assignment, question=question, title=title)
+            else:
+                session = ChatSession.objects.create(user=user, assignment=assignment, question=question, title=title)
+
+        history = []
+        if session:
+            history = [{"role": msg.role, "content": msg.content} for msg in session.messages.all().order_by('created_at')]
+            ChatMessage.objects.create(session=session, role="user", content=message)
+
+        return session, history
+
+    session, history = await process_chat_session()
+
+    service = get_tutor_agent_service()
+
+    # Create a cancellation event for this request
+    cancel_event = asyncio.Event()
+    _active_streams[request_id] = cancel_event
+
+    async def event_stream():
+        full_reply = ""
+        was_cancelled = False
+        try:
+            async for token in service.chat_stream(
+                message, user_id, question_context=question_context, history=history,
+                cancel_event=cancel_event,
+            ):
+                if cancel_event.is_set():
+                    was_cancelled = True
+                    break
+                full_reply += token
+                yield f"data: {json.dumps({'token': token})}\n\n"
+        except asyncio.CancelledError:
+            # Client disconnected forcefully (e.g. AbortController)
+            was_cancelled = True
+        except Exception as exc:
+            logger.exception("Streaming failed for user_id=%s", user_id)
+            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+            return
+        finally:
+            _active_streams.pop(request_id, None)
+            # Ensure partial save happens in finally block so it can't be skipped by client disconnect
+            if was_cancelled or (full_reply.strip() and not cancel_event.is_set() and not locals().get('needs_title')):
+                try:
+                    if session and full_reply.strip():
+                        @sync_to_async
+                        def save_partial():
+                            # Check if we already saved it to prevent duplicates
+                            if not ChatMessage.objects.filter(session=session, content=full_reply).exists():
+                                ChatMessage.objects.create(session=session, role="assistant", content=full_reply)
+                        await save_partial()
+                except Exception as e:
+                    logger.error(f"Failed to save partial reply: {e}")
+
+        if was_cancelled:
+            # We already saved in finally block, just yield cancelled if socket is still open
+            try:
+                yield f"data: {json.dumps({'cancelled': True, 'session_id': str(session.session_id) if session else None})}\n\n"
+            except Exception:
+                pass
+            return
+
+        # Signal the client that all tokens have been sent so it can
+        # switch the Stop button back to Send immediately, before
+        # the slower post-processing work runs.
+        yield f"data: {json.dumps({'tokens_done': True})}\n\n"
+
+        # --- Post-stream work (save message, title, inngest, memory) ---
+        try:
+            if session:
+                @sync_to_async
+                def save_ai_message():
+                    # Message is already saved by the finally block in event_stream to prevent disconnect data loss
+                    return session.title == "New Chat"
+                needs_title = await save_ai_message()
+
+                if needs_title:
+                    try:
+                        from openai import AsyncOpenAI
+                        import os
+                        client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+                        title_response = await client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[
+                                {"role": "system", "content": "You are a helpful assistant that generates extremely short (2-4 words) titles for chat conversations based on the user's first message. Just return the title, no quotes, no punctuation."},
+                                {"role": "user", "content": message}
+                            ],
+                            max_tokens=10
+                        )
+                        new_title = title_response.choices[0].message.content.strip().strip('"').strip("'")
+                        @sync_to_async
+                        def save_title():
+                            session.title = new_title
+                            session.save()
+                        await save_title()
+                    except Exception as e:
+                        logger.error(f"Failed to generate title: {e}")
+
+            # Fire Inngest event
+            from app.services.inngest_client import inngest_client
+            import inngest
+            await inngest_client.send(
+                inngest.Event(
+                    name="app/tutor.chat",
+                    data={
+                        "message": message,
+                        "user_id": user_id,
+                        "answer": full_reply
+                    }
+                )
+            )
+
+            # Save to mem0 memory
+            await service.save_reply_and_memory(message, full_reply, user_id)
+        except Exception as e:
+            logger.error(f"Post-stream processing error: {e}")
+
+        # Final SSE event to signal completion
+        yield f"data: {json.dumps({'done': True, 'session_id': str(session.session_id) if session else None})}\n\n"
+
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
+
+@csrf_exempt
+async def api_tutor_chat_cancel(request):
+    """Cancel an active streaming chat request."""
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'detail': 'Invalid JSON body'}, status=400)
+
+    request_id = body.get('request_id', '')
+    if not request_id:
+        return JsonResponse({'detail': 'request_id is required'}, status=400)
+
+    cancel_event = _active_streams.get(request_id)
+    if cancel_event:
+        cancel_event.set()
+        return JsonResponse({'cancelled': True})
+    else:
+        return JsonResponse({'cancelled': False, 'detail': 'No active stream found for this request_id'})
 
 @csrf_exempt
 async def api_create_openai_voice_session(request):

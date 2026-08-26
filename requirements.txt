@@ -31,5 +31,6 @@ gTTS
 mem0ai
 dj-database-url
 gunicorn
+uvicorn
 requests
 google-genai

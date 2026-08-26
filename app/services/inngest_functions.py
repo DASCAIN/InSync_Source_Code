@@ -340,72 +340,36 @@ async def rag_tutor_chat(*args, **kwargs) -> dict:
     else:
         ctx = kwargs.get('ctx')
         step = kwargs.get('step')
-        
+
     """
-    Background job to simulate the tutor chat process and log each step in Inngest.
-    Expects 'message' and 'user_id' in the event payload.
+    Log-only background job for Inngest dashboard observability.
+    The real RAG pipeline runs inline in the view; this function only
+    records the already-generated answer so you can inspect every chat
+    event in the Inngest UI without making any duplicate API calls.
+
+    Expects 'message', 'user_id', and 'answer' in the event payload.
     """
-    message = ctx.event.data.get("message", "Can you explain backpropagation?")
-    user_id = ctx.event.data.get("user_id", "test_user_123")
+    message = ctx.event.data.get("message", "")
+    user_id = ctx.event.data.get("user_id", "")
+    answer = ctx.event.data.get("answer", "")
 
-    logger.info(f"Inngest RAG Tutor Chat started for message: {message}")
+    logger.info(f"Inngest RAG Tutor Chat (log-only) for user: {user_id}")
 
-    # Step 1: Retrieve Mem0 Memory
-    async def _retrieve_mem0():
-        from services.mem0_service import get_mem0_service
-        mem0_service = get_mem0_service()
-        memories = await mem0_service.retrieve_memories(message, user_id)
-        return memories
+    # Step 1: Log the user message
+    async def _log_message():
+        return {"user_id": user_id, "message": message}
 
-    memories = await step.run("retrieve_mem0", _retrieve_mem0)
+    await step.run("log_user_message", _log_message)
 
-    # Step 2: Retrieve Global Qdrant Context
-    async def _retrieve_qdrant():
-        from app.services.vector_store import retrieve_global_documents
-        import asyncio
-        docs = await asyncio.to_thread(retrieve_global_documents, message)
-        return "\n\n".join([doc.page_content for doc in docs]) if docs else "No specific context found in uploaded materials."
+    # Step 2: Log the generated answer
+    async def _log_answer():
+        return {"answer_length": len(answer), "answer_preview": answer[:200]}
 
-    pdf_context = await step.run("retrieve_qdrant", _retrieve_qdrant)
-
-    # Step 3: Generate Answer
-    async def _generate_answer():
-        from services.tutor_agent_service import SYSTEM_PROMPT
-        from config import get_settings
-        from openai import AsyncOpenAI
-        
-        settings = get_settings()
-        prompt = [
-            {"role": "system", "content": SYSTEM_PROMPT.format(MEMORIES=memories, PDF_CONTEXT=pdf_context)},
-            {"role": "user", "content": message},
-        ]
-        
-        async with AsyncOpenAI(api_key=settings.OPENAI_API_KEY) as client:
-            response = await client.chat.completions.create(
-                model=settings.LLM_MODEL,
-                messages=prompt,
-                temperature=0.3,
-            )
-        content = response.choices[0].message.content if response.choices else None
-        return content.replace("**", "").strip() if content else ""
-
-    answer = await step.run("generate_answer", _generate_answer)
-
-    # Step 4: Save Memory
-    async def _save_memory():
-        from services.mem0_service import get_mem0_service
-        mem0_service = get_mem0_service()
-        summary = f"Q: {message}\nA: {answer}"
-        await mem0_service.add_memory(summary, user_id)
-        return True
-
-    await step.run("save_memory", _save_memory)
+    await step.run("log_generated_answer", _log_answer)
 
     return {
         "status": "success",
         "message": message,
         "answer": answer
     }
-
-
 
