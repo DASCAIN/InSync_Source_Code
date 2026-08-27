@@ -845,8 +845,12 @@ def tutor_chat_view(request):
     
     assignment_id = request.GET.get('assignment_id')
     question_id = request.GET.get('question_id')
+    student_answer = request.GET.get('student_answer')
+    is_correct = request.GET.get('is_correct')
+    
     question_context = None
     question_text = None
+    student_answer_text = None
     if question_id:
         qs = models.AssignmentQuestion.objects.filter(code=question_id)
         if assignment_id:
@@ -856,13 +860,28 @@ def tutor_chat_view(request):
             options = question_obj.options.all().order_by('option_letter')
             options_text = ", ".join([f"{opt.option_letter}: {opt.option_text}" for opt in options])
             question_text = question_obj.content
-            question_context = f"The student is asking for help with the following question: '{question_obj.content}'. The options are: {options_text}. The correct answer is {question_obj.correct_answer}. Provide hints and guidance to help them understand the concept, but do not give away the exact answer immediately."
+            
+            question_context = f"The student is asking for help with the following question: '{question_obj.content}'. The options are: {options_text}. The correct answer is {question_obj.correct_answer}."
+            
+            if student_answer:
+                # Find the text of the selected option
+                selected_opt = options.filter(option_letter=student_answer).first()
+                if selected_opt:
+                    student_answer_text = selected_opt.option_text
+                
+                status_text = "correct" if is_correct == 'true' else "incorrect"
+                question_context += f" The student selected option {student_answer} ({student_answer_text}), which is {status_text}."
+                
+            question_context += " Provide hints and guidance to help them understand the concept, but do not give away the exact answer immediately."
 
     return render(request, 'student/tutor_chat.html', {
         'active_tab': 'tutor_chat',
         'mem0_user_id': mem0_user_id,
         'question_text': question_text,
-        'question_context': question_context
+        'question_context': question_context,
+        'student_answer': student_answer,
+        'student_answer_text': student_answer_text,
+        'is_correct': is_correct,
     })
 
 @login_required_custom()

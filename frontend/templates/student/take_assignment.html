@@ -232,6 +232,12 @@
         const isCorrect = selectedRadio.dataset.isCorrect === 'true';
         const selectedLabel = selectedRadio.closest('.option-btn');
         
+        const aiTutorLink = feedbackBox.querySelector('a');
+        if (aiTutorLink) {
+          const baseUrl = aiTutorLink.href.split('&student_answer=')[0];
+          aiTutorLink.href = baseUrl + `&student_answer=${encodeURIComponent(selectedRadio.value)}&is_correct=${isCorrect}`;
+        }
+        
         if (isCorrect) {
           selectedLabel.classList.add('correct');
           feedbackBox.classList.add('bg-success/10', 'border', 'border-success/20');
@@ -284,6 +290,12 @@
           collectedAnswers[questionId] = selectedRadio.value;
           const isCorrect = selectedRadio.dataset.isCorrect === 'true';
           const selectedLabel = selectedRadio.closest('.option-btn');
+
+          const aiTutorLink = feedbackBox.querySelector('a');
+          if (aiTutorLink) {
+            const baseUrl = aiTutorLink.href.split('&student_answer=')[0];
+            aiTutorLink.href = baseUrl + `&student_answer=${encodeURIComponent(selectedRadio.value)}&is_correct=${isCorrect}`;
+          }
 
           if (isCorrect) {
             correctAnswers++;

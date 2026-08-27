@@ -87,6 +87,18 @@
             Discussing Question
           </div>
           <div class="opacity-90">{{ question_text }}</div>
+          {% if student_answer_text %}
+          <div class="mt-3 pt-3 border-t border-primary/20">
+            <div class="mb-1"><strong>Your Answer:</strong> {{ student_answer }} - {{ student_answer_text }}</div>
+            <div><strong>Status:</strong> 
+              {% if is_correct == 'true' %}
+                <span class="text-success font-semibold">Correct</span>
+              {% else %}
+                <span class="text-destructive font-semibold">Incorrect</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
         </div>
         {% else %}
         <div id="empty-state-msg" class="text-muted-foreground text-sm text-center my-auto">
@@ -293,6 +305,18 @@
             Discussing Question
           </div>
           <div class="opacity-90">{{ question_text|escapejs }}</div>
+          {% if student_answer_text %}
+          <div class="mt-3 pt-3 border-t border-primary/20">
+            <div class="mb-1"><strong>Your Answer:</strong> {{ student_answer|escapejs }} - {{ student_answer_text|escapejs }}</div>
+            <div><strong>Status:</strong> 
+              {% if is_correct == 'true' %}
+                <span class="text-success font-semibold">Correct</span>
+              {% else %}
+                <span class="text-destructive font-semibold">Incorrect</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
         </div>
       {% else %}
         <div id="empty-state-msg" class="text-muted-foreground text-sm text-center my-auto">
