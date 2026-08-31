@@ -331,10 +331,17 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     padding: 2rem;
     gap: 1.5rem;
     overflow-y: auto;
+  }
+
+  /* Push welcome content to vertical center when space allows,
+     but scroll naturally from the top when content overflows */
+  .welcome-container::before,
+  .welcome-container::after {
+    content: '';
+    flex: 1 0 0px;
   }
 
   .welcome-logo {
