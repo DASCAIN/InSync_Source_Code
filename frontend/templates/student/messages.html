@@ -4,6 +4,7 @@
 {% block title %}Messages — InSync{% endblock %}
 
 {% block head_extra %}
+{{ block.super }}
 <link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
 <style>
   .messages-layout {
@@ -182,18 +183,19 @@
     border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
   }
   .msg-bubble.other {
-    background-color: var(--prof-card-bg);
+    background: white;
     color: var(--prof-text-main);
     border: 1px solid var(--prof-border);
     border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
   }
   .msg-text {
     font-size: 0.875rem;
-    line-height: 1.5;
-    margin: 0;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
   .msg-time {
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     margin-top: 0.375rem;
     text-align: right;
   }
@@ -202,6 +204,63 @@
   }
   .msg-bubble.other .msg-time {
     color: var(--prof-text-muted);
+  }
+
+  /* Dark mode overrides */
+  html.dark .messages-layout {
+    background-color: var(--db-bg, hsl(222, 47%, 8%));
+  }
+  html.dark .messages-sidebar {
+    background-color: var(--db-card, hsl(222, 40%, 13%));
+    border-color: var(--db-card-border, hsl(222, 30%, 20%));
+  }
+  html.dark .messages-search-bar {
+    border-color: var(--db-card-border, hsl(222, 30%, 20%));
+  }
+  html.dark .messages-search-input {
+    background-color: var(--db-bg, hsl(222, 47%, 8%));
+    border-color: var(--db-card-border, hsl(222, 30%, 20%));
+    color: var(--db-text, hsl(210, 40%, 92%));
+  }
+  html.dark .student-item {
+    border-color: var(--db-card-border, hsl(222, 30%, 20%));
+  }
+  html.dark .student-item:hover {
+    background-color: var(--db-sidebar-hover-bg, hsl(217, 40%, 18%));
+  }
+  html.dark .student-item.active {
+    background-color: var(--db-sidebar-hover-bg, hsl(217, 40%, 18%));
+    border-left-color: var(--db-blue, hsl(217, 91%, 60%));
+  }
+  html.dark .student-item-name {
+    color: var(--db-text, hsl(210, 40%, 92%));
+  }
+  html.dark .student-item-preview {
+    color: var(--db-text-secondary, hsl(215, 20%, 55%));
+  }
+  html.dark .chat-pane {
+    background-color: var(--db-bg, hsl(222, 47%, 8%));
+  }
+  html.dark .chat-header {
+    background-color: var(--db-card, hsl(222, 40%, 13%));
+    border-color: var(--db-card-border, hsl(222, 30%, 20%));
+  }
+  html.dark .chat-header p:first-child {
+    color: var(--db-text, hsl(210, 40%, 92%)) !important;
+  }
+  html.dark .chat-input-area {
+    background-color: var(--db-card, hsl(222, 40%, 13%));
+    border-color: var(--db-card-border, hsl(222, 30%, 20%));
+  }
+  html.dark .chat-textarea {
+    background-color: var(--db-bg, hsl(222, 47%, 8%));
+    border-color: var(--db-card-border, hsl(222, 30%, 20%));
+    color: var(--db-text, hsl(210, 40%, 92%));
+  }
+  html.dark .msg-bubble.other {
+    background-color: var(--db-card, hsl(222, 40%, 13%));
+    border-color: var(--db-card-border, hsl(222, 30%, 20%));
+    color: var(--db-text, hsl(210, 40%, 92%));
   }
 </style>
 {% endblock %}

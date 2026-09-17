@@ -1,9 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'dashboard_base.html' %}
 {% load static %}
 
 {% block title %}Assignment Details - {{ assignment.title }}{% endblock %}
 
-{% block head_extra %}
+{% block dashboard_head %}
 <link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
 <style>
   .detail-card {
@@ -60,7 +60,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block inner_content %}
 <div class="prof-scope">
   <div class="prof-container">
     

@@ -677,6 +677,13 @@ def student_dashboard(request):
                     continue_assignment_id = a['id']
                     break
                 
+    continue_assignment = None
+    if continue_assignment_id:
+        for a in student_assignments:
+            if a['id'] == continue_assignment_id:
+                continue_assignment = a
+                break
+
     # Filter options for the UI
     filter_options = get_filter_options_from_mapping(request)
 
@@ -692,6 +699,7 @@ def student_dashboard(request):
         'student_batchs': student_batchs,
         'voice_assignment_id': voice_assignment_id,
         'continue_assignment_id': continue_assignment_id,
+        'continue_assignment': continue_assignment,
         'filters': filter_options,
         'chart_data_json': chart_data_json,
     }

@@ -3,169 +3,386 @@
 
 {% block title %}Student Dashboard — InSync{% endblock %}
 
+{% block dashboard_head %}
+<style>
+  /* Premium Typography Enhancements */
+  .stat-value {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-feature-settings: 'tnum' on, 'lnum' on;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.035em;
+  }
+  .stat-label {
+    letter-spacing: -0.01em;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  }
+  .stat-card {
+    background: var(--db-card);
+    border: 1px solid var(--db-card-border);
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+    transition: box-shadow 0.3s, transform 0.3s;
+  }
+  .stat-card:hover {
+    box-shadow: 0 8px 24px -4px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .continue-card {
+    background: var(--db-card);
+    border: 1px solid var(--db-card-border);
+    border-left: 4px solid var(--db-blue);
+    border-radius: 1rem;
+    padding: 1.5rem;
+  }
+  .subject-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .assignment-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.875rem 0;
+    border-bottom: 1px solid var(--db-card-border);
+    cursor: pointer;
+    transition: background 0.15s;
+    border-radius: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .assignment-row:last-child {
+    border-bottom: none;
+  }
+  .assignment-row:hover {
+    background: var(--db-blue-lightest);
+  }
+  .assignment-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .difficulty-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .voice-card, .section-card {
+    background: var(--db-card);
+    border: 1px solid var(--db-card-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+  }
+  .voice-btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.625rem 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-decoration: none;
+    cursor: pointer;
+    background: var(--db-blue);
+    color: #fff;
+    border: none;
+  }
+  .voice-btn-primary:hover {
+    background: var(--db-blue-hover);
+  }
+  .voice-btn-outline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.625rem 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-decoration: none;
+    cursor: pointer;
+    background: var(--db-card);
+    color: var(--db-blue);
+    border: 1.5px solid var(--db-blue);
+  }
+  .voice-btn-outline:hover {
+    background: var(--db-blue-lightest);
+  }
+  .tip-item {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    line-height: 1.5;
+  }
+  .tip-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+  }
+  .progress-bar-track {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--db-card-border);
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.6s ease;
+  }
+</style>
+{% endblock %}
+
 {% block inner_content %}
-<div class="p-6 lg:p-8 space-y-8">
+<div class="p-6 lg:p-8 w-full" style="width: 100%;">
   {% if active_tab == 'dashboard' or active_tab == '' %}
+
   <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div>
-      <h1 class="font-display text-3xl font-bold mb-1 text-foreground">
-        Hey, {{ first_name }}! 🎯
-      </h1>
-      <p class="text-muted-foreground">
-        Ready to continue your learning journey?
-      </p>
-    </div>
+  <div style="margin-bottom: 1.5rem;">
+    <h1 class="font-display text-3xl font-bold mb-1" style="color: var(--db-text);">
+      Hey, {{ first_name }}!
+    </h1>
+    <p style="color: var(--db-text-secondary);">
+      Ready to continue your learning journey?
+    </p>
   </div>
 
   <!-- Stats Grid -->
-  <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+  <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full" style="margin-bottom: 2rem;">
     <!-- Completed -->
-    <div class="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
-      <div class="flex items-start justify-between mb-4">
-        <div class="p-3 rounded-xl bg-success/10 text-success">
-          <i data-lucide="trophy" class="w-6 h-6"></i>
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="stat-label" style="color: var(--db-text-secondary); font-size: 0.875rem; font-weight: 500;">Completed</span>
+        <div class="stat-icon" style="background: var(--db-green-bg); color: var(--db-green-text);">
+          <i data-lucide="check-circle-2" class="w-5 h-5"></i>
         </div>
       </div>
-      <h3 class="text-3xl font-display font-bold mb-1">{{ completed_count }}</h3>
-      <p class="text-muted-foreground text-sm">Completed</p>
+      <h3 class="stat-value font-display" style="font-size: 2.25rem; font-weight: 700; color: var(--db-text); line-height: 1;">{{ completed_count }}</h3>
     </div>
     <!-- In Progress -->
-    <div class="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
-      <div class="flex items-start justify-between mb-4">
-        <div class="p-3 rounded-xl bg-warning/10 text-warning">
-          <i data-lucide="book-open" class="w-6 h-6"></i>
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="stat-label" style="color: var(--db-text-secondary); font-size: 0.875rem; font-weight: 500;">In Progress</span>
+        <div class="stat-icon" style="background: var(--db-blue-light); color: var(--db-blue);">
+          <i data-lucide="book-open" class="w-5 h-5"></i>
         </div>
       </div>
-      <h3 class="text-3xl font-display font-bold mb-1">{{ in_progress_count }}</h3>
-      <p class="text-muted-foreground text-sm">In Progress</p>
+      <h3 class="stat-value font-display" style="font-size: 2.25rem; font-weight: 700; color: var(--db-text); line-height: 1;">{{ in_progress_count }}</h3>
     </div>
     <!-- Time Spent -->
-    <div class="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
-      <div class="flex items-start justify-between mb-4">
-        <div class="p-3 rounded-xl bg-primary/10 text-primary">
-          <i data-lucide="clock" class="w-6 h-6"></i>
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="stat-label" style="color: var(--db-text-secondary); font-size: 0.875rem; font-weight: 500;">Time Spent</span>
+        <div class="stat-icon" style="background: var(--db-blue-light); color: var(--db-blue);">
+          <i data-lucide="clock" class="w-5 h-5"></i>
         </div>
       </div>
-      <h3 class="text-3xl font-display font-bold mb-1">{{ time_spent_mins }}m</h3>
-      <p class="text-muted-foreground text-sm">Time Spent</p>
+      <div class="flex items-baseline gap-1">
+        <h3 class="stat-value font-display" style="font-size: 2.25rem; font-weight: 700; color: var(--db-text); line-height: 1;">{{ time_spent_mins }}</h3>
+        <span style="color: var(--db-text-secondary); font-size: 0.875rem;">mins</span>
+      </div>
     </div>
-    <!-- Engagement -->
-    <div class="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300">
-      <div class="flex items-start justify-between mb-4">
-        <div class="p-3 rounded-xl bg-accent/10 text-accent">
-          <i data-lucide="trending-up" class="w-6 h-6"></i>
+    <!-- Engagement Rate -->
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="stat-label" style="color: var(--db-text-secondary); font-size: 0.875rem; font-weight: 500;">Engagement Rate</span>
+        <div class="stat-icon" style="background: var(--db-purple-bg); color: var(--db-purple-text);">
+          <i data-lucide="trending-up" class="w-5 h-5"></i>
         </div>
       </div>
-      <h3 class="text-3xl font-display font-bold mb-1">{{ engagement_score }}%</h3>
-      <p class="text-muted-foreground text-sm">Engagement Rate</p>
+      <h3 class="stat-value font-display" style="font-size: 2.25rem; font-weight: 700; color: var(--db-text); line-height: 1;">{{ engagement_score }}%</h3>
     </div>
   </div>
 
-  <!-- Continue Learning Section -->
-  <div class="rounded-2xl p-6" style="background-color: #eff1fe; border: 1px solid #e0e7ff;">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div>
-        <h2 class="font-display text-xl font-bold mb-1 text-foreground">Continue Where You Left Off</h2>
-        <p class="text-muted-foreground text-sm">
-          You have an assignment in progress.Keep up the great work
-        </p>
-      </div>
-      {% if continue_assignment_id %}
-      <a href="{% url 'voice_tutor:take_assignment' continue_assignment_id %}"
-        class="inline-flex items-center justify-center rounded-xl text-sm font-semibold text-white shadow-md hover:opacity-95 transition-all duration-200 h-11 px-6 gap-2"
-        style="background: linear-gradient(90deg, #6f56f6 0%, #f66f33 100%);">
-        <i data-lucide="play" class="w-4 h-4"></i>
-        Resume Assignment
-      </a>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Main Content Grid -->
-  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-    <!-- Latest Assignments -->
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
-      <h3 class="font-display font-semibold mb-4 text-foreground">Latest Assignments</h3>
-      <div class="space-y-3">
-        {% for assignment in student_assignments|slice:":2" %}
-        <div class="p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-          onclick="window.location.href='{% url 'voice_tutor:take_assignment' assignment.id %}'">
-          <h4 class="font-medium text-sm text-foreground truncate" title="{{ assignment.title }}">{{ assignment.title }}
-          </h4>
-          <p class="text-xs text-muted-foreground mt-1 flex items-center justify-between">
-            <span>{{ assignment.topic }}</span>
-            <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] uppercase font-bold">{{ assignment.difficulty }}</span>
-          </p>
+  <!-- Two-column layout: Main + Sidebar -->
+  <div class="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 w-full">
+    <!-- Left Column -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      
+      <!-- Continue Where You Left Off -->
+      <div class="continue-card">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div style="flex: 1;">
+            <h2 class="font-display font-bold" style="font-size: 1.25rem; color: var(--db-text); margin-bottom: 0.25rem;">Continue Where You Left Off</h2>
+            {% if continue_assignment_id %}
+            <div style="margin-bottom: 0.5rem;">
+              <span class="subject-badge" style="background: var(--db-blue-light); color: var(--db-blue);">IN PROGRESS</span>
+            </div>
+            <p style="color: var(--db-text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem;">
+              You have an assignment in progress. Keep up the great work!
+            </p>
+            <!-- Progress indicator -->
+            <div style="max-width: 280px;">
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" style="width: 65%; background: linear-gradient(90deg, var(--db-blue), hsl(199, 89%, 48%));"></div>
+              </div>
+              <span style="font-size: 0.75rem; color: var(--db-text-secondary); margin-top: 0.25rem; display: inline-block;">65% Complete</span>
+            </div>
+            {% else %}
+            <p style="color: var(--db-text-secondary); font-size: 0.875rem;">
+              No assignments in progress right now.
+            </p>
+            {% endif %}
+          </div>
+          {% if continue_assignment_id %}
+          <a href="{% url 'voice_tutor:take_assignment' continue_assignment_id %}"
+            class="inline-flex items-center justify-center gap-2"
+            style="background: var(--db-blue); color: #fff; padding: 0.625rem 1.5rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background 0.2s;"
+            onmouseenter="this.style.background='var(--db-blue-hover)'"
+            onmouseleave="this.style.background='var(--db-blue)'"
+          >
+            Resume Assignment
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+          {% endif %}
         </div>
-        {% empty %}
-        <div class="text-center text-muted-foreground text-sm py-4">No assignments yet.</div>
-        {% endfor %}
+      </div>
+
+      <!-- Latest Assignments -->
+      <div class="section-card">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-display font-bold" style="font-size: 1.25rem; color: var(--db-text);">Latest Assignments</h3>
+          <a href="{% url 'voice_tutor:student_dashboard' %}?tab=assignments" 
+            style="color: var(--db-blue); font-size: 0.875rem; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 0.25rem;"
+            onmouseenter="this.style.textDecoration='underline'"
+            onmouseleave="this.style.textDecoration='none'"
+          >
+            View All <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </a>
+        </div>
+        <div>
+          {% for assignment in student_assignments|slice:":3" %}
+          <div class="assignment-row" onclick="window.location.href='{% url 'voice_tutor:take_assignment' assignment.id %}'">
+            <!-- Subject Icon -->
+            <div class="assignment-icon" 
+              style="{% if forloop.counter == 1 %}background: var(--db-blue-light); color: var(--db-blue);{% elif forloop.counter == 2 %}background: var(--db-red-bg); color: var(--db-red-text);{% else %}background: var(--db-orange-bg); color: var(--db-orange-text);{% endif %}">
+              <i data-lucide="{% if forloop.counter == 1 %}sigma{% elif forloop.counter == 2 %}atom{% else %}flask-conical{% endif %}" class="w-5 h-5"></i>
+            </div>
+            <!-- Assignment Info -->
+            <div style="flex: 1; min-width: 0;">
+              <h4 class="font-medium" style="font-size: 0.9rem; color: var(--db-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ assignment.title }}">{{ assignment.title }}</h4>
+              <p style="font-size: 0.8rem; color: var(--db-text-secondary); margin-top: 2px;">{{ assignment.topic }}</p>
+            </div>
+            <!-- Difficulty + Arrow -->
+            <div class="flex items-center gap-3">
+              <span class="difficulty-badge"
+                style="{% if assignment.difficulty == 'beginner' %}background: var(--db-green-bg); color: var(--db-green-text);{% elif assignment.difficulty == 'intermediate' %}background: var(--db-blue-light); color: var(--db-blue);{% else %}background: var(--db-red-bg); color: var(--db-red-text);{% endif %}">
+                {{ assignment.difficulty|capfirst }}
+              </span>
+              <i data-lucide="chevron-right" class="w-4 h-4" style="color: var(--db-text-secondary);"></i>
+            </div>
+          </div>
+          {% empty %}
+          <div style="text-align: center; color: var(--db-text-secondary); font-size: 0.875rem; padding: 2rem 0;">No assignments yet.</div>
+          {% endfor %}
+        </div>
       </div>
     </div>
 
-    <!-- Learning Tips -->
-    <div class="bg-card rounded-2xl p-6 shadow-md border border-border/50">
-      <h3 class="font-display font-semibold mb-4 text-foreground">💡 Learning Tips</h3>
-      <ul class="space-y-3 text-sm text-muted-foreground">
-        <li class="flex items-start gap-2">
-          <span class="text-primary font-bold">•</span>
-          Write down each step as you work through problems
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="text-primary font-bold">•</span>
-          Don't rush—thinking is more important than speed
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="text-primary font-bold">•</span>
-          Ask doubts whenever you're stuck
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="text-primary font-bold">•</span>
-          Review your previous solutions regularly
-        </li>
-      </ul>
-    </div>
-
-    <!-- Voice Agent Promo -->
-    <div class="gradient-hero rounded-2xl p-6 text-white shadow-md h-full flex flex-col justify-between">
-      <div>
+    <!-- Right Column -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      
+      <!-- Voice AI Tutor Card -->
+      <div class="voice-card">
         <div class="flex items-center gap-3 mb-3">
-          <div class="p-2 rounded-xl bg-white/20">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--db-blue); display: flex; align-items: center; justify-content: center; color: #fff;">
             <i data-lucide="mic" class="w-5 h-5"></i>
           </div>
-          <h3 class="font-display font-semibold text-white">Voice AI Tutor</h3>
         </div>
-        <p class="text-white/85 text-sm mb-4 leading-relaxed">
-          Talk through problems with our AI tutor. It'll guide you step by step!
+        <h3 class="font-display font-bold" style="font-size: 1.15rem; color: var(--db-text); margin-bottom: 0.375rem;">Voice AI Tutor</h3>
+        <p style="color: var(--db-text-secondary); font-size: 0.875rem; line-height: 1.6; margin-bottom: 1.25rem;">
+          Stuck on a problem? Discuss it in real-time with your intelligent learning assistant.
         </p>
+        <div style="display: flex; flex-direction: column; gap: 0.625rem;">
+          <a href="{% url 'voice_tutor:openai_voice_tutor' %}" class="voice-btn-primary">
+            <i data-lucide="mic" class="w-4 h-4"></i>
+            Talk with AI Tutor
+          </a>
+          <a href="{% url 'voice_tutor:tutor_chat' %}" class="voice-btn-outline">
+            <i data-lucide="message-square" class="w-4 h-4"></i>
+            Chat with AI Tutor
+          </a>
+        </div>
       </div>
-      <div class="flex flex-wrap gap-3 mt-auto">
-        <a href="{% url 'voice_tutor:openai_voice_tutor' %}"
-          class="inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all bg-white/20 hover:bg-white/30 text-white h-8 px-3">
-          Talk with AI Tutor
-        </a>
-        <a href="{% url 'voice_tutor:tutor_chat' %}"
-          class="inline-flex items-center justify-center rounded-md text-xs font-semibold transition-all bg-white/20 hover:bg-white/30 text-white h-8 px-3">
-          Chat with AI Tutor
-        </a>
+
+      <!-- Learning Tips Card -->
+      <div class="section-card">
+        <div class="flex items-center gap-2 mb-4">
+          <span style="font-size: 1.1rem;">💡</span>
+          <h3 class="font-display font-bold" style="font-size: 1.1rem; color: var(--db-text);">Learning Tips</h3>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <div class="tip-item" style="background: var(--db-blue-lightest); border-left: 3px solid var(--db-blue);">
+            <div class="tip-icon" style="background: var(--db-blue-light); color: var(--db-blue);">
+              <i data-lucide="notebook-pen" class="w-4 h-4"></i>
+            </div>
+            <span style="color: var(--db-text); font-style: italic;">Take frequent breaks to maintain high cognitive focus.</span>
+          </div>
+          <div class="tip-item" style="background: var(--db-purple-bg); border-left: 3px solid var(--db-purple-text);">
+            <div class="tip-icon" style="background: var(--db-purple-bg); color: var(--db-purple-text);">
+              <i data-lucide="target" class="w-4 h-4"></i>
+            </div>
+            <span style="color: var(--db-text); font-style: italic;">Use active recall instead of passive reading.</span>
+          </div>
+          <div class="tip-item" style="background: var(--db-orange-bg); border-left: 3px solid var(--db-orange-text);">
+            <div class="tip-icon" style="background: var(--db-orange-bg); color: var(--db-orange-text);">
+              <i data-lucide="users" class="w-4 h-4"></i>
+            </div>
+            <span style="color: var(--db-text); font-style: italic;">Explain concepts to others to solidify understanding.</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
+
   {% elif active_tab == 'assignments' %}
   <!-- Assignments Section -->
-  <div class="space-y-6 max-w-5xl mx-auto">
+  <div class="space-y-6" style="max-width: 64rem; margin: 0 auto;">
     <div class="flex items-center justify-between">
-      <h1 class="font-display text-3xl font-bold mb-1 text-foreground">Your Assignments</h1>
+      <h1 class="font-display text-3xl font-bold mb-1" style="color: var(--db-text);">Your Assignments</h1>
     </div>
 
     <form method="GET"
-      class="bg-card p-4 rounded-2xl shadow-sm border border-border/50 flex flex-wrap gap-4 items-end mb-6">
+      class="section-card flex flex-wrap gap-4 items-end mb-6">
       <input type="hidden" name="tab" value="assignments">
-      <div class="flex-1 min-w-[140px]">
-        <label class="block text-xs font-medium text-muted-foreground mb-1">Subject</label>
+      <div style="flex: 1; min-width: 140px;">
+        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: var(--db-text-secondary); margin-bottom: 0.25rem;">Subject</label>
         <select name="subject_id"
-          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          style="display: flex; height: 2.25rem; width: 100%; border-radius: 0.5rem; border: 1px solid var(--db-card-border); background: var(--db-card); color: var(--db-text); padding: 0.25rem 0.75rem; font-size: 0.875rem; outline: none;"
           onchange="this.form.submit()">
           <option value="">All Subjects</option>
           {% for s in filters.subjects %}
@@ -174,10 +391,10 @@
           {% endfor %}
         </select>
       </div>
-      <div class="flex-1 min-w-[140px]">
-        <label class="block text-xs font-medium text-muted-foreground mb-1">Topic</label>
+      <div style="flex: 1; min-width: 140px;">
+        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: var(--db-text-secondary); margin-bottom: 0.25rem;">Topic</label>
         <select name="topic_id"
-          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          style="display: flex; height: 2.25rem; width: 100%; border-radius: 0.5rem; border: 1px solid var(--db-card-border); background: var(--db-card); color: var(--db-text); padding: 0.25rem 0.75rem; font-size: 0.875rem; outline: none;"
           onchange="this.form.submit()">
           <option value="">All Topics</option>
           {% for t in filters.topics %}
@@ -185,10 +402,10 @@
           {% endfor %}
         </select>
       </div>
-      <div class="flex-1 min-w-[140px]">
-        <label class="block text-xs font-medium text-muted-foreground mb-1">Batch</label>
+      <div style="flex: 1; min-width: 140px;">
+        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: var(--db-text-secondary); margin-bottom: 0.25rem;">Batch</label>
         <select name="batch_id"
-          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          style="display: flex; height: 2.25rem; width: 100%; border-radius: 0.5rem; border: 1px solid var(--db-card-border); background: var(--db-card); color: var(--db-text); padding: 0.25rem 0.75rem; font-size: 0.875rem; outline: none;"
           onchange="this.form.submit()">
           <option value="">All Batches</option>
           {% for b in filters.batches %}
@@ -196,10 +413,10 @@
           {% endfor %}
         </select>
       </div>
-      <div class="flex-1 min-w-[140px]">
-        <label class="block text-xs font-medium text-muted-foreground mb-1">Professor</label>
+      <div style="flex: 1; min-width: 140px;">
+        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: var(--db-text-secondary); margin-bottom: 0.25rem;">Professor</label>
         <select name="professor_id"
-          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          style="display: flex; height: 2.25rem; width: 100%; border-radius: 0.5rem; border: 1px solid var(--db-card-border); background: var(--db-card); color: var(--db-text); padding: 0.25rem 0.75rem; font-size: 0.875rem; outline: none;"
           onchange="this.form.submit()">
           <option value="">All Professors</option>
           {% for p in filters.professors %}
@@ -208,10 +425,10 @@
           {% endfor %}
         </select>
       </div>
-      <div class="flex-1 min-w-[140px]">
-        <label class="block text-xs font-medium text-muted-foreground mb-1">Status</label>
+      <div style="flex: 1; min-width: 140px;">
+        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: var(--db-text-secondary); margin-bottom: 0.25rem;">Status</label>
         <select name="status"
-          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          style="display: flex; height: 2.25rem; width: 100%; border-radius: 0.5rem; border: 1px solid var(--db-card-border); background: var(--db-card); color: var(--db-text); padding: 0.25rem 0.75rem; font-size: 0.875rem; outline: none;"
           onchange="this.form.submit()">
           <option value="">All Status</option>
           <option value="completed" {% if filters.selected_status == 'completed' %}selected{% endif %}>Completed</option>
@@ -221,18 +438,21 @@
           </option>
         </select>
       </div>
-      <div class="flex-1 min-w-[140px]">
-        <label class="block text-xs font-medium text-muted-foreground mb-1">Sort By</label>
+      <div style="flex: 1; min-width: 140px;">
+        <label style="display: block; font-size: 0.75rem; font-weight: 500; color: var(--db-text-secondary); margin-bottom: 0.25rem;">Sort By</label>
         <select name="sort"
-          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          style="display: flex; height: 2.25rem; width: 100%; border-radius: 0.5rem; border: 1px solid var(--db-card-border); background: var(--db-card); color: var(--db-text); padding: 0.25rem 0.75rem; font-size: 0.875rem; outline: none;"
           onchange="this.form.submit()">
           <option value="desc" {% if filters.selected_sort == 'desc' %}selected{% endif %}>Newest First</option>
           <option value="asc" {% if filters.selected_sort == 'asc' %}selected{% endif %}>Oldest First</option>
         </select>
       </div>
-      <div class="flex-none">
+      <div style="flex: none;">
         <a href="?tab=assignments"
-          class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4">
+          style="display: inline-flex; align-items: center; justify-content: center; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid var(--db-card-border); background: var(--db-card); height: 2.25rem; padding: 0 1rem; color: var(--db-text-secondary); text-decoration: none; transition: all 0.15s;"
+          onmouseenter="this.style.background='var(--db-blue-lightest)'; this.style.color='var(--db-blue)'"
+          onmouseleave="this.style.background='var(--db-card)'; this.style.color='var(--db-text-secondary)'"
+        >
           Clear
         </a>
       </div>
@@ -241,41 +461,46 @@
     <div class="space-y-4">
       {% for item in student_assignments %}
       <button onclick="location.href='{% url 'voice_tutor:take_assignment' item.id %}'"
-        class="w-full text-left bg-card rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+        class="w-full text-left section-card group"
+        style="cursor: pointer; transition: box-shadow 0.3s, transform 0.3s;"
+        onmouseenter="this.style.boxShadow='0 8px 24px -4px rgba(0,0,0,0.1)'; this.style.transform='translateY(-2px)'"
+        onmouseleave="this.style.boxShadow=''; this.style.transform=''"
+      >
         <div class="flex items-start justify-between mb-4">
-          <div class="flex-1">
+          <div style="flex: 1;">
             <div class="flex items-center gap-2 mb-2">
-              <span
-                class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold {% if item.difficulty == 'beginner' %}bg-success/10 text-success border-success/20{% elif item.difficulty == 'intermediate' %}bg-warning/10 text-warning border-warning/20{% else %}bg-destructive/10 text-destructive border-destructive/20{% endif %} capitalize">
-                {{ item.difficulty }}
+              <span class="difficulty-badge"
+                style="{% if item.difficulty == 'beginner' %}background: var(--db-green-bg); color: var(--db-green-text);{% elif item.difficulty == 'intermediate' %}background: var(--db-orange-bg); color: var(--db-orange-text);{% else %}background: var(--db-red-bg); color: var(--db-red-text);{% endif %}">
+                {{ item.difficulty|capfirst }}
               </span>
             </div>
-            <h3 class="font-display font-semibold text-lg text-foreground mb-1">{{ item.title }}</h3>
-            <p class="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{{ item.description }}</p>
+            <h3 class="font-display font-semibold" style="font-size: 1.125rem; color: var(--db-text); margin-bottom: 0.25rem;">{{ item.title }}</h3>
+            <p style="font-size: 0.875rem; color: var(--db-text-secondary); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ item.description }}</p>
           </div>
-          <div
-            class="p-2 rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground transition-colors text-primary">
+          <div style="padding: 0.5rem; border-radius: 0.5rem; background: var(--db-blue-light); color: var(--db-blue); transition: all 0.2s;">
             <i data-lucide="chevron-right" class="w-5 h-5"></i>
           </div>
         </div>
 
-        <div class="flex items-center gap-6 mt-4 pt-4 border-t border-border">
-          <div class="flex items-center gap-2 text-muted-foreground text-sm">
+        <div class="flex items-center gap-6" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--db-card-border);">
+          <div class="flex items-center gap-2" style="color: var(--db-text-secondary); font-size: 0.875rem;">
             <i data-lucide="help-circle" class="w-4 h-4"></i>
-            <span><span class="font-semibold text-foreground">{{ item.questions|length }}</span> questions</span>
+            <span><span style="font-weight: 600; color: var(--db-text);">{{ item.questions|length }}</span> questions</span>
           </div>
 
           {% if item.has_notes %}
           <button
             onclick="event.stopPropagation(); location.href='{% url 'voice_tutor:view_assignment_notes' item.id %}'"
-            class="px-3 py-1 bg-secondary text-secondary-foreground text-xs font-semibold rounded hover:bg-secondary/80 transition-colors">
+            style="padding: 0.25rem 0.75rem; background: var(--db-blue-light); color: var(--db-blue); font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; border: none; cursor: pointer; transition: background 0.15s;"
+            onmouseenter="this.style.background='var(--db-blue-lightest)'"
+            onmouseleave="this.style.background='var(--db-blue-light)'"
+          >
             View Notes
           </button>
           {% endif %}
 
           {% if item.progress %}
-          <div
-            class="flex items-center gap-2 ml-auto {% if item.progress.status == 'completed' %}text-success{% else %}text-warning{% endif %} text-sm font-medium">
+          <div class="flex items-center gap-2 ml-auto" style="font-size: 0.875rem; font-weight: 500; {% if item.progress.status == 'completed' %}color: var(--db-green-text);{% else %}color: var(--db-orange-text);{% endif %}">
             {% if item.progress.status == 'completed' %}
             <i data-lucide="check-circle-2" class="w-4 h-4"></i>
             <span>Completed</span>
@@ -285,7 +510,7 @@
             {% endif %}
           </div>
           {% else %}
-          <div class="flex items-center gap-2 ml-auto text-muted-foreground text-sm font-medium">
+          <div class="flex items-center gap-2 ml-auto" style="color: var(--db-text-secondary); font-size: 0.875rem; font-weight: 500;">
             <i data-lucide="play-circle" class="w-4 h-4"></i>
             <span>Not Started</span>
           </div>
@@ -294,34 +519,33 @@
 
         {% if item.progress %}
         <!-- Progress Bar -->
-        <div class="mt-4">
-          <div class="flex justify-between text-sm mb-2">
-            <span class="text-muted-foreground text-xs">Progress</span>
-            <span class="font-medium text-xs">{% widthratio item.progress.questionsCompleted item.progress.totalQuestions 100 %}%</span>
+        <div style="margin-top: 1rem;">
+          <div class="flex justify-between" style="font-size: 0.75rem; margin-bottom: 0.5rem;">
+            <span style="color: var(--db-text-secondary);">Progress</span>
+            <span style="font-weight: 500; color: var(--db-text);">{% widthratio item.progress.questionsCompleted item.progress.totalQuestions 100 %}%</span>
           </div>
-          <div class="h-2 bg-muted rounded-full overflow-hidden">
-            <div class="h-full bg-primary rounded-full transition-all duration-500"
-              style="width: {% widthratio item.progress.questionsCompleted item.progress.totalQuestions 100 %}%"></div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width: {% widthratio item.progress.questionsCompleted item.progress.totalQuestions 100 %}%; background: var(--db-blue);"></div>
           </div>
         </div>
         {% endif %}
       </button>
       {% empty %}
-      <p class="text-sm text-muted-foreground">No assignments assigned.</p>
+      <p style="font-size: 0.875rem; color: var(--db-text-secondary);">No assignments assigned.</p>
       {% endfor %}
     </div>
   </div>
   {% elif active_tab == 'progress' %}
   <!-- Progress Section -->
-  <div class="space-y-6 max-w-5xl mx-auto">
+  <div class="space-y-6" style="max-width: 64rem; margin: 0 auto;">
     <div class="flex items-center justify-between">
-      <h1 class="font-display text-3xl font-bold mb-1 text-foreground">My Progress</h1>
+      <h1 class="font-display text-3xl font-bold mb-1" style="color: var(--db-text);">My Progress</h1>
     </div>
 
     <!-- Score Trend Chart -->
-    <div class="bg-card rounded-2xl shadow-sm border border-border/50 p-6">
-      <h2 class="text-xl font-semibold mb-4 text-foreground">Score Trend</h2>
-      <div class="relative h-80 w-full">
+    <div class="section-card">
+      <h2 class="font-display" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--db-text);">Score Trend</h2>
+      <div class="relative" style="height: 20rem; width: 100%;">
         <canvas id="scoreTrendChart"></canvas>
       </div>
     </div>
@@ -349,12 +573,12 @@
             datasets: [{
               label: 'Assignment Score',
               data: chartData.scores,
-              borderColor: 'hsl(221, 83%, 53%)',
-              backgroundColor: 'hsla(221, 83%, 53%, 0.1)',
+              borderColor: 'hsl(217, 91%, 60%)',
+              backgroundColor: 'hsla(217, 91%, 60%, 0.1)',
               borderWidth: 3,
               tension: 0.4,
               fill: true,
-              pointBackgroundColor: 'hsl(221, 83%, 53%)',
+              pointBackgroundColor: 'hsl(217, 91%, 60%)',
               pointBorderColor: '#ffffff',
               pointBorderWidth: 2,
               pointRadius: 4,

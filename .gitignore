@@ -27,15 +27,15 @@ Procfile.backup
 *.bak
 
 # Qdrant specific
+*.dat
+*.mmap
+*.mappings
+*.versions
 newest_clocks.json
 segment.json
-bitmask.dat
-gaps.dat
-page_0.dat
-tracker.dat
-status.dat
 first-index
 open-*
+qdrant_storage/
 
 # AI Configuration
 .agents/

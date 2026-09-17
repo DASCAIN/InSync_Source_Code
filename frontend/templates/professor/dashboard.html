@@ -3,192 +3,302 @@
 
 {% block title %}Professor Dashboard — InSync{% endblock %}
 
-{% block head_extra %}
-<link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.1" />
+{% block dashboard_head %}
+<style>
+  /* Premium Typography Enhancements */
+  .stat-value {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-feature-settings: 'tnum' on, 'lnum' on;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.035em;
+  }
+  .stat-label {
+    letter-spacing: -0.01em;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  }
+  .stat-card {
+    background: var(--db-card);
+    border: 1px solid var(--db-card-border);
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+    transition: box-shadow 0.3s, transform 0.3s;
+  }
+  .stat-card:hover {
+    box-shadow: 0 8px 24px -4px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .section-card {
+    background: var(--db-card);
+    border: 1px solid var(--db-card-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+  }
+  .action-card {
+    background: var(--db-card);
+    border: 1px solid var(--db-card-border);
+    border-radius: 1rem;
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    transition: box-shadow 0.3s, transform 0.3s;
+    text-align: left;
+    width: 100%;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  .action-card:hover {
+    box-shadow: 0 8px 24px -4px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    white-space: nowrap;
+  }
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--db-blue);
+    border: 2px solid var(--db-card);
+  }
+  .avatar.more {
+    background: var(--db-card-border);
+    color: var(--db-text-secondary);
+    font-size: 0.65rem;
+  }
+  .avatar-stack {
+    display: flex;
+  }
+  .avatar-stack .avatar + .avatar {
+    margin-left: -8px;
+  }
+  .metric {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8rem;
+    color: var(--db-text-secondary);
+  }
+  .metric i {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+</style>
 {% endblock %}
 
 {% block inner_content %}
-<div class="prof-scope">
-  <div class="prof-container">
-    <!-- Header -->
-    <div class="prof-header">
-      <div>
-        <h1 class="prof-header-title">
-          Welcome back, {{ request.session.user.name }}! 👋
-        </h1>
-        <p class="prof-header-subtitle">
-          Here's what's happening with your classes today.
-        </p>
+<div class="p-6 lg:p-8 w-full" style="width: 100%;">
+
+  <!-- Header -->
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 class="font-display text-3xl font-bold mb-1" style="color: var(--db-text);">
+        Welcome back, {{ request.session.user.name }}!
+      </h1>
+      <p style="color: var(--db-text-secondary);">
+        Here's what's happening with your classes today.
+      </p>
+    </div>
+    <a
+      href="{% url 'voice_tutor:professor_assignments' %}"
+      class="inline-flex items-center gap-2"
+      style="background: var(--db-blue); color: #fff; padding: 0.625rem 1.5rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background 0.2s;"
+      onmouseenter="this.style.background='var(--db-blue-hover)'"
+      onmouseleave="this.style.background='var(--db-blue)'"
+    >
+      <i data-lucide="plus" class="w-4 h-4"></i>
+      New Assignment
+    </a>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full" style="margin-bottom: 2rem;">
+    <!-- Total Students -->
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="stat-label" style="color: var(--db-text-secondary); font-size: 0.875rem; font-weight: 500;">Total Students</span>
+        <div class="stat-icon" style="background: var(--db-blue-light); color: var(--db-blue);">
+          <i data-lucide="users" class="w-5 h-5"></i>
+        </div>
       </div>
-      <div>
-        <a 
-          href="{% url 'voice_tutor:professor_assignments' %}" 
-          class="prof-btn-primary"
-        >
-          <i data-lucide="plus"></i>
-          New Assignment
-        </a>
-      </div>
+      <h3 class="stat-value font-display" style="font-size: 2.25rem; font-weight: 700; color: var(--db-text); line-height: 1;">{{ total_students }}</h3>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="prof-grid-stats">
-      <!-- Total Students -->
-      <div class="prof-stat-card">
-        <div class="prof-stat-header">
-          <div class="prof-stat-icon primary">
-            <i data-lucide="users"></i>
-          </div>
+    <!-- Active Assignments -->
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="stat-label" style="color: var(--db-text-secondary); font-size: 0.875rem; font-weight: 500;">Active Assignments</span>
+        <div class="stat-icon" style="background: var(--db-purple-bg); color: var(--db-purple-text);">
+          <i data-lucide="book-open" class="w-5 h-5"></i>
         </div>
-        <h3 class="prof-stat-value">{{ total_students }}</h3>
-        <p class="prof-stat-label">Total Students</p>
       </div>
-
-      <!-- Active Assignments -->
-      <div class="prof-stat-card">
-        <div class="prof-stat-header">
-          <div class="prof-stat-icon primary">
-            <i data-lucide="book-open"></i>
-          </div>
-        </div>
-        <h3 class="prof-stat-value">{{ active_assignments_count }}</h3>
-        <p class="prof-stat-label">Active Assignments</p>
-      </div>
-
-      <!-- Engagement Rate -->
-      <div class="prof-stat-card">
-        <div class="prof-stat-header">
-          <div class="prof-stat-icon success">
-            <i data-lucide="trending-up"></i>
-          </div>
-        </div>
-        <h3 class="prof-stat-value">{{ batch_analytics.overallEngagement }}%</h3>
-        <p class="prof-stat-label">Engagement Rate</p>
-      </div>
-
-      <!-- Need Attention -->
-      <div class="prof-stat-card">
-        <div class="prof-stat-header">
-          <div class="prof-stat-icon warning">
-            <i data-lucide="alert-triangle"></i>
-          </div>
-        </div>
-        <h3 class="prof-stat-value">{{ batch_analytics.outliers|length }}</h3>
-        <p class="prof-stat-label">Need Attention</p>
-      </div>
+      <h3 class="stat-value font-display" style="font-size: 2.25rem; font-weight: 700; color: var(--db-text); line-height: 1;">{{ active_assignments_count }}</h3>
     </div>
 
+    <!-- Engagement Rate -->
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="stat-label" style="color: var(--db-text-secondary); font-size: 0.875rem; font-weight: 500;">Engagement Rate</span>
+        <div class="stat-icon" style="background: var(--db-green-bg); color: var(--db-green-text);">
+          <i data-lucide="trending-up" class="w-5 h-5"></i>
+        </div>
+      </div>
+      <h3 class="stat-value font-display" style="font-size: 2.25rem; font-weight: 700; color: var(--db-text); line-height: 1;">{{ batch_analytics.overallEngagement }}%</h3>
+    </div>
 
-    <!-- Main Content Grid -->
-    <div class="prof-grid-main">
-      <!-- Batches Section -->
-      <div class="prof-stack">
-        <div class="prof-section-header">
-          <h2 class="prof-section-title">Your batches</h2>
-          <a href="{% url 'voice_tutor:professor_batchs' %}" class="prof-btn-ghost">
-            View All <i data-lucide="arrow-right" style="width: 1rem; height: 1rem; margin-left: 0.25rem;"></i>
+    <!-- Need Attention -->
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="stat-label" style="color: var(--db-text-secondary); font-size: 0.875rem; font-weight: 500;">Need Attention</span>
+        <div class="stat-icon" style="background: var(--db-orange-bg); color: var(--db-orange-text);">
+          <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+        </div>
+      </div>
+      <h3 class="stat-value font-display" style="font-size: 2.25rem; font-weight: 700; color: var(--db-text); line-height: 1;">{{ batch_analytics.outliers|length }}</h3>
+    </div>
+  </div>
+
+  <!-- Two-column layout: Batches + Recent Assignments -->
+  <div class="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 w-full">
+    <!-- Left Column: Batches -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="section-card">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display font-bold" style="font-size: 1.25rem; color: var(--db-text);">Your Batches</h2>
+          <a href="{% url 'voice_tutor:professor_batchs' %}"
+            style="color: var(--db-blue); font-size: 0.875rem; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 0.25rem;"
+            onmouseenter="this.style.textDecoration='underline'"
+            onmouseleave="this.style.textDecoration='none'"
+          >
+            View All <i data-lucide="chevron-right" class="w-4 h-4"></i>
           </a>
         </div>
-        <div class="prof-stack">
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
           {% for batch in batchs %}
-            <button 
-              onclick="location.href='{% url 'voice_tutor:professor_batchs' %}?batch_id={{ batch.id }}'"
-              class="prof-action-card"
-            >
-              <div class="prof-action-card-header">
-                <div>
-                  <h3 class="prof-action-card-title">{{ batch.name }}</h3>
-                  <p class="prof-action-card-desc">{{ batch.description }}</p>
-                </div>
-                <div class="prof-icon-button">
-                  <i data-lucide="chevron-right" style="width: 1.25rem; height: 1.25rem;"></i>
-                </div>
+          <button
+            onclick="location.href='{% url 'voice_tutor:professor_batchs' %}?batch_id={{ batch.id }}'"
+            class="action-card"
+          >
+            <div class="flex items-center justify-between" style="margin-bottom: 0.75rem;">
+              <div style="flex: 1; min-width: 0;">
+                <h3 class="font-display font-semibold" style="font-size: 1rem; color: var(--db-text); margin-bottom: 0.25rem;">{{ batch.name }}</h3>
+                <p style="font-size: 0.8rem; color: var(--db-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ batch.description }}</p>
               </div>
-
-              <div class="prof-card-metrics">
-                <div class="prof-metric">
-                  <i data-lucide="users"></i>
-                  <span><span>{{ batch.studentIds|length }}</span> students</span>
-                </div>
-                <div class="prof-metric">
-                  <i data-lucide="book-open"></i>
-                  <span><span>{{ batch.assignmentIds|length }}</span> assignments</span>
-                </div>
-
+              <div style="padding: 0.375rem; border-radius: 0.5rem; background: var(--db-blue-light); color: var(--db-blue); margin-left: 1rem; flex-shrink: 0;">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
               </div>
+            </div>
 
-              <!-- Student Avatars -->
-              <div class="prof-avatar-group">
-                <div class="prof-avatar-stack">
-                  {% for student in batch.avatar_students %}
-                    <div class="prof-avatar" style="z-index: {{ forloop.revcounter }};">
-                      {{ student.name.0 }}
-                    </div>
-                  {% endfor %}
-                  {% if batch.remaining_students_count > 0 %}
-                    <div class="prof-avatar more">
-                      +{{ batch.remaining_students_count }}
-                    </div>
-                  {% endif %}
-                </div>
-                <span class="prof-stat-subtext" style="margin-top: 0;">
-                  {{ batch.students_display_str }}
-                </span>
+            <div class="flex items-center gap-4" style="margin-bottom: 0.75rem;">
+              <div class="metric">
+                <i data-lucide="users"></i>
+                <span><span style="font-weight: 600; color: var(--db-text);">{{ batch.studentIds|length }}</span> students</span>
               </div>
-            </button>
+              <div class="metric">
+                <i data-lucide="book-open"></i>
+                <span><span style="font-weight: 600; color: var(--db-text);">{{ batch.assignmentIds|length }}</span> assignments</span>
+              </div>
+            </div>
+
+            <!-- Student Avatars -->
+            <div class="flex items-center gap-2">
+              <div class="avatar-stack">
+                {% for student in batch.avatar_students %}
+                <div class="avatar" style="z-index: {{ forloop.revcounter }};">
+                  {{ student.name.0 }}
+                </div>
+                {% endfor %}
+                {% if batch.remaining_students_count > 0 %}
+                <div class="avatar more">
+                  +{{ batch.remaining_students_count }}
+                </div>
+                {% endif %}
+              </div>
+              <span style="font-size: 0.75rem; color: var(--db-text-secondary);">
+                {{ batch.students_display_str }}
+              </span>
+            </div>
+          </button>
+          {% empty %}
+          <div style="text-align: center; color: var(--db-text-secondary); font-size: 0.875rem; padding: 2rem 0;">No batches yet.</div>
           {% endfor %}
         </div>
       </div>
+    </div>
 
-      <!-- Right Sidebar -->
-      <div class="prof-stack">
-        <!-- Recent Assignments -->
-        <div class="prof-stack">
-          <div class="prof-section-header">
-            <h2 class="prof-section-title">Recent Assignments</h2>
-            <a href="{% url 'voice_tutor:professor_assignments' %}" class="prof-btn-ghost">
-              View All <i data-lucide="arrow-right" style="width: 1rem; height: 1rem; margin-left: 0.25rem;"></i>
-            </a>
-          </div>
-          <div class="prof-stack">
-            {% for assignment in recent_assignments %}
-              <div 
-                onclick="location.href='{% url 'voice_tutor:professor_assignment_detail' assignment.id %}'"
-                class="prof-action-card"
-              >
-                <div class="prof-action-card-header">
-                  <div style="flex: 1;">
-                    <div style="margin-bottom: 0.5rem;">
-                      <span class="prof-badge {% if assignment.difficulty == 'beginner' %}success{% elif assignment.difficulty == 'intermediate' %}warning{% else %}danger{% endif %}">
-                        {{ assignment.difficulty }}
-                      </span>
-                    </div>
-                    <h3 class="prof-action-card-title">{{ assignment.title }}</h3>
-                    <p class="prof-action-card-desc prof-line-clamp-2">{{ assignment.description }}</p>
-                  </div>
-                  <div class="prof-icon-button">
-                    <i data-lucide="chevron-right" style="width: 1.25rem; height: 1.25rem;"></i>
-                  </div>
-                </div>
-
-                <div class="prof-avatar-group" style="gap: 1.5rem; justify-content: flex-start;">
-                  <div class="prof-metric">
-                    <i data-lucide="help-circle"></i>
-                    <span><span>{{ assignment.questions|length }}</span> questions</span>
-                  </div>
-                  <div class="prof-metric">
-                    <i data-lucide="clock"></i>
-                    <span><span>{{ assignment.expectedDuration }}</span> min</span>
-                  </div>
-                </div>
-              </div>
-            {% endfor %}
-          </div>
+    <!-- Right Column: Recent Assignments -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="section-card">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display font-bold" style="font-size: 1.25rem; color: var(--db-text);">Recent Assignments</h2>
+          <a href="{% url 'voice_tutor:professor_assignments' %}"
+            style="color: var(--db-blue); font-size: 0.875rem; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 0.25rem;"
+            onmouseenter="this.style.textDecoration='underline'"
+            onmouseleave="this.style.textDecoration='none'"
+          >
+            View All <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </a>
         </div>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          {% for assignment in recent_assignments %}
+          <div
+            onclick="location.href='{% url 'voice_tutor:professor_assignment_detail' assignment.id %}'"
+            class="action-card"
+          >
+            <div style="margin-bottom: 0.5rem;">
+              <span class="badge"
+                style="{% if assignment.difficulty == 'beginner' %}background: var(--db-green-bg); color: var(--db-green-text);{% elif assignment.difficulty == 'intermediate' %}background: var(--db-orange-bg); color: var(--db-orange-text);{% else %}background: var(--db-red-bg); color: var(--db-red-text);{% endif %}"
+              >
+                {{ assignment.difficulty }}
+              </span>
+            </div>
+            <div class="flex items-start justify-between" style="margin-bottom: 0.75rem;">
+              <div style="flex: 1; min-width: 0;">
+                <h3 class="font-display font-semibold" style="font-size: 1rem; color: var(--db-text); margin-bottom: 0.25rem;">{{ assignment.title }}</h3>
+                <p style="font-size: 0.8rem; color: var(--db-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5;">{{ assignment.description }}</p>
+              </div>
+              <div style="padding: 0.375rem; border-radius: 0.5rem; background: var(--db-blue-light); color: var(--db-blue); margin-left: 1rem; flex-shrink: 0;">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </div>
+            </div>
 
-
+            <div class="flex items-center gap-4" style="padding-top: 0.75rem; border-top: 1px solid var(--db-card-border);">
+              <div class="metric">
+                <i data-lucide="help-circle"></i>
+                <span><span style="font-weight: 600; color: var(--db-text);">{{ assignment.questions|length }}</span> questions</span>
+              </div>
+              <div class="metric">
+                <i data-lucide="clock"></i>
+                <span><span style="font-weight: 600; color: var(--db-text);">{{ assignment.expectedDuration }}</span> min</span>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div style="text-align: center; color: var(--db-text-secondary); font-size: 0.875rem; padding: 2rem 0;">No assignments yet.</div>
+          {% endfor %}
+        </div>
       </div>
     </div>
   </div>
+
 </div>
 {% endblock %}
