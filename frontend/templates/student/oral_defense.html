@@ -1,0 +1,1913 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Sage AI Oral Defense: {{ assignment.title }} — InSync{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+  :root {
+    --arena-bg: #070814;
+    --arena-card: #0f1225;
+    --arena-border: rgba(99, 102, 241, 0.2);
+    --arena-glow: rgba(99, 102, 241, 0.35);
+    --sage-glow: rgba(168, 85, 247, 0.35);
+  }
+
+  /* Dual Battle Workspace Layout */
+  #battle-workspace {
+    display: flex;
+    width: 100%;
+    min-height: calc(100vh - 65px);
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  #arena-main {
+    flex: 1 1 0%;
+    min-width: 0;
+    transition: all 0.3s ease;
+  }
+
+  /* Docked Sage Sidebar - Side-by-Side simultaneous interaction */
+  #sage-sidebar {
+    width: 380px;
+    min-width: 280px;
+    max-width: 750px;
+    background-color: #0c0e1e !important;
+    border-left: 1.5px solid rgba(168, 85, 247, 0.35);
+    box-shadow: -8px 0 25px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 65px);
+    position: sticky;
+    top: 65px;
+    z-index: 25;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+    overflow: hidden;
+  }
+
+  /* Instantaneous 60fps tracking during resizing */
+  #sage-sidebar.resizing,
+  body.is-resizing-sidebar #arena-main,
+  body.is-resizing-sidebar #sage-sidebar {
+    transition: none !important;
+  }
+  body.is-resizing-sidebar {
+    cursor: col-resize !important;
+    user-select: none !important;
+  }
+  body.is-resizing-sidebar * {
+    user-select: none !important;
+  }
+
+  /* Left Resize Handle on Sage Sidebar */
+  .sage-resize-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    touch-action: none;
+  }
+  .sage-resize-handle::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: transparent;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .sage-resize-handle:hover::before,
+  .sage-resize-handle.is-resizing::before {
+    background: #c084fc;
+    box-shadow: 0 0 8px rgba(192, 132, 252, 0.85);
+  }
+  .sage-resize-grip {
+    position: relative;
+    width: 3px;
+    height: 32px;
+    border-radius: 9999px;
+    background: rgba(168, 85, 247, 0.4);
+    transition: all 0.15s ease;
+  }
+  .sage-resize-handle:hover .sage-resize-grip,
+  .sage-resize-handle.is-resizing .sage-resize-grip {
+    background: #e9d5ff;
+    transform: scaleY(1.25);
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.9);
+  }
+  @media (max-width: 1024px) {
+    .sage-resize-handle {
+      display: none !important;
+    }
+  }
+
+  /* Collapsed state */
+  #sage-sidebar.collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    border-left: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateX(100%);
+  }
+
+  /* ─── Premium Summon Sage Button ─── */
+  #summon-sage-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 10px 0 8px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    border: 1px solid rgba(216, 180, 254, 0.45);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(124, 58, 237, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+  }
+  #summon-sage-btn:hover {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    border-color: rgba(233, 213, 255, 0.75);
+    box-shadow: 0 4px 16px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    transform: translateY(-1px);
+  }
+  #summon-sage-btn:active {
+    transform: scale(0.97);
+  }
+
+  .sage-btn-icon-wrap {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sage-ping-dot {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 6px rgba(52, 211, 153, 0.9);
+  }
+
+  .sage-btn-close-wrap {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: #cbd5e1;
+  }
+
+  #sage-tokens-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9999px;
+    background: #fbbf24 !important;
+    color: #0f172a !important;
+    font-size: 10.5px !important;
+    font-weight: 800 !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    line-height: 1 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+  #sage-tokens-pill.depleted {
+    background: rgba(148, 163, 184, 0.25) !important;
+    color: #94a3b8 !important;
+    box-shadow: none !important;
+  }
+
+  /* Active "Close Sage" State */
+  #summon-sage-btn.active-sage {
+    background: rgba(30, 27, 75, 0.85) !important;
+    border-color: rgba(168, 85, 247, 0.45) !important;
+    color: #e2e8f0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  }
+  #summon-sage-btn.active-sage:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.45) !important;
+    color: #fca5a5 !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.25) !important;
+  }
+  #summon-sage-btn.active-sage .sage-btn-icon-wrap {
+    display: none !important;
+  }
+  #summon-sage-btn.active-sage .sage-btn-close-wrap {
+    display: flex !important;
+  }
+  #summon-sage-btn.active-sage #sage-tokens-pill {
+    display: none !important;
+  }
+
+  /* Responsive behavior on mobile/tablets (< 1024px) */
+  @media (max-width: 1024px) {
+    #sage-sidebar {
+      position: fixed;
+      top: 65px;
+      right: 0;
+      bottom: 0;
+      height: calc(100vh - 65px);
+      width: 100%;
+      max-width: 380px;
+      z-index: 40;
+      box-shadow: -15px 0 35px rgba(0, 0, 0, 0.85);
+    }
+  }
+
+  /* Boss Health Bar Transitions */
+  .boss-health-track {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  }
+  .boss-health-fill {
+    transition: width 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.4s ease;
+  }
+  .boss-health-fill.damage-flash {
+    animation: flashRed 0.5s ease;
+  }
+  @keyframes flashRed {
+    0% { filter: brightness(2) drop-shadow(0 0 15px #ef4444); }
+    50% { filter: brightness(1.5) drop-shadow(0 0 8px #ef4444); }
+    100% { filter: brightness(1); }
+  }
+
+  /* Boss Avatar Pulse when speaking */
+  .boss-speaking-pulse {
+    animation: bossPulse 1.4s infinite alternate;
+  }
+  @keyframes bossPulse {
+    0% {
+      box-shadow: 0 0 15px rgba(129, 140, 248, 0.4), 0 0 30px rgba(99, 102, 241, 0.2);
+      transform: scale(1);
+    }
+    100% {
+      box-shadow: 0 0 35px rgba(129, 140, 248, 0.8), 0 0 60px rgba(99, 102, 241, 0.5);
+      transform: scale(1.03);
+    }
+  }
+
+  /* Sage Glowing Pulse & Halo */
+  .sage-speaking-pulse {
+    animation: sagePulse 1.4s infinite alternate;
+  }
+  @keyframes sagePulse {
+    0% {
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.4), 0 0 30px rgba(147, 51, 234, 0.2);
+      border-color: rgba(192, 132, 252, 0.7);
+    }
+    100% {
+      box-shadow: 0 0 30px rgba(168, 85, 247, 0.8), 0 0 50px rgba(59, 130, 246, 0.4);
+      border-color: rgba(216, 180, 254, 1);
+    }
+  }
+
+  /* Mic Pulse when listening */
+  .mic-listening-pulse {
+    animation: micPulse 1.2s infinite;
+  }
+  @keyframes micPulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      transform: scale(1);
+    }
+    70% {
+      box-shadow: 0 0 0 22px rgba(16, 185, 129, 0);
+      transform: scale(1.04);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      transform: scale(1);
+    }
+  }
+
+  /* Screen shake on damage */
+  .shake-arena {
+    animation: shake 0.45s cubic-bezier(.36,.07,.19,.97) both;
+  }
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-2px, 0, 0); }
+    20%, 80% { transform: translate3d(3px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
+
+  /* Damage popup indicator */
+  .damage-popup {
+    animation: floatUpFade 1.2s forwards;
+  }
+  @keyframes floatUpFade {
+    0% { opacity: 0; transform: translateY(10px) scale(0.8); }
+    20% { opacity: 1; transform: translateY(-5px) scale(1.15); }
+    80% { opacity: 1; transform: translateY(-25px) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(0.9); }
+  }
+
+  /* Audio Waveform Bars */
+  .sound-wave-bar {
+    animation: waveBar 0.9s ease-in-out infinite alternate;
+  }
+  .sound-wave-bar:nth-child(2) { animation-delay: 0.15s; }
+  .sound-wave-bar:nth-child(3) { animation-delay: 0.3s; }
+  .sound-wave-bar:nth-child(4) { animation-delay: 0.45s; }
+  .sound-wave-bar:nth-child(5) { animation-delay: 0.2s; }
+  @keyframes waveBar {
+    0% { height: 4px; }
+    100% { height: 22px; }
+  }
+
+  /* Sage Waveform Bars */
+  .sage-wave-bar {
+    animation: sageWaveBar 0.8s ease-in-out infinite alternate;
+  }
+  .sage-wave-bar:nth-child(2) { animation-delay: 0.2s; }
+  .sage-wave-bar:nth-child(3) { animation-delay: 0.35s; }
+  .sage-wave-bar:nth-child(4) { animation-delay: 0.15s; }
+  @keyframes sageWaveBar {
+    0% { height: 4px; }
+    100% { height: 18px; }
+  }
+
+  /* Transcript Textarea Dark Styling */
+  #transcript-input {
+    background-color: #080a17 !important;
+    color: #f8fafc !important;
+    border: 1.5px solid rgba(99, 102, 241, 0.3) !important;
+    font-size: 0.95rem !important;
+    line-height: 1.65 !important;
+    caret-color: #a855f7 !important;
+  }
+  #transcript-input::placeholder {
+    color: #94a3b8 !important;
+    opacity: 0.85 !important;
+  }
+  #transcript-input:focus {
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25) !important;
+    outline: none !important;
+  }
+
+  /* Micro chip hover */
+  .micro-chip {
+    transition: all 0.2s ease;
+  }
+  .micro-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);
+  }
+
+  /* Custom scrollbar for Sage sidebar */
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(168, 85, 247, 0.2);
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(168, 85, 247, 0.45);
+  }
+
+  /* ─── Sage Sidebar Component System ─── */
+
+  /* Header */
+  .sage-sb-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(168, 85, 247, 0.12);
+    flex-shrink: 0;
+  }
+
+  .sage-avatar {
+    width: 30px; height: 30px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #7c3aed, #6366f1, #06b6d4);
+    padding: 1.5px;
+    flex-shrink: 0;
+  }
+  .sage-avatar-inner {
+    width: 100%; height: 100%;
+    background: #0c0e1e;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+
+  .sage-token-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 700; font-family: ui-monospace, monospace;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+  }
+
+  .sage-close-btn {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    color: rgba(148, 163, 184, 0.7);
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sage-close-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #f87171;
+  }
+
+  /* Tabs */
+  .sage-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+    flex-shrink: 0;
+  }
+  .sage-tab {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 7px 0;
+    border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+    color: rgba(148, 163, 184, 0.5);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .sage-tab:hover {
+    color: rgba(148, 163, 184, 0.8);
+    background: rgba(148, 163, 184, 0.04);
+  }
+  .sage-tab.active {
+    color: #e9d5ff;
+    background: rgba(168, 85, 247, 0.12);
+  }
+
+  /* Panel */
+  .sage-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* Lens Pills */
+  .sage-lens-grid {
+    display: flex;
+    gap: 6px;
+  }
+  .sage-lens-pill {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 4px;
+    border-radius: 10px;
+    font-size: 12px; font-weight: 600;
+    color: rgba(226, 232, 240, 0.7);
+    background: rgba(168, 85, 247, 0.06);
+    border: 1px solid rgba(168, 85, 247, 0.12);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .sage-lens-pill:hover {
+    color: #e9d5ff;
+    background: rgba(168, 85, 247, 0.14);
+    border-color: rgba(168, 85, 247, 0.35);
+    transform: translateY(-1px);
+  }
+  .sage-lens-pill:active {
+    transform: scale(0.97);
+  }
+  .sage-lens-pill.active {
+    color: #f3e8ff;
+    background: rgba(168, 85, 247, 0.22);
+    border-color: rgba(168, 85, 247, 0.6);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+  }
+
+  /* Chat Bubble */
+  .sage-bubble {
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(168, 85, 247, 0.05);
+    border: 1px solid rgba(168, 85, 247, 0.1);
+  }
+  .sage-bubble-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .sage-bubble-title {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 700;
+    color: #c4b5fd;
+    letter-spacing: 0.02em;
+  }
+  .sage-bubble-body {
+    font-size: 13px;
+    line-height: 1.65;
+    color: rgba(226, 232, 240, 0.85);
+    margin: 0;
+  }
+  .sage-replay-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 500;
+    color: rgba(192, 132, 252, 0.6);
+    background: none; border: none; cursor: pointer;
+    transition: color 0.15s ease;
+  }
+  .sage-replay-btn:hover { color: #c4b5fd; }
+
+  /* Action Tray */
+  .sage-action-tray {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 8px;
+  }
+  .sage-insert-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px; font-weight: 600;
+    color: #c4b5fd;
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sage-insert-btn:hover {
+    background: rgba(168, 85, 247, 0.2);
+    border-color: rgba(168, 85, 247, 0.4);
+  }
+  .sage-insert-btn:active { transform: scale(0.96); }
+
+  /* Quick Prompts */
+  .sage-quick-prompts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sage-section-label {
+    font-size: 11px; font-weight: 500;
+    color: rgba(148, 163, 184, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .sage-chip-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sage-suggest-chip {
+    text-align: left;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    color: rgba(226, 232, 240, 0.7);
+    background: rgba(168, 85, 247, 0.04);
+    border: 1px solid rgba(168, 85, 247, 0.08);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sage-suggest-chip:hover {
+    color: #e9d5ff;
+    background: rgba(168, 85, 247, 0.1);
+    border-color: rgba(168, 85, 247, 0.25);
+  }
+
+  /* Ask Form — Inline Input Row */
+  .sage-ask-row {
+    margin-top: auto;
+    padding-top: 8px;
+  }
+  .sage-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    border-radius: 12px;
+    padding: 4px 4px 4px 12px;
+    transition: border-color 0.2s ease;
+  }
+  .sage-input-wrap:focus-within {
+    border-color: rgba(168, 85, 247, 0.4);
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.08);
+  }
+  .sage-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 12px;
+    color: #f1f5f9;
+    padding: 6px 0;
+  }
+  .sage-input::placeholder {
+    color: rgba(148, 163, 184, 0.4);
+  }
+  .sage-mic-btn,
+  .sage-send-btn {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    border: none; cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .sage-mic-btn {
+    background: transparent;
+    color: rgba(148, 163, 184, 0.5);
+  }
+  .sage-mic-btn:hover {
+    color: #c4b5fd;
+    background: rgba(168, 85, 247, 0.08);
+  }
+  .sage-send-btn {
+    background: linear-gradient(135deg, #7c3aed, #6366f1);
+    color: white;
+  }
+  .sage-send-btn:hover {
+    background: linear-gradient(135deg, #8b5cf6, #818cf8);
+  }
+  .sage-send-btn:active { transform: scale(0.93); }
+
+  /* Footer */
+  .sage-sb-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-top: 1px solid rgba(148, 163, 184, 0.05);
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.35);
+    flex-shrink: 0;
+  }
+  .sage-status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 6px rgba(52, 211, 153, 0.5);
+  }
+  .sage-dismiss-btn {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(148, 163, 184, 0.06);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    color: rgba(148, 163, 184, 0.65);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sage-dismiss-btn:hover {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+</style>
+{% endblock %}
+
+{% block inner_content %}
+<div id="arena-container" class="min-h-screen bg-slate-950 text-slate-100 flex flex-col transition-all duration-300 relative overflow-x-hidden">
+
+  <!-- Top Navigation Bar -->
+  <div class="border-b border-indigo-950/60 bg-slate-950/90 backdrop-blur-md sticky top-0 z-30 shadow-md h-[65px] flex items-center">
+    <div class="container mx-auto px-4 sm:px-6 py-2 flex items-center justify-between gap-3 w-full">
+      
+      <!-- Left: Back Link -->
+      <a href="{% url 'voice_tutor:take_assignment' assignment.code %}" class="flex items-center gap-2 text-indigo-300 hover:text-white transition-colors text-xs sm:text-sm font-medium">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        <span class="hidden sm:inline">Back to Assignment</span>
+        <span class="sm:hidden">Back</span>
+      </a>
+
+      <!-- Center: Arena Title Pill -->
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-950/80 via-slate-900 to-indigo-950/80 border border-purple-500/30 text-xs font-semibold shadow-inner">
+          <span class="text-xs">⚔️</span>
+          <span class="text-purple-200 tracking-wide font-medium">Oral Defense Arena</span>
+        </div>
+        <span class="text-xs text-slate-400 hidden md:inline max-w-xs truncate">{{ assignment.title }}</span>
+      </div>
+
+      <!-- Right: Round Info & Summon Sage Toggle Button -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <span id="round-indicator" class="hidden sm:inline-flex px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+          Round 1 of 2
+        </span>
+
+        <!-- Summon / Close Sage Toggle Button -->
+        <button
+          id="summon-sage-btn"
+          type="button"
+          title="Summon Sage AI Coach (2 consultations left)"
+        >
+          <div id="summon-sage-icon-summon" class="sage-btn-icon-wrap">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-100"></i>
+            <span class="sage-ping-dot"></span>
+          </div>
+          <div id="summon-sage-icon-close" class="sage-btn-close-wrap">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          </div>
+          <span class="summon-text">Summon Sage</span>
+          <span id="sage-tokens-pill">2</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DUAL WORKSPACE: ARENA (LEFT) + DOCKED SAGE SIDEBAR (RIGHT) -->
+  <div id="battle-workspace">
+
+    <!-- Left Column: Arena Main Content (Interactive simultaneously) -->
+    <main id="arena-main" class="px-4 sm:px-6 py-6 sm:py-8 flex flex-col items-center">
+      <div class="w-full max-w-4xl flex flex-col gap-6">
+
+        <!-- BOSS HUD CARD -->
+        <div class="relative bg-gradient-to-b from-indigo-950/40 via-slate-900/90 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-indigo-950/50 backdrop-blur-xl overflow-hidden">
+          <!-- Glow ambient background -->
+          <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+          <!-- Boss Header & Health -->
+          <div class="relative z-10 flex flex-col md:flex-row items-center gap-6">
+            
+            <!-- Boss Avatar -->
+            <div class="relative flex-shrink-0">
+              <div id="boss-avatar-frame" class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-indigo-500 p-1 shadow-xl transition-all duration-300">
+                <div class="w-full h-full bg-slate-950 rounded-[14px] flex flex-col items-center justify-center relative overflow-hidden">
+                  <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-300">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7 sm:w-8 sm:h-8 text-indigo-300 drop-shadow-[0_0_10px_rgba(99,102,241,0.4)]">
+                      <path d="M21.42 10.922a1 1 0 0 0-.019-.838L12.83 2.18a2 2 0 0 0-1.66 0L2.6 10.084a1 1 0 0 0 0 1.832l8.57 7.908a2 2 0 0 0 1.66 0l6.71-6.192"></path>
+                      <path d="M6 12.5v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"></path>
+                      <path d="M22 10v6"></path>
+                    </svg>
+                  </div>
+                  <div id="boss-audio-wave" class="hidden absolute bottom-2 flex items-center justify-center gap-1 h-5">
+                    <div class="sound-wave-bar w-1 bg-indigo-400 rounded-full"></div>
+                    <div class="sound-wave-bar w-1 bg-purple-400 rounded-full"></div>
+                    <div class="sound-wave-bar w-1 bg-indigo-300 rounded-full"></div>
+                    <div class="sound-wave-bar w-1 bg-purple-300 rounded-full"></div>
+                    <div class="sound-wave-bar w-1 bg-indigo-400 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+              <div id="damage-container" class="absolute -top-4 right-0 pointer-events-none"></div>
+            </div>
+
+            <!-- Boss Info & Health Bar -->
+            <div class="flex-1 w-full text-center md:text-left space-y-3">
+              <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
+                <div>
+                  <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center justify-center md:justify-start gap-2">
+                    {{ boss_name }}
+                    <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-normal">
+                      {{ boss_title }}
+                    </span>
+                  </h2>
+                  <p class="text-xs text-slate-400 mt-0.5">Calculus Extrema Examiner • Voice: Onyx (Deep & Authoritative)</p>
+                </div>
+
+                <!-- Health numbers -->
+                <div class="flex items-center justify-center md:justify-end gap-2 font-mono">
+                  <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Boss HP:</span>
+                  <span id="hp-number" class="text-xl font-bold text-emerald-400">100 / 100</span>
+                </div>
+              </div>
+
+              <!-- Health Bar Track -->
+              <div class="w-full boss-health-track h-5 rounded-full p-1 overflow-hidden">
+                <div id="hp-bar" class="boss-health-fill h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-400 shadow-md shadow-emerald-500/30" style="width: 100%;"></div>
+              </div>
+
+              <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+                <span id="phase-label" class="font-medium text-slate-300">Phase 1: First & Second Derivative Tests</span>
+                <span class="text-indigo-400 font-medium flex items-center gap-1">
+                  <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-amber-400"></i>
+                  Defend calculations orally
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Boss Speech Bubble -->
+          <div class="mt-6 pt-5 border-t border-slate-800/80">
+            <div class="flex items-start gap-3 bg-slate-950/70 border border-indigo-500/20 rounded-2xl p-4 sm:p-5 shadow-inner">
+              <div class="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 flex-shrink-0 mt-0.5">
+                <i data-lucide="volume-2" class="w-4 h-4"></i>
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <span class="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Professor Algor Speaks:</span>
+                  <button id="replay-voice-btn" class="text-xs text-slate-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
+                    <i data-lucide="rotate-cw" class="w-3 h-3"></i>
+                    Replay Audio
+                  </button>
+                </div>
+                <p id="boss-dialogue-text" class="text-sm sm:text-base text-slate-200 leading-relaxed font-normal">
+                  Summoning the Guardian... Preparing your oral defense trial.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- STUDENT ACTION DECK (Voice Input & Live Transcript) -->
+        <div class="grid md:grid-cols-3 gap-5 flex-1">
+
+          <!-- Action & Mic Controller (Left 1 col) -->
+          <div class="bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-6 flex flex-col items-center justify-between text-center space-y-5 shadow-xl relative overflow-hidden">
+            
+            <div class="w-full space-y-1">
+              <div class="flex items-center justify-center gap-2">
+                <h3 class="text-base font-bold text-white">Your Verbal Defense</h3>
+                <span id="recording-timer" class="hidden text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30">00:00</span>
+              </div>
+              <p id="mic-status-hint" class="text-xs text-slate-400">Tap mic to speak your defense</p>
+            </div>
+
+            <!-- Mic Button -->
+            <div class="relative my-1">
+              <button
+                id="mic-btn"
+                type="button"
+                class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-indigo-600 to-indigo-800 hover:from-indigo-500 hover:to-indigo-700 active:scale-95 shadow-xl shadow-indigo-600/30 border-4 border-indigo-400/30 flex flex-col items-center justify-center gap-1.5 text-white transition-all duration-300 focus:outline-none relative z-10"
+              >
+                <i data-lucide="mic" id="mic-icon" class="w-8 h-8 sm:w-9 sm:h-9"></i>
+                <span id="mic-btn-label" class="text-[10px] font-bold uppercase tracking-wider">Tap to Speak</span>
+              </button>
+            </div>
+
+            <!-- Status & Cast Button -->
+            <div class="w-full space-y-2.5">
+              <div id="readiness-pill" class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700/60 inline-flex items-center justify-center gap-1.5 mx-auto">
+                <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                <span>Awaiting speech</span>
+              </div>
+
+              <button
+                id="cast-defense-btn"
+                type="button"
+                disabled
+                class="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2"
+              >
+                <i data-lucide="zap" class="w-4 h-4"></i>
+                <span>Cast Defense</span>
+              </button>
+              
+              <div class="flex items-center justify-center gap-3 pt-0.5">
+                <button
+                  id="clear-btn"
+                  type="button"
+                  class="text-xs text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                  <span>Clear</span>
+                </button>
+                <span class="text-slate-700">•</span>
+                <button
+                  type="button"
+                  onclick="toggleSageSidebar()"
+                  class="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1 font-medium"
+                >
+                  <i data-lucide="sparkles" class="w-3 h-3"></i>
+                  <span>Ask Sage</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Live Transcript Pad (Right 2 cols) -->
+          <div class="md:col-span-2 bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-6 flex flex-col space-y-3.5 shadow-xl">
+            
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div class="flex items-center gap-2">
+                <i data-lucide="message-square" class="w-4 h-4 text-purple-400"></i>
+                <span class="text-sm font-bold text-white">Live Spoken Transcript</span>
+              </div>
+              <span id="word-count" class="text-xs font-mono text-slate-400">0 words transcribed</span>
+            </div>
+
+            <!-- Textarea -->
+            <div class="flex-1 flex flex-col relative min-h-[170px]">
+              <textarea
+                id="transcript-input"
+                rows="6"
+                placeholder="Speak into your microphone or type your defense here. You can also consult Sage on the right for conceptual tips..."
+                class="w-full flex-1 rounded-2xl p-4 focus:outline-none resize-none transition-all text-sm"
+              ></textarea>
+
+              <div id="listening-indicator" class="hidden absolute bottom-3 right-4 flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-950/90 px-3 py-1 rounded-full border border-emerald-500/40 animate-pulse shadow-md">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                Listening...
+              </div>
+            </div>
+
+            <!-- Feedback Box -->
+            <div id="feedback-card" class="hidden p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 flex items-start gap-2.5">
+              <i data-lucide="sparkles" class="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5"></i>
+              <div>
+                <span class="font-bold text-white block mb-0.5" id="feedback-title">Professor Algor's Assessment:</span>
+                <p id="feedback-text" class="text-slate-300 leading-relaxed"></p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Right Column: Docked Sage AI Sidebar -->
+    <aside id="sage-sidebar" class="collapsed" aria-label="Sage AI Coach Panel">
+
+      <!-- Draggable Left Border Resize Handle -->
+      <div id="sage-resize-handle" class="sage-resize-handle" title="Drag to adjust sidebar width (double-click to reset)">
+        <div class="sage-resize-grip"></div>
+      </div>
+
+      <!-- ── Header ── -->
+      <div class="sage-sb-header">
+        <div class="flex items-center gap-2.5">
+          <div id="sage-avatar-frame" class="sage-avatar">
+            <div class="sage-avatar-inner">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-purple-200">
+                <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>
+              </svg>
+              <div id="sage-audio-wave" class="hidden absolute bottom-0.5 flex items-center justify-center gap-0.5 h-2">
+                <div class="sage-wave-bar w-0.5 bg-purple-400 rounded-full"></div>
+                <div class="sage-wave-bar w-0.5 bg-cyan-400 rounded-full"></div>
+                <div class="sage-wave-bar w-0.5 bg-purple-300 rounded-full"></div>
+              </div>
+            </div>
+          </div>
+          <span class="font-semibold text-sm text-white tracking-wide">Sage</span>
+          <span id="sage-tokens-badge" class="sage-token-badge">
+            <i data-lucide="zap" class="w-3 h-3"></i>
+            <span id="sage-tokens-text">2</span>
+          </span>
+        </div>
+        <button id="close-sage-sidebar-btn" type="button" class="sage-close-btn" title="Close Sage Coach" aria-label="Close Sage Coach">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- ── Tab Pills ── -->
+      <div class="sage-tabs">
+        <button type="button" id="tab-btn-lenses" class="sage-tab active">
+          <i data-lucide="scan-eye" class="w-3.5 h-3.5"></i>
+          <span>Lenses</span>
+        </button>
+        <button type="button" id="tab-btn-ask" class="sage-tab">
+          <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+          <span>Ask</span>
+        </button>
+      </div>
+
+      <!-- ── TAB 1: Lenses ── -->
+      <div id="panel-lenses" class="sage-panel custom-scrollbar">
+        <div class="sage-lens-grid">
+          <button type="button" class="sage-angle-btn sage-lens-pill" data-angle="calculus">
+            <span>📐</span> <span>Calculus</span>
+          </button>
+          <button type="button" class="sage-angle-btn sage-lens-pill" data-angle="graph">
+            <span>📈</span> <span>Graph</span>
+          </button>
+          <button type="button" class="sage-angle-btn sage-lens-pill" data-angle="business">
+            <span>💼</span> <span>Business</span>
+          </button>
+        </div>
+
+        <!-- Sage Whisper Response -->
+        <div id="sage-coach-box" class="sage-bubble">
+          <div class="sage-bubble-header">
+            <span id="sage-response-title" class="sage-bubble-title">
+              <i data-lucide="sparkles" class="w-3 h-3"></i> Sage's Whisper
+            </span>
+            <button id="replay-sage-voice-btn" class="hidden sage-replay-btn">
+              <i data-lucide="volume-2" class="w-3 h-3"></i> Replay
+            </button>
+          </div>
+          <p id="sage-coach-text" class="sage-bubble-body">
+            Tap a lens to get Sage's take, or switch to <strong>Ask</strong> for a custom question.
+          </p>
+          <div id="sage-action-tray" class="hidden sage-action-tray">
+            <button type="button" id="insert-sage-tip-btn" class="sage-insert-btn">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              Insert into Defense
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB 2: Ask ── -->
+      <div id="panel-ask" class="hidden sage-panel custom-scrollbar">
+        <!-- Quick Prompts -->
+        <div class="sage-quick-prompts">
+          <span class="sage-section-label">Quick prompts</span>
+          <div class="sage-chip-stack">
+            <button type="button" class="sage-suggest-chip micro-chip" data-prompt="Why must the second derivative be negative for maximum profit?">
+              💡 Why is 2nd derivative negative?
+            </button>
+            <button type="button" class="sage-suggest-chip micro-chip" data-prompt="What does Marginal Revenue equals Marginal Cost mean in business terms?">
+              📊 What does MR = MC mean?
+            </button>
+            <button type="button" class="sage-suggest-chip micro-chip" data-prompt="Why is the first derivative zero at the peak of the profit function?">
+              📉 Why is slope zero at peak?
+            </button>
+          </div>
+        </div>
+
+        <!-- Input Row -->
+        <form id="sage-ask-form" class="sage-ask-row">
+          <div class="sage-input-wrap">
+            <input
+              type="text"
+              id="sage-question-input"
+              placeholder="Ask Sage…"
+              class="sage-input"
+            />
+            <button type="button" id="sage-mic-btn" title="Speak to Sage" class="sage-mic-btn">
+              <i data-lucide="mic" id="sage-mic-icon" class="w-3.5 h-3.5"></i>
+            </button>
+            <button type="submit" id="sage-ask-submit-btn" class="sage-send-btn" title="Ask Sage (1 Token)">
+              <i data-lucide="send" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Footer Status -->
+      <div class="sage-sb-footer">
+        <span class="sage-status-dot"></span>
+        <span>Active</span>
+        <button type="button" id="dismiss-sage-sidebar-btn" class="sage-dismiss-btn" title="Close Sage Coach">
+          <span>Close</span>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- VICTORY MODAL (Triggered when Boss HP hits 0) -->
+  <div id="victory-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+    <div class="bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-950 border-2 border-amber-500/50 rounded-3xl max-w-lg w-full p-8 text-center space-y-6 shadow-2xl shadow-amber-500/20 relative overflow-hidden">
+      <!-- Glow star -->
+      <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-56 h-56 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="w-20 h-20 rounded-full bg-amber-500/20 border-2 border-amber-500/60 flex items-center justify-center mx-auto text-4xl shadow-lg shadow-amber-500/30">
+        🏆
+      </div>
+
+      <div class="space-y-2">
+        <span class="text-xs font-bold tracking-widest text-amber-400 uppercase">Oral Defense Mastered</span>
+        <h2 class="text-3xl font-bold text-white">PROFESSOR ALGOR DEFEATED!</h2>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          You articulated the first derivative test and concavity proof flawlessly. Professor Algor acknowledges your calculus mastery!
+        </p>
+      </div>
+
+      <!-- Battle Breakdown Badge -->
+      <div class="bg-slate-950/80 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-4 text-left">
+        <div class="text-3xl">🏅</div>
+        <div class="flex-1">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-amber-300 text-sm">Extrema Master Crest</h4>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold">Verified</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Awarded for verbal mastery of Maxima & Minima profit optimization in oral combat</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 pt-2">
+        <a href="{% url 'voice_tutor:student_dashboard' %}" class="flex-1 py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white transition-all text-center shadow-lg shadow-indigo-600/30">
+          Return to Dashboard
+        </a>
+        <button type="button" onclick="location.reload()" class="py-3 px-4 rounded-xl font-medium text-sm text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors">
+          Replay Battle
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Elements for OpenAI Voice -->
+  <audio id="boss-audio-player" class="hidden"></audio>
+  <audio id="sage-audio-player" class="hidden"></audio>
+
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // State variables
+  let currentRound = 1;
+  let bossHp = 100;
+  let isListening = false;
+  let isThinking = false;
+  let recognition = null;
+  let currentAudioBase64 = null;
+  let recordingSeconds = 0;
+  let recordingTimerInterval = null;
+  
+  // DOM References
+  const arenaContainer = document.getElementById('arena-container');
+  const hpBar = document.getElementById('hp-bar');
+  const hpNumber = document.getElementById('hp-number');
+  const roundIndicator = document.getElementById('round-indicator');
+  const phaseLabel = document.getElementById('phase-label');
+  const bossDialogueText = document.getElementById('boss-dialogue-text');
+  const bossAvatarFrame = document.getElementById('boss-avatar-frame');
+  const bossAudioWave = document.getElementById('boss-audio-wave');
+  const replayVoiceBtn = document.getElementById('replay-voice-btn');
+  const micBtn = document.getElementById('mic-btn');
+  const micIcon = document.getElementById('mic-icon');
+  const micBtnLabel = document.getElementById('mic-btn-label');
+  const micStatusHint = document.getElementById('mic-status-hint');
+  const recordingTimer = document.getElementById('recording-timer');
+  const listeningIndicator = document.getElementById('listening-indicator');
+  const transcriptInput = document.getElementById('transcript-input');
+  const wordCount = document.getElementById('word-count');
+  const readinessPill = document.getElementById('readiness-pill');
+  const castDefenseBtn = document.getElementById('cast-defense-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const feedbackCard = document.getElementById('feedback-card');
+  const feedbackText = document.getElementById('feedback-text');
+  const victoryModal = document.getElementById('victory-modal');
+  const damageContainer = document.getElementById('damage-container');
+  const audioPlayer = document.getElementById('boss-audio-player');
+  const sageAudioPlayer = document.getElementById('sage-audio-player');
+
+  // Sage AI Docked Sidebar References
+  const summonSageBtn = document.getElementById('summon-sage-btn');
+  const sageSidebar = document.getElementById('sage-sidebar');
+  const closeSageSidebarBtn = document.getElementById('close-sage-sidebar-btn');
+  const dismissSageSidebarBtn = document.getElementById('dismiss-sage-sidebar-btn');
+  const sageTokensPill = document.getElementById('sage-tokens-pill');
+  const sageTokensText = document.getElementById('sage-tokens-text');
+  const sageAngleBtns = document.querySelectorAll('.sage-angle-btn');
+  const sageAvatarFrame = document.getElementById('sage-avatar-frame');
+  const sageAudioWave = document.getElementById('sage-audio-wave');
+  const sageCoachText = document.getElementById('sage-coach-text');
+  const sageResponseTitle = document.getElementById('sage-response-title');
+  const replaySageVoiceBtn = document.getElementById('replay-sage-voice-btn');
+  const sageActionTray = document.getElementById('sage-action-tray');
+  const insertSageTipBtn = document.getElementById('insert-sage-tip-btn');
+  const sageSuggestChips = document.querySelectorAll('.sage-suggest-chip');
+  const sageAskForm = document.getElementById('sage-ask-form');
+  const sageQuestionInput = document.getElementById('sage-question-input');
+  const sageMicBtn = document.getElementById('sage-mic-btn');
+  const sageMicIcon = document.getElementById('sage-mic-icon');
+  const sageAskSubmitBtn = document.getElementById('sage-ask-submit-btn');
+
+  // Tab Switcher References
+  const tabBtnLenses = document.getElementById('tab-btn-lenses');
+  const tabBtnAsk = document.getElementById('tab-btn-ask');
+  const panelLenses = document.getElementById('panel-lenses');
+  const panelAsk = document.getElementById('panel-ask');
+
+  let sageTokens = 2;
+  let currentSageAudioBase64 = null;
+  let isSageListening = false;
+  let sageRecognition = null;
+  let lastSageWhisperText = "";
+
+  // Segmented Mode Switching
+  tabBtnLenses.addEventListener('click', () => {
+    tabBtnLenses.classList.add('active');
+    tabBtnAsk.classList.remove('active');
+    panelLenses.classList.remove('hidden');
+    panelAsk.classList.add('hidden');
+  });
+
+  tabBtnAsk.addEventListener('click', () => {
+    tabBtnAsk.classList.add('active');
+    tabBtnLenses.classList.remove('active');
+    panelAsk.classList.remove('hidden');
+    panelLenses.classList.add('hidden');
+  });
+
+  // Sidebar Toggle / Open / Close Logic
+  function openSageSidebar() {
+    sageSidebar.classList.remove('collapsed');
+    summonSageBtn.classList.add('active-sage');
+    const label = summonSageBtn.querySelector('.summon-text');
+    if (label) label.textContent = "Close Sage";
+    lucide.createIcons();
+  }
+
+  function closeSageSidebar() {
+    sageSidebar.classList.add('collapsed');
+    summonSageBtn.classList.remove('active-sage');
+    const label = summonSageBtn.querySelector('.summon-text');
+    if (label) label.textContent = "Summon Sage";
+    lucide.createIcons();
+  }
+
+  function toggleSageSidebar() {
+    if (sageSidebar.classList.contains('collapsed')) {
+      openSageSidebar();
+    } else {
+      closeSageSidebar();
+    }
+  }
+
+  window.toggleSageSidebar = toggleSageSidebar;
+  window.openSageSidebar = openSageSidebar;
+  window.closeSageSidebar = closeSageSidebar;
+
+  if (summonSageBtn) summonSageBtn.addEventListener('click', toggleSageSidebar);
+  if (closeSageSidebarBtn) closeSageSidebarBtn.addEventListener('click', closeSageSidebar);
+  if (dismissSageSidebarBtn) dismissSageSidebarBtn.addEventListener('click', closeSageSidebar);
+
+  // Close sidebar on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !sageSidebar.classList.contains('collapsed')) {
+      closeSageSidebar();
+    }
+  });
+
+  // Draggable Resizing for Sage Sidebar
+  const sageResizeHandle = document.getElementById('sage-resize-handle');
+  if (sageResizeHandle && sageSidebar) {
+    // Restore saved width from localStorage if valid
+    const savedSageWidth = localStorage.getItem('insync_sage_sidebar_width');
+    if (savedSageWidth) {
+      const w = parseInt(savedSageWidth, 10);
+      if (!isNaN(w) && w >= 280 && w <= 750) {
+        sageSidebar.style.width = `${w}px`;
+        sageSidebar.style.minWidth = `${w}px`;
+      }
+    }
+
+    let isResizing = false;
+
+    sageResizeHandle.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return; // Only primary mouse button
+      isResizing = true;
+      sageResizeHandle.setPointerCapture(e.pointerId);
+      sageSidebar.classList.add('resizing');
+      sageResizeHandle.classList.add('is-resizing');
+      document.body.classList.add('is-resizing-sidebar');
+    });
+
+    sageResizeHandle.addEventListener('pointermove', (e) => {
+      if (!isResizing) return;
+      const newWidth = window.innerWidth - e.clientX;
+      const MIN_WIDTH = 280;
+      const MAX_WIDTH = Math.min(750, Math.floor(window.innerWidth * 0.55));
+      const clampedWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+      sageSidebar.style.width = `${clampedWidth}px`;
+      sageSidebar.style.minWidth = `${clampedWidth}px`;
+    });
+
+    const stopResizing = (e) => {
+      if (!isResizing) return;
+      isResizing = false;
+      try {
+        if (sageResizeHandle.hasPointerCapture(e.pointerId)) {
+          sageResizeHandle.releasePointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+      sageSidebar.classList.remove('resizing');
+      sageResizeHandle.classList.remove('is-resizing');
+      document.body.classList.remove('is-resizing-sidebar');
+      const finalWidth = parseInt(sageSidebar.style.width, 10);
+      if (!isNaN(finalWidth)) {
+        localStorage.setItem('insync_sage_sidebar_width', finalWidth);
+      }
+    };
+
+    sageResizeHandle.addEventListener('pointerup', stopResizing);
+    sageResizeHandle.addEventListener('pointercancel', stopResizing);
+
+    // Double-click to reset to standard 380px width
+    sageResizeHandle.addEventListener('dblclick', () => {
+      const defaultWidth = 380;
+      sageSidebar.style.width = `${defaultWidth}px`;
+      sageSidebar.style.minWidth = `${defaultWidth}px`;
+      localStorage.setItem('insync_sage_sidebar_width', defaultWidth);
+    });
+  }
+
+  // Initialize Speech Recognition if supported
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      isListening = true;
+      updateMicUI(true);
+      startRecordingTimer();
+    };
+
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        const prev = transcriptInput.value ? transcriptInput.value.trim() + ' ' : '';
+        transcriptInput.value = prev + finalTranscript.trim();
+      }
+      updateTranscriptStats();
+    };
+
+    recognition.onerror = (event) => {
+      console.warn("Speech recognition error:", event.error);
+      isListening = false;
+      updateMicUI(false);
+      stopRecordingTimer();
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      updateMicUI(false);
+      stopRecordingTimer();
+    };
+  } else {
+    micStatusHint.textContent = "Speech recognition unavailable in this browser. Please type your defense below!";
+    micBtn.disabled = true;
+    micBtn.classList.add('opacity-40');
+  }
+
+  // Toggle Mic Recording
+  micBtn.addEventListener('click', () => {
+    if (!recognition) {
+      transcriptInput.focus();
+      return;
+    }
+    if (isListening) {
+      recognition.stop();
+    } else {
+      try {
+        recognition.start();
+      } catch (err) {
+        console.error("Recognition start error:", err);
+      }
+    }
+  });
+
+  function startRecordingTimer() {
+    recordingSeconds = 0;
+    recordingTimer.textContent = "00:00";
+    recordingTimer.classList.remove('hidden');
+    if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+    recordingTimerInterval = setInterval(() => {
+      recordingSeconds++;
+      const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+      const secs = String(recordingSeconds % 60).padStart(2, '0');
+      recordingTimer.textContent = `${mins}:${secs}`;
+    }, 1000);
+  }
+
+  function stopRecordingTimer() {
+    if (recordingTimerInterval) {
+      clearInterval(recordingTimerInterval);
+      recordingTimerInterval = null;
+    }
+    recordingTimer.classList.add('hidden');
+  }
+
+  function updateMicUI(listening) {
+    if (listening) {
+      micBtn.classList.add('mic-listening-pulse', 'from-emerald-600', 'to-teal-700', 'border-emerald-400');
+      micBtn.classList.remove('from-indigo-600', 'to-indigo-800');
+      micIcon.setAttribute('data-lucide', 'square');
+      micBtnLabel.textContent = "Stop";
+      micStatusHint.textContent = "Transcribing in real time... Tap to finish";
+      listeningIndicator.classList.remove('hidden');
+    } else {
+      micBtn.classList.remove('mic-listening-pulse', 'from-emerald-600', 'to-teal-700', 'border-emerald-400');
+      micBtn.classList.add('from-indigo-600', 'to-indigo-800');
+      micIcon.setAttribute('data-lucide', 'mic');
+      micBtnLabel.textContent = "Tap to Speak";
+      micStatusHint.textContent = "Tap the mic to record your verbal reasoning";
+      listeningIndicator.classList.add('hidden');
+    }
+    lucide.createIcons();
+  }
+
+  // Update transcript word count & submit button status
+  transcriptInput.addEventListener('input', updateTranscriptStats);
+
+  function updateTranscriptStats() {
+    const text = transcriptInput.value.trim();
+    const words = text ? text.split(/\s+/).length : 0;
+    wordCount.textContent = `${words} word${words === 1 ? '' : 's'} transcribed`;
+    
+    if (words === 0) {
+      readinessPill.className = "text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700/60 inline-flex items-center justify-center gap-1.5 mx-auto";
+      readinessPill.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-500"></span><span>Awaiting speech</span>`;
+      castDefenseBtn.disabled = true;
+    } else if (words < 12) {
+      readinessPill.className = "text-xs font-semibold px-3 py-1 rounded-full bg-amber-950/60 text-amber-300 border border-amber-500/40 inline-flex items-center justify-center gap-1.5 mx-auto";
+      readinessPill.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span><span>Drafting (Add calculus criteria)</span>`;
+      castDefenseBtn.disabled = isThinking;
+    } else {
+      readinessPill.className = "text-xs font-semibold px-3 py-1 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 inline-flex items-center justify-center gap-1.5 mx-auto";
+      readinessPill.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span><span>Ready to Strike! ⚡</span>`;
+      castDefenseBtn.disabled = isThinking;
+    }
+  }
+
+  clearBtn.addEventListener('click', () => {
+    transcriptInput.value = '';
+    updateTranscriptStats();
+    transcriptInput.focus();
+  });
+
+  // Audio Playback Handler for Boss
+  function playBossAudio(audioBase64, textFallback) {
+    currentAudioBase64 = audioBase64;
+    setBossSpeakingVisuals(true);
+
+    if (audioBase64) {
+      audioPlayer.src = audioBase64;
+      audioPlayer.play().catch(e => {
+        console.warn("Audio autoplay blocked by browser policy, falling back to Web Speech:", e);
+        fallbackSpeak(textFallback);
+      });
+      audioPlayer.onended = () => setBossSpeakingVisuals(false);
+      audioPlayer.onerror = () => {
+        setBossSpeakingVisuals(false);
+        fallbackSpeak(textFallback);
+      };
+    } else {
+      fallbackSpeak(textFallback);
+    }
+  }
+
+  function fallbackSpeak(text, pitch = 0.9, onEnd = null) {
+    if (!('speechSynthesis' in window) || !text) {
+      if (onEnd) onEnd();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.pitch = pitch;
+    utterance.rate = 1.0;
+    utterance.onend = () => {
+      if (onEnd) onEnd();
+    };
+    utterance.onerror = () => {
+      if (onEnd) onEnd();
+    };
+    window.speechSynthesis.speak(utterance);
+  }
+
+  // Play Sage Voice (OpenAI Voice - nova)
+  function playSageAudio(audioBase64, textFallback) {
+    currentSageAudioBase64 = audioBase64;
+    replaySageVoiceBtn.classList.remove('hidden');
+    sageActionTray.classList.remove('hidden');
+    setSageSpeakingVisuals(true);
+
+    if (audioBase64) {
+      sageAudioPlayer.src = audioBase64;
+      sageAudioPlayer.play().catch(e => {
+        console.warn("Sage audio play error, falling back to Web Speech:", e);
+        fallbackSpeak(textFallback, 1.1, () => setSageSpeakingVisuals(false));
+      });
+      sageAudioPlayer.onended = () => setSageSpeakingVisuals(false);
+      sageAudioPlayer.onerror = () => {
+        setSageSpeakingVisuals(false);
+        fallbackSpeak(textFallback, 1.1);
+      };
+    } else {
+      fallbackSpeak(textFallback, 1.1, () => setSageSpeakingVisuals(false));
+    }
+  }
+
+  function setSageSpeakingVisuals(isSpeaking) {
+    if (isSpeaking) {
+      sageAvatarFrame.classList.add('sage-speaking-pulse');
+      sageAudioWave.classList.remove('hidden');
+    } else {
+      sageAvatarFrame.classList.remove('sage-speaking-pulse');
+      sageAudioWave.classList.add('hidden');
+    }
+  }
+
+  replaySageVoiceBtn.addEventListener('click', () => {
+    if (currentSageAudioBase64) {
+      sageAudioPlayer.currentTime = 0;
+      setSageSpeakingVisuals(true);
+      sageAudioPlayer.play();
+    } else {
+      setSageSpeakingVisuals(true);
+      fallbackSpeak(sageCoachText.textContent, 1.1, () => setSageSpeakingVisuals(false));
+    }
+  });
+
+  // Action: Insert Sage Coaching into defense textarea (Real-time update on Left Arena!)
+  insertSageTipBtn.addEventListener('click', () => {
+    if (!lastSageWhisperText) return;
+    const prev = transcriptInput.value ? transcriptInput.value.trim() + '\n\n' : '';
+    transcriptInput.value = prev + `To defend this mathematically: ${lastSageWhisperText.trim()}`;
+    updateTranscriptStats();
+    
+    // Quick visual flash confirmation
+    insertSageTipBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i><span>Inserted into Arena!</span>`;
+    lucide.createIcons();
+    setTimeout(() => {
+      insertSageTipBtn.innerHTML = `<i data-lucide="plus" class="w-3.5 h-3.5"></i><span>Insert into Defense</span>`;
+      lucide.createIcons();
+    }, 2000);
+  });
+
+  // OPTION 1: 1-Tap Solution Angle Toggles
+  sageAngleBtns.forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const angle = this.dataset.angle;
+
+      // Active tab styling
+      sageAngleBtns.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+
+      sageCoachText.textContent = "Sage is preparing this perspective with voice...";
+      sageResponseTitle.textContent = `Sage's ${this.querySelector('span:last-child').textContent.trim()} Whisper:`;
+
+      try {
+        const res = await fetch("{% url 'voice_tutor:api_oral_defense_sage' %}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            round: currentRound,
+            action: 'perspective',
+            angle: angle
+          })
+        });
+        if (!res.ok) throw new Error("Failed to get perspective");
+        const data = await res.json();
+        lastSageWhisperText = data.text;
+        sageCoachText.textContent = data.text;
+        playSageAudio(data.audio_base64, data.text);
+      } catch (err) {
+        console.error(err);
+        sageCoachText.textContent = "Could not load perspective. Please try again.";
+      }
+    });
+  });
+
+  // Quick Suggestion Chips for Option 2
+  sageSuggestChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      sageQuestionInput.value = chip.dataset.prompt;
+      sageAskForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    });
+  });
+
+  // OPTION 2: Two-Way Timeout Ask Coach
+  sageAskForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const question = sageQuestionInput.value.trim();
+    if (!question) return;
+
+    if (sageTokens <= 0) {
+      alert("You have used all your Sage Consultations for this battle! Defend with your own words now.");
+      return;
+    }
+
+    sageTokens--;
+    updateSageTokensUI();
+
+    sageAskSubmitBtn.disabled = true;
+    sageAskSubmitBtn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>`;
+    lucide.createIcons();
+    sageCoachText.textContent = "Sage is thinking through your question...";
+    sageResponseTitle.textContent = "Sage's Direct Coaching:";
+
+    const sageCoachBox = document.getElementById('sage-coach-box');
+    if (sageCoachBox) {
+      sageCoachBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    try {
+      const res = await fetch("{% url 'voice_tutor:api_oral_defense_sage' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+          round: currentRound,
+          action: 'ask',
+          question: question
+        })
+      });
+      if (!res.ok) throw new Error("Failed to get coaching");
+      const data = await res.json();
+      lastSageWhisperText = data.text;
+      sageCoachText.textContent = data.text;
+      playSageAudio(data.audio_base64, data.text);
+      sageQuestionInput.value = '';
+    } catch (err) {
+      console.error(err);
+      sageCoachText.textContent = "Sage couldn't respond right now. Try again!";
+    } finally {
+      sageAskSubmitBtn.disabled = (sageTokens <= 0);
+      sageAskSubmitBtn.innerHTML = `<i data-lucide="send" class="w-3.5 h-3.5"></i>`;
+      lucide.createIcons();
+    }
+  });
+
+  function updateSageTokensUI() {
+    sageTokensText.textContent = sageTokens;
+    if (sageTokensPill) {
+      sageTokensPill.textContent = sageTokens;
+      if (sageTokens <= 0) {
+        sageTokensPill.classList.add('depleted');
+      }
+    }
+    if (sageTokens <= 0) {
+      sageTokensText.textContent = "0";
+      sageQuestionInput.disabled = true;
+      sageQuestionInput.placeholder = "All consultations used. Defend with your knowledge!";
+      sageAskSubmitBtn.disabled = true;
+      sageAskSubmitBtn.classList.add('opacity-40');
+      sageSuggestChips.forEach(c => c.disabled = true);
+    }
+  }
+
+  // Mini-mic for speaking questions to Sage
+  if (SpeechRecognition) {
+    sageRecognition = new SpeechRecognition();
+    sageRecognition.continuous = false;
+    sageRecognition.interimResults = false;
+    sageRecognition.lang = 'en-US';
+
+    sageRecognition.onstart = () => {
+      isSageListening = true;
+      sageMicBtn.classList.add('text-purple-400', 'animate-pulse');
+    };
+    sageRecognition.onresult = (event) => {
+      if (event.results.length > 0) {
+        sageQuestionInput.value = event.results[0][0].transcript;
+      }
+    };
+    sageRecognition.onend = () => {
+      isSageListening = false;
+      sageMicBtn.classList.remove('text-purple-400', 'animate-pulse');
+    };
+
+    sageMicBtn.addEventListener('click', () => {
+      if (isSageListening) {
+        sageRecognition.stop();
+      } else {
+        sageRecognition.start();
+      }
+    });
+  }
+
+  function setBossSpeakingVisuals(isSpeaking) {
+    if (isSpeaking) {
+      bossAvatarFrame.classList.add('boss-speaking-pulse');
+      bossAudioWave.classList.remove('hidden');
+    } else {
+      bossAvatarFrame.classList.remove('boss-speaking-pulse');
+      bossAudioWave.classList.add('hidden');
+    }
+  }
+
+  replayVoiceBtn.addEventListener('click', () => {
+    if (currentAudioBase64) {
+      audioPlayer.currentTime = 0;
+      audioPlayer.play();
+      setBossSpeakingVisuals(true);
+    } else {
+      fallbackSpeak(bossDialogueText.textContent);
+    }
+  });
+
+  // Fetch Introduction for Round 1
+  async function loadIntro() {
+    try {
+      const res = await fetch("{% url 'voice_tutor:api_oral_defense_intro' %}?round=1");
+      if (!res.ok) throw new Error("Failed to load intro");
+      const data = await res.json();
+      bossDialogueText.textContent = data.boss_dialogue;
+      playBossAudio(data.audio_base64, data.boss_dialogue);
+    } catch (err) {
+      console.error(err);
+      bossDialogueText.textContent = "Halt, scholar! You computed the numbers on paper, but can you defend them? Explain why the first derivative must be zero at maximum profit, and how the second derivative proves it is a maximum rather than a minimum?";
+      playBossAudio(null, bossDialogueText.textContent);
+    }
+  }
+
+  // Submit Spoken Defense
+  castDefenseBtn.addEventListener('click', async () => {
+    if (isListening && recognition) {
+      recognition.stop();
+    }
+
+    const transcript = transcriptInput.value.trim();
+    if (!transcript) return;
+
+    isThinking = true;
+    castDefenseBtn.disabled = true;
+    castDefenseBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Evaluating Defense...</span>`;
+    lucide.createIcons();
+
+    try {
+      const response = await fetch("{% url 'voice_tutor:api_oral_defense_turn' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+          round: currentRound,
+          transcript: transcript,
+          boss_hp: bossHp
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Evaluation failed");
+      }
+
+      const result = await response.json();
+      handleTurnResult(result);
+
+    } catch (err) {
+      console.error(err);
+      alert("Error evaluating defense. Please try again.");
+    } finally {
+      isThinking = false;
+      castDefenseBtn.disabled = false;
+      castDefenseBtn.innerHTML = `<i data-lucide="zap" class="w-4 h-4"></i><span>Cast Defense</span>`;
+      lucide.createIcons();
+    }
+  });
+
+  // Handle Turn Result & Animations
+  function handleTurnResult(result) {
+    const damage = result.damage_dealt || 0;
+    const newHp = result.boss_hp;
+    const isDefeated = result.is_defeated;
+
+    // Trigger Screen Shake & Damage Popup
+    if (damage > 0) {
+      triggerDamageAnimation(damage);
+    }
+
+    // Update HP UI
+    bossHp = newHp;
+    updateHealthUI(bossHp);
+
+    // Update Boss Speech & Voice Audio
+    bossDialogueText.textContent = result.boss_dialogue;
+    playBossAudio(result.audio_base64, result.boss_dialogue);
+
+    // Show Feedback Note
+    if (result.feedback) {
+      feedbackText.textContent = result.feedback;
+      feedbackCard.classList.remove('hidden');
+    }
+
+    // Check Victory
+    if (isDefeated || bossHp <= 0) {
+      triggerVictory();
+      return;
+    }
+
+    // Transition to Round 2 if next_round provided
+    if (result.next_round && result.next_round !== currentRound) {
+      currentRound = result.next_round;
+      roundIndicator.textContent = `Round ${currentRound} of 2`;
+      phaseLabel.textContent = "Phase 2: Marginal Revenue & Profit Maximization";
+      transcriptInput.value = '';
+      updateTranscriptStats();
+    }
+  }
+
+  function triggerDamageAnimation(damage) {
+    arenaContainer.classList.add('shake-arena');
+    setTimeout(() => arenaContainer.classList.remove('shake-arena'), 500);
+
+    hpBar.classList.add('damage-flash');
+    setTimeout(() => hpBar.classList.remove('damage-flash'), 500);
+
+    const popup = document.createElement('div');
+    popup.className = "damage-popup font-mono font-extrabold text-2xl sm:text-3xl text-red-400 drop-shadow-md";
+    popup.textContent = `-${damage} HP!`;
+    damageContainer.appendChild(popup);
+    setTimeout(() => popup.remove(), 1200);
+  }
+
+  function updateHealthUI(hp) {
+    hpNumber.textContent = `${hp} / 100`;
+    hpBar.style.width = `${Math.max(0, hp)}%`;
+
+    if (hp <= 30) {
+      hpBar.className = "boss-health-fill h-full rounded-full bg-gradient-to-r from-red-600 to-amber-500 shadow-lg shadow-red-500/50";
+      hpNumber.className = "text-xl font-bold text-red-400";
+    } else if (hp <= 60) {
+      hpBar.className = "boss-health-fill h-full rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 shadow-md shadow-amber-500/40";
+      hpNumber.className = "text-xl font-bold text-amber-400";
+    }
+  }
+
+  function triggerVictory() {
+    setTimeout(() => {
+      victoryModal.classList.remove('hidden');
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+      setTimeout(() => {
+        confetti({
+          particleCount: 100,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 }
+        });
+        confetti({
+          particleCount: 100,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 }
+        });
+      }, 400);
+    }, 1500);
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Kick off Round 1
+  loadIntro();
+});
+</script>
+{% endblock %}

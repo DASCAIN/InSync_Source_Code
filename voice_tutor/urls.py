@@ -30,6 +30,7 @@ urlpatterns = [
     path('student/notes', views.student_notes_directory, name='student_notes_directory'),
     path('student/notes/<int:note_id>', views.student_note_detail, name='student_note_detail'),
     path('student/assignments/<str:assignment_id>/take', views.take_assignment_view, name='take_assignment'),
+    path('student/assignments/<str:assignment_id>/boss-battle', views.oral_defense_view, name='oral_defense_view'),
     path('student/assignments/<str:assignment_id>', views.voice_agent_view, name='voice_agent_assignment'),
     path('student/voice/<str:assignment_id>/<str:question_id>', views.voice_agent_view, name='voice_agent_question'),
     path('student/tutor-chat', views.tutor_chat_view, name='tutor_chat'),
@@ -57,5 +58,9 @@ urlpatterns = [
     path('api/student/assignment/<str:assignment_id>/complete', views.api_complete_assignment, name='api_complete_assignment'),
     path('api/student/assignment/<str:assignment_id>/save', views.api_save_assignment_progress, name='api_save_assignment_progress'),
     path('api/student/assignment/<str:assignment_id>/time', views.api_update_time_spent, name='api_update_time_spent'),
+    path('api/student/oral-defense/intro', views.api_oral_defense_intro, name='api_oral_defense_intro'),
+    path('api/student/oral-defense/turn', views.api_oral_defense_turn, name='api_oral_defense_turn'),
+    path('api/student/oral-defense/sage', views.api_oral_defense_sage, name='api_oral_defense_sage'),
+    path('api/student/visualize-concept', views.api_visualize_concept, name='api_visualize_concept'),
 ]
 

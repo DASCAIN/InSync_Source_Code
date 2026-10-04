@@ -298,7 +298,12 @@
               <p style="font-size: 0.8rem; color: var(--db-text-secondary); margin-top: 2px;">{{ assignment.topic }}</p>
             </div>
             <!-- Difficulty + Arrow -->
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 sm:gap-3">
+              {% if assignment.id == 'A_C2F6D9' or 'maxima and minima' in assignment.title|lower %}
+              <span class="difficulty-badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);">
+                ⚔️ Boss Trial
+              </span>
+              {% endif %}
               <span class="difficulty-badge"
                 style="{% if assignment.difficulty == 'beginner' %}background: var(--db-green-bg); color: var(--db-green-text);{% elif assignment.difficulty == 'intermediate' %}background: var(--db-blue-light); color: var(--db-blue);{% else %}background: var(--db-red-bg); color: var(--db-red-text);{% endif %}">
                 {{ assignment.difficulty|capfirst }}
@@ -469,6 +474,11 @@
         <div class="flex items-start justify-between mb-4">
           <div style="flex: 1;">
             <div class="flex items-center gap-2 mb-2">
+              {% if item.id == 'A_C2F6D9' or 'maxima and minima' in item.title|lower %}
+              <span class="difficulty-badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);">
+                ⚔️ Boss Trial
+              </span>
+              {% endif %}
               <span class="difficulty-badge"
                 style="{% if item.difficulty == 'beginner' %}background: var(--db-green-bg); color: var(--db-green-text);{% elif item.difficulty == 'intermediate' %}background: var(--db-orange-bg); color: var(--db-orange-text);{% else %}background: var(--db-red-bg); color: var(--db-red-text);{% endif %}">
                 {{ item.difficulty|capfirst }}

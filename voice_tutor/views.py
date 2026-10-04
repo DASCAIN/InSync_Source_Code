@@ -724,13 +724,16 @@ def take_assignment_view(request, assignment_id):
                 } 
                 for opt in q.options.all().order_by('option_letter')
             ]
+            from services.visualization_service import is_question_visualizable
+            can_vis = is_question_visualizable(q.content, q.concept_tags)
             questions_list.append({
                 'id': q.code,
                 'content': q.content,
                 'type': q.question_type,
                 'options': options_list,
                 'correctAnswer': q.correct_answer,
-                'difficulty': q.difficulty
+                'difficulty': q.difficulty,
+                'can_visualize': can_vis
             })
         assignment = {
             'id': assignment_obj.code,
@@ -2056,6 +2059,7 @@ async def api_tutor_chat_stream(request):
     # Create a cancellation event for this request
     cancel_event = asyncio.Event()
     _active_streams[request_id] = cancel_event
+    telemetry = {}
 
     async def event_stream():
         full_reply = ""
@@ -2063,7 +2067,7 @@ async def api_tutor_chat_stream(request):
         try:
             async for token in service.chat_stream(
                 message, user_id, question_context=question_context, history=history,
-                cancel_event=cancel_event,
+                cancel_event=cancel_event, telemetry=telemetry,
             ):
                 if cancel_event.is_set():
                     was_cancelled = True
@@ -2145,7 +2149,8 @@ async def api_tutor_chat_stream(request):
                     data={
                         "message": message,
                         "user_id": user_id,
-                        "answer": full_reply
+                        "answer": full_reply,
+                        "metrics": telemetry
                     }
                 )
             )
@@ -2624,5 +2629,183 @@ async def api_delete_chat_session(request, session_id):
         return JsonResponse({"detail": "Session deleted"})
     except Exception as e:
         return JsonResponse({'detail': str(e)}, status=500)
+
+
+@login_required_custom()
+def oral_defense_view(request, assignment_id):
+    """
+    Trial feature: AI Voice 'Oral Defense' (Mini Boss Battle)
+    Restricted specifically to 'Understanding Maxima and Minima in Profit Maximization' (A_C2F6D9).
+    """
+    assignment_obj = models.Assignment.objects.filter(code=assignment_id).first()
+    if not assignment_obj:
+        assignment_obj = models.Assignment.objects.filter(id=22).first()
+        
+    if not assignment_obj:
+        return redirect('voice_tutor:student_dashboard')
+
+    # Ensure this trial feature only runs for the Maxima and Minima assignment
+    is_maxima_minima = (
+        assignment_obj.code == 'A_C2F6D9' or 
+        'maxima and minima' in assignment_obj.title.lower() or 
+        'profit maximization' in assignment_obj.title.lower()
+    )
+    if not is_maxima_minima:
+        return redirect('voice_tutor:take_assignment', assignment_id=assignment_obj.code)
+
+    user = get_session_user(request)
+    first_name = "Scholar"
+    if user and user.get('name'):
+        first_name = user['name'].split()[0]
+
+    context = {
+        'active_tab': 'assignments',
+        'assignment': assignment_obj,
+        'first_name': first_name,
+        'boss_name': 'Professor Algor',
+        'boss_title': 'Guardian of Extrema',
+        'initial_hp': 100,
+    }
+    return render(request, 'student/oral_defense.html', context)
+
+
+@csrf_exempt
+async def api_oral_defense_intro(request):
+    """Returns the introductory challenge question and OpenAI voice audio for the boss battle round."""
+    if request.method not in ['GET', 'POST']:
+        return JsonResponse({'detail': 'Method not allowed'}, status=405)
+    
+    round_num = 1
+    if request.method == 'GET':
+        try:
+            round_num = int(request.GET.get('round', 1))
+        except (ValueError, TypeError):
+            round_num = 1
+    else:
+        try:
+            body = json.loads(request.body)
+            round_num = int(body.get('round', 1))
+        except Exception:
+            round_num = 1
+            
+    from services.oral_defense_service import get_oral_defense_service
+    service = get_oral_defense_service()
+    try:
+        data = await service.get_intro_audio(round_num)
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'detail': str(e)}, status=500)
+
+
+@csrf_exempt
+async def api_oral_defense_turn(request):
+    """Evaluates student spoken defense and returns OpenAI voice audio with damage calculation."""
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'detail': 'Invalid JSON body'}, status=400)
+
+    try:
+        round_num = int(body.get('round', 1))
+    except (ValueError, TypeError):
+        round_num = 1
+
+    transcript = body.get('transcript', '')
+    try:
+        current_boss_hp = int(body.get('boss_hp', 100))
+    except (ValueError, TypeError):
+        current_boss_hp = 100
+
+    from services.oral_defense_service import get_oral_defense_service
+    service = get_oral_defense_service()
+    try:
+        result = await service.evaluate_turn(
+            round_num=round_num,
+            student_transcript=transcript,
+            current_boss_hp=current_boss_hp
+        )
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({'detail': str(e)}, status=500)
+
+
+@csrf_exempt
+async def api_oral_defense_sage(request):
+    """
+    Sage AI Corner Coach endpoint:
+    - action='perspective': returns intuitive breakdown for angle ('calculus', 'graph', 'business')
+    - action='ask': returns real-time Socratic coaching for student's custom question
+    """
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'detail': 'Invalid JSON body'}, status=400)
+
+    try:
+        round_num = int(body.get('round', 1))
+    except (ValueError, TypeError):
+        round_num = 1
+
+    action = body.get('action', 'perspective')
+    from services.oral_defense_service import get_oral_defense_service
+    service = get_oral_defense_service()
+
+    try:
+        if action == 'ask':
+            question = body.get('question', '')
+            result = await service.ask_sage_coach(round_num, question)
+        else:
+            angle = body.get('angle', 'calculus')
+            result = await service.get_sage_perspective(round_num, angle)
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({'detail': str(e)}, status=500)
+
+
+async def api_visualize_concept(request):
+    """
+    Endpoint that accepts a question or concept, triggers the visualization pipeline (LLM tool calling + physics validation),
+    and returns a structured simulation specification.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON body'}, status=400)
+
+    question_text = body.get('question_text', '').strip()
+    context = body.get('context', '').strip()
+
+    if not question_text:
+        return JsonResponse({'error': 'question_text is required'}, status=400)
+
+    from services.visualization_service import get_visualization_service, is_question_visualizable
+    if not is_question_visualizable(question_text):
+        return JsonResponse({
+            'status': 'not_applicable',
+            'error': 'This question tests conceptual or definitional recall rather than a dynamic STEM simulation.'
+        }, status=400)
+
+    vis_service = get_visualization_service()
+
+    try:
+        sim_data = await vis_service.plan_simulation(question_text=question_text, context=context)
+        return JsonResponse({'status': 'success', 'simulation': sim_data})
+    except Exception as e:
+        logger.exception("Visualization generation failed: %s", e)
+        from services.visualization_service import create_fallback_simulation
+        fallback = create_fallback_simulation(question_text)
+        return JsonResponse({'status': 'success', 'simulation': fallback, 'fallback': True})
+
+
+
 
 

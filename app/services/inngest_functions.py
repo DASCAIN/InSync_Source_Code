@@ -342,34 +342,68 @@ async def rag_tutor_chat(*args, **kwargs) -> dict:
         step = kwargs.get('step')
 
     """
-    Log-only background job for Inngest dashboard observability.
-    The real RAG pipeline runs inline in the view; this function only
-    records the already-generated answer so you can inspect every chat
-    event in the Inngest UI without making any duplicate API calls.
-
-    Expects 'message', 'user_id', and 'answer' in the event payload.
+    Background job for Inngest pipeline observability.
+    Displays detailed step metrics (Mem0 latency, Qdrant vector retrieval latency,
+    OpenAI TTFT / streaming latency, and chat summary) in the Inngest dashboard.
     """
     message = ctx.event.data.get("message", "")
     user_id = ctx.event.data.get("user_id", "")
     answer = ctx.event.data.get("answer", "")
+    metrics = ctx.event.data.get("metrics", {})
 
-    logger.info(f"Inngest RAG Tutor Chat (log-only) for user: {user_id}")
+    logger.info(f"Inngest RAG Tutor Chat pipeline telemetry for user: {user_id}")
 
-    # Step 1: Log the user message
-    async def _log_message():
-        return {"user_id": user_id, "message": message}
+    # Step 1: Mem0 Memory Retrieval Metrics
+    async def _step_mem0():
+        mem0_data = metrics.get("mem0", {})
+        return {
+            "duration_ms": mem0_data.get("duration_ms", 0),
+            "memories_found": mem0_data.get("memories_found", 0),
+            "preview": mem0_data.get("preview", "None")
+        }
+    await step.run("1_mem0_retrieval", _step_mem0)
 
-    await step.run("log_user_message", _log_message)
+    # Step 2: Qdrant Vector Retrieval Metrics
+    async def _step_qdrant():
+        qdrant_data = metrics.get("qdrant", {})
+        return {
+            "duration_ms": qdrant_data.get("duration_ms", 0),
+            "chunks_retrieved": qdrant_data.get("chunks_retrieved", 0),
+            "sources": qdrant_data.get("sources", [])
+        }
+    await step.run("2_qdrant_rag_search", _step_qdrant)
 
-    # Step 2: Log the generated answer
-    async def _log_answer():
-        return {"answer_length": len(answer), "answer_preview": answer[:200]}
+    # Step 3: LLM Generation & TTFT Metrics
+    async def _step_llm():
+        llm_data = metrics.get("llm", {})
+        return {
+            "model": llm_data.get("model", "gpt-4o-mini"),
+            "ttft_ms": llm_data.get("ttft_ms", 0),
+            "total_stream_ms": llm_data.get("total_stream_ms", 0),
+            "tokens_estimated": llm_data.get("tokens_estimated", 0),
+            "chars_streamed": llm_data.get("chars", len(answer))
+        }
+    await step.run("3_llm_generation", _step_llm)
 
-    await step.run("log_generated_answer", _log_answer)
+    # Step 4: Chat Interaction Summary
+    async def _step_summary():
+        mem0_ms = metrics.get("mem0", {}).get("duration_ms", 0)
+        qdrant_ms = metrics.get("qdrant", {}).get("duration_ms", 0)
+        ttft_ms = metrics.get("llm", {}).get("ttft_ms", 0)
+        total_pre_llm_ms = round(mem0_ms + qdrant_ms, 1)
+
+        return {
+            "user_id": user_id,
+            "message": message,
+            "answer_preview": answer[:250] + ("..." if len(answer) > 250 else ""),
+            "total_pre_llm_latency_ms": total_pre_llm_ms,
+            "ttft_ms": ttft_ms
+        }
+    await step.run("4_chat_summary", _step_summary)
 
     return {
         "status": "success",
-        "message": message,
-        "answer": answer
+        "user_id": user_id,
+        "metrics": metrics
     }
 

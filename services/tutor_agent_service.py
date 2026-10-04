@@ -1,5 +1,6 @@
 import os
-from typing import Optional, AsyncGenerator
+import time
+from typing import Optional, AsyncGenerator, Dict, Any
 
 from openai import AsyncOpenAI
 
@@ -56,10 +57,22 @@ class TutorAgentService:
         self.api_key = api_key
         self.model = model
 
-    async def _build_prompt(self, message: str, user_id: str, question_context: str = "", history: list = None):
-        """Build the prompt messages list (shared by chat and chat_stream)."""
+    async def _build_prompt(
+        self, message: str, user_id: str, question_context: str = "", history: list = None,
+        telemetry: Optional[Dict[str, Any]] = None,
+    ):
+        """Build the prompt messages list (shared by chat and chat_stream) and record telemetry."""
         mem0_service = get_mem0_service()
+        t0 = time.perf_counter()
         memories = await mem0_service.retrieve_memories(message, user_id)
+        mem0_duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+        if telemetry is not None:
+            mem_count = len([m for m in memories.split("\n") if m.strip()]) if memories and memories != "No memories found" else 0
+            telemetry["mem0"] = {
+                "duration_ms": mem0_duration_ms,
+                "memories_found": mem_count,
+                "preview": memories[:200] if memories else "None"
+            }
         
         # Check cancellation before vector store retrieval
         if getattr(self, '_cancel_event', None) and self._cancel_event.is_set():
@@ -67,7 +80,16 @@ class TutorAgentService:
 
         from app.services.vector_store import retrieve_global_documents
         import asyncio
+        t1 = time.perf_counter()
         docs = await asyncio.to_thread(retrieve_global_documents, message)
+        qdrant_duration_ms = round((time.perf_counter() - t1) * 1000, 1)
+        if telemetry is not None:
+            sources = list({doc.metadata.get("source_file", "unknown") for doc in docs}) if docs else []
+            telemetry["qdrant"] = {
+                "duration_ms": qdrant_duration_ms,
+                "chunks_retrieved": len(docs),
+                "sources": sources
+            }
         
         # Check cancellation after vector store retrieval
         if getattr(self, '_cancel_event', None) and self._cancel_event.is_set():
@@ -114,7 +136,7 @@ class TutorAgentService:
 
     async def chat_stream(
         self, message: str, user_id: str, question_context: str = "", history: list = None,
-        cancel_event=None,
+        cancel_event=None, telemetry: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream tokens from OpenAI. Yields each delta content string as it arrives.
 
@@ -132,9 +154,14 @@ class TutorAgentService:
 
         self._cancel_event = cancel_event
         try:
-            prompt, _ = await self._build_prompt(message, user_id, question_context, history)
+            prompt, _ = await self._build_prompt(message, user_id, question_context, history, telemetry=telemetry)
             if not prompt:  # Cancelled during prompt building
                 return
+
+            t_stream_start = time.perf_counter()
+            first_token_received = False
+            token_count = 0
+            char_count = 0
 
             async with AsyncOpenAI(api_key=self.api_key) as client:
                 stream = await client.chat.completions.create(
@@ -150,12 +177,28 @@ class TutorAgentService:
                             break
                         delta = chunk.choices[0].delta if chunk.choices else None
                         if delta and delta.content:
+                            if not first_token_received:
+                                ttft_ms = round((time.perf_counter() - t_stream_start) * 1000, 1)
+                                if telemetry is not None:
+                                    telemetry["llm_ttft_ms"] = ttft_ms
+                                first_token_received = True
                             # Strip markdown bold markers in real time
                             token = delta.content.replace("**", "")
+                            token_count += 1
+                            char_count += len(token)
                             yield token
                 finally:
                     # Ensure the OpenAI stream is closed even on cancellation
                     await stream.close()
+                    total_stream_ms = round((time.perf_counter() - t_stream_start) * 1000, 1)
+                    if telemetry is not None:
+                        telemetry["llm"] = {
+                            "model": self.model,
+                            "ttft_ms": telemetry.get("llm_ttft_ms", total_stream_ms),
+                            "total_stream_ms": total_stream_ms,
+                            "tokens_estimated": token_count,
+                            "chars": char_count
+                        }
         finally:
             self._cancel_event = None
 

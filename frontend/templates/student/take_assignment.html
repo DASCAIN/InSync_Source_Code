@@ -8,44 +8,69 @@
   .question-card {
     transition: all 0.3s ease;
   }
+
   .question-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   }
+
   .option-btn {
     transition: all 0.2s ease;
     border: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
+
+  .option-btn .radio-circle {
+    flex-shrink: 0;
+    margin-right: 0 !important;
+  }
+
   .option-btn:hover:not(.selected):not(.disabled) {
     background-color: hsl(var(--muted));
     border-color: hsl(var(--border));
   }
+
   .option-btn.selected {
     background-color: hsl(var(--primary) / 0.1) !important;
     border-color: hsl(var(--primary)) !important;
   }
+
   .option-btn.selected .radio-circle {
     border-color: hsl(var(--primary)) !important;
     background-color: hsl(var(--primary)) !important;
   }
+
   .option-btn.selected .radio-dot {
     opacity: 1 !important;
   }
+
   .option-btn.correct {
     background-color: hsl(var(--success) / 0.15) !important;
     border-color: hsl(var(--success)) !important;
   }
+
   .option-btn.incorrect {
     background-color: hsl(var(--destructive) / 0.15) !important;
     border-color: hsl(var(--destructive)) !important;
     opacity: 0.7;
   }
+
   .feedback-box {
     animation: fadeIn 0.4s ease-out forwards;
   }
+
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 </style>
 {% endblock %}
@@ -55,7 +80,8 @@
   <!-- Header -->
   <div class="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
     <div class="container mx-auto px-6 py-4 flex items-center justify-between">
-      <a href="{% url 'voice_tutor:student_dashboard' %}" class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
+      <a href="{% url 'voice_tutor:student_dashboard' %}"
+        class="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
         <i data-lucide="arrow-left" class="w-5 h-5"></i>
         <span>Back to Dashboard</span>
       </a>
@@ -63,7 +89,8 @@
         <h1 class="font-display font-semibold text-xl text-foreground">{{ assignment.title }}</h1>
         <p class="text-xs text-muted-foreground">{{ assignment.topic }}</p>
       </div>
-      <div class="w-32 flex items-center justify-end gap-2 text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full font-mono text-sm border border-border/50">
+      <div
+        class="w-32 flex items-center justify-end gap-2 text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full font-mono text-sm border border-border/50">
         <i data-lucide="clock" class="w-4 h-4 text-primary"></i>
         <span id="timer-display" data-initial-time="{{ time_spent|default:0 }}">00:00</span>
       </div>
@@ -71,6 +98,33 @@
   </div>
 
   <div class="container mx-auto px-6 py-8 max-w-4xl">
+    {% if assignment.id == 'A_C2F6D9' or 'maxima and minima' in assignment.title|lower %}
+    <!-- Boss Battle Trial Feature Callout Banner -->
+    <div
+      class="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-purple-500/10 border border-amber-500/30 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-500 border border-amber-500/40 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="swords" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h4 class="font-bold text-sm text-foreground flex items-center gap-2">
+            <span>Trial Feature: AI Voice Oral Defense</span>
+            <span
+              class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30">Boss
+              Battle</span>
+          </h4>
+          <p class="text-xs text-muted-foreground">Complete this written quiz to unlock the spoken boss battle against
+            Professor Algor!</p>
+        </div>
+      </div>
+      <a href="{% url 'voice_tutor:oral_defense_view' assignment.id %}"
+        class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/30 transition-colors whitespace-nowrap">
+        Enter Arena ⚔️
+      </a>
+    </div>
+    {% endif %}
+
     <!-- Assignment Description -->
     <div class="bg-card rounded-2xl p-6 shadow-sm border border-border/50 mb-8">
       <h2 class="font-semibold text-lg mb-2">Instructions</h2>
@@ -82,29 +136,39 @@
     <!-- Questions Form -->
     <form id="assignment-form" class="space-y-8">
       {% for question in assignment.questions %}
-      <div class="question-card bg-card rounded-2xl p-6 md:p-8 shadow-sm border border-border/50" id="question-card-{{ question.id }}">
+      <div class="question-card bg-card rounded-2xl p-6 md:p-8 shadow-sm border border-border/50"
+        id="question-card-{{ question.id }}">
         <div class="flex items-start justify-between mb-4 gap-4">
           <h3 class="font-medium text-foreground text-lg leading-snug">
             <span class="text-primary mr-2">{{ forloop.counter }}.</span>
             {{ question.content }}
           </h3>
-          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground whitespace-nowrap">
-            {{ question.difficulty|title }}
-          </span>
+          <div class="flex items-center gap-2 shrink-0">
+            {% if question.can_visualize %}
+            <button type="button"
+              class="visualize-concept-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 border border-indigo-500/30 transition-all hover:scale-105 active:scale-95 shadow-sm h-8"
+              data-question-id="{{ question.id }}" title="Visualize this question setup">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+              <span>Visualize</span>
+            </button>
+            {% endif %}
+            <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground whitespace-nowrap">
+              {{ question.difficulty|title }}
+            </span>
+          </div>
         </div>
 
         <div class="space-y-3 mt-6 options-container" data-question-id="{{ question.id }}">
           {% for option in question.options %}
-          <label class="option-btn flex items-center p-4 rounded-xl cursor-pointer bg-background border border-border group">
-            <input 
-              type="radio" 
-              name="question_{{ question.id }}" 
-              value="{{ option.letter }}" 
-              class="hidden peer"
-              data-is-correct="{{ option.is_correct|lower }}"
-            >
-            <div class="radio-circle w-6 h-6 rounded-full border-2 border-muted-foreground flex items-center justify-center mr-4 peer-checked:border-primary peer-checked:bg-primary transition-colors flex-shrink-0">
-              <div class="radio-dot w-2.5 h-2.5 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+          <label
+            class="option-btn flex items-center gap-4 p-4 rounded-xl cursor-pointer bg-background border border-border group">
+            <input type="radio" name="question_{{ question.id }}" value="{{ option.letter }}" class="hidden peer"
+              data-is-correct="{{ option.is_correct|lower }}">
+            <div
+              class="radio-circle w-6 h-6 rounded-full border-2 border-muted-foreground flex items-center justify-center peer-checked:border-primary peer-checked:bg-primary transition-colors flex-shrink-0">
+              <div
+                class="radio-dot w-2.5 h-2.5 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity">
+              </div>
             </div>
             <span class="text-foreground font-medium group-hover:text-primary transition-colors">
               <span class="mr-2 font-bold">{{ option.letter }}.</span> {{ option.text }}
@@ -114,7 +178,9 @@
         </div>
 
         <div class="mt-4 flex justify-end check-answer-wrapper hidden" id="check-wrapper-{{ question.id }}">
-          <button type="button" class="check-answer-btn inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-4 shadow-sm border border-border" data-question-id="{{ question.id }}">
+          <button type="button"
+            class="check-answer-btn inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-all bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-4 shadow-sm border border-border"
+            data-question-id="{{ question.id }}">
             Submit
           </button>
         </div>
@@ -126,26 +192,126 @@
               <p class="feedback-text font-semibold mb-1"></p>
               <p class="text-sm text-muted-foreground">Correct Answer: <span class="font-bold text-foreground">{{ question.correctAnswer }}</span></p>
             </div>
-            <a href="{% url 'voice_tutor:tutor_chat' %}?assignment_id={{ assignment.id }}&question_id={{ question.id }}" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 whitespace-nowrap shrink-0 shadow-sm">
-              <i data-lucide="bot" class="w-4 h-4 mr-2"></i>
-              Discuss with AI Tutor
-            </a>
+            <div class="flex items-center gap-2">
+              <a href="{% url 'voice_tutor:tutor_chat' %}?assignment_id={{ assignment.id }}&question_id={{ question.id }}"
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 whitespace-nowrap shrink-0 shadow-sm">
+                <i data-lucide="bot" class="w-4 h-4 mr-2"></i>
+                Discuss with AI Tutor
+              </a>
+            </div>
           </div>
         </div>
+
+        <!-- Inline Question-Specific Visualization (Expands right inside this card, no page overlay) -->
+        {% if question.can_visualize %}
+        <div
+          class="inline-vis-container hidden mt-5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-100 p-5 shadow-2xl transition-all"
+          id="inline-vis-{{ question.id }}">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-4">
+            <div class="flex items-center gap-2.5">
+              <div
+                class="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center">
+                <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-sm text-white vis-title">Concept Visualization</h4>
+                <p class="text-[11px] text-slate-400">Interactive Simulation for Question {{ forloop.counter }}</p>
+              </div>
+            </div>
+            <button type="button"
+              class="vis-close-btn text-xs text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-1"
+              data-question-id="{{ question.id }}">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              <span>Close</span>
+            </button>
+          </div>
+
+          <div class="vis-loading py-6 flex flex-col items-center justify-center text-center space-y-2"
+            id="loading-{{ question.id }}">
+            <div class="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-xs text-slate-400">Sage is drawing the simulation for this question...</p>
+          </div>
+
+          <div class="vis-content hidden space-y-4" id="content-{{ question.id }}">
+            <!-- Visual Display Container (Supports Plotly and Simulation Canvas) -->
+            <div class="rounded-xl bg-slate-900 border border-slate-800 p-2 overflow-hidden relative"
+              id="vis-display-{{ question.id }}">
+              <div id="plot-{{ question.id }}" class="w-full min-h-[260px] hidden"></div>
+              <div id="canvas-box-{{ question.id }}" class="w-full hidden space-y-2">
+                <canvas id="canvas-{{ question.id }}" width="680" height="260"
+                  class="w-full h-auto rounded-lg block bg-slate-900"></canvas>
+                <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                  <button type="button"
+                    class="sim-test-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-sm flex items-center gap-1.5"
+                    data-question-id="{{ question.id }}">
+                    <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                    <span>Test Braking / Motion</span>
+                  </button>
+                  <div class="text-[11px] text-slate-400 font-mono sim-status" id="status-{{ question.id }}">
+                    Model Ready
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Metrics -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 vis-metrics-grid" id="metrics-{{ question.id }}"></div>
+
+            <!-- Sliders -->
+            <div class="rounded-xl bg-slate-900/90 border border-slate-800 p-3.5 space-y-3">
+              <div
+                class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                <span>Interactive Variables</span>
+                <span class="text-[10px] text-indigo-400 normal-case">Scrub sliders to see real-time impact</span>
+              </div>
+              <div class="vis-sliders space-y-2.5" id="sliders-{{ question.id }}"></div>
+            </div>
+
+            <!-- Socratic Guidance -->
+            <div
+              class="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-800/40 text-xs text-slate-300 leading-relaxed flex items-start gap-2.5">
+              <i data-lucide="lightbulb" class="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5"></i>
+              <div class="vis-explanation" id="explanation-{{ question.id }}"></div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
       </div>
       {% endfor %}
 
       <!-- Submit Section -->
       <div class="flex flex-col items-center justify-center mt-12 pt-8 border-t border-border">
-        <div id="results-summary" class="hidden mb-6 text-center animate-fade-in">
-          <h2 class="text-3xl font-display font-bold mb-2">Score: <span id="score-display" class="text-primary">0%</span></h2>
-          <p class="text-muted-foreground">You got <span id="correct-count">0</span> out of {{ assignment.questions|length }} correct.</p>
+        <div id="results-summary" class="hidden mb-6 text-center animate-fade-in w-full">
+          <h2 class="text-3xl font-display font-bold mb-2">Score: <span id="score-display"
+              class="text-primary">0%</span></h2>
+          <p class="text-muted-foreground mb-4">You got <span id="correct-count">0</span> out of {{ assignment.questions|length }} correct.</p>
+
+          {% if assignment.id == 'A_C2F6D9' or 'maxima and minima' in assignment.title|lower %}
+          <!-- Unlocked Boss Battle Card -->
+          <div
+            class="mt-6 p-6 rounded-3xl bg-gradient-to-br from-indigo-950/80 via-slate-900 to-indigo-900/60 border-2 border-amber-500/40 shadow-2xl max-w-xl mx-auto text-center space-y-4">
+            <div
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/40">
+              <i data-lucide="swords" class="w-3.5 h-3.5"></i>
+              <span>Boss Battle Unlocked!</span>
+            </div>
+            <h3 class="text-2xl font-bold text-white tracking-tight">The AI Oral Defense: Professor Algor</h3>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              You've solved the calculus problems on paper. Now step into the arena and verbally defend your reasoning
+              against the Guardian of Extrema using OpenAI Voice!
+            </p>
+            <div class="pt-2">
+              <a href="{% url 'voice_tutor:oral_defense_view' assignment.id %}"
+                class="inline-flex items-center justify-center gap-2 py-3 px-6 rounded-full font-bold text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 transition-all duration-200 shadow-lg shadow-amber-500/25 hover:scale-105 active:scale-95">
+                <i data-lucide="mic" class="w-4 h-4"></i>
+                <span>Enter Boss Battle (Oral Defense) ⚔️</span>
+              </a>
+            </div>
+          </div>
+          {% endif %}
         </div>
-        <button 
-          type="button" 
-          id="submit-btn"
-          class="inline-flex items-center justify-center rounded-full text-base font-semibold transition-all bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 active:scale-95 h-12 px-8 shadow-lg shadow-primary/25"
-        >
+        <button type="button" id="submit-btn"
+          class="inline-flex items-center justify-center rounded-full text-base font-semibold transition-all bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 active:scale-95 h-12 px-8 shadow-lg shadow-primary/25">
           Submit Assignment
           <i data-lucide="check-circle" class="w-5 h-5 ml-2"></i>
         </button>
@@ -161,251 +327,301 @@
     const savedAnswers = {{ saved_answers_json|safe|default:"{}" }};
     const assignmentStatus = "{{ assignment_status|default:'not_started' }}";
 
-    // Handle radio button selection styling
-    const optionLabels = document.querySelectorAll('.option-btn');
-    const radios = document.querySelectorAll('input[type="radio"]');
+  // Handle radio button selection styling
+  const optionLabels = document.querySelectorAll('.option-btn');
+  const radios = document.querySelectorAll('input[type="radio"]');
 
-    radios.forEach(radio => {
-      radio.addEventListener('change', function() {
-        // Reset all labels in the same question container
-        const container = this.closest('.options-container');
-        const containerLabels = container.querySelectorAll('.option-btn');
-        containerLabels.forEach(label => label.classList.remove('selected'));
+  radios.forEach(radio => {
+    radio.addEventListener('change', function () {
+      // Reset all labels in the same question container
+      const container = this.closest('.options-container');
+      const containerLabels = container.querySelectorAll('.option-btn');
+      containerLabels.forEach(label => label.classList.remove('selected'));
 
-        // Add selected class to the parent label
-        if (this.checked) {
-          this.closest('.option-btn').classList.add('selected');
-        }
-        
-        // Auto-save progress
-        let currentAnswers = {};
-        const allContainers = document.querySelectorAll('.options-container');
-        allContainers.forEach(c => {
-          const qId = c.dataset.questionId;
-          const selected = c.querySelector('input[type="radio"]:checked');
-          if (selected) {
-            currentAnswers[qId] = selected.value;
-          }
-        });
-        
-        fetch("{% url 'voice_tutor:api_save_assignment_progress' assignment.id %}", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken")
-          },
-          body: JSON.stringify({ answers: currentAnswers })
-        }).catch(err => console.error("Failed to auto-save:", err));
-        
-        // Show check answer button if not yet graded
-        const checkWrapper = document.getElementById(`check-wrapper-${this.closest('.options-container').dataset.questionId}`);
-        if (checkWrapper && !this.disabled) {
-          checkWrapper.classList.remove('hidden');
+      // Add selected class to the parent label
+      if (this.checked) {
+        this.closest('.option-btn').classList.add('selected');
+      }
+
+      // Auto-save progress
+      let currentAnswers = {};
+      const allContainers = document.querySelectorAll('.options-container');
+      allContainers.forEach(c => {
+        const qId = c.dataset.questionId;
+        const selected = c.querySelector('input[type="radio"]:checked');
+        if (selected) {
+          currentAnswers[qId] = selected.value;
         }
       });
-    });
 
-    // Check Answer Buttons
-    const checkAnswerBtns = document.querySelectorAll('.check-answer-btn');
-    checkAnswerBtns.forEach(btn => {
-      btn.addEventListener('click', function() {
-        const questionId = this.dataset.questionId;
-        const container = document.querySelector(`.options-container[data-question-id="${questionId}"]`);
-        if (!container) return;
-        
-        const selectedRadio = container.querySelector('input[type="radio"]:checked');
-        if (!selectedRadio) return;
-        
-        const feedbackBox = document.getElementById(`feedback-${questionId}`);
-        const feedbackText = feedbackBox.querySelector('.feedback-text');
-        
-        // Disable inputs
-        const inputs = container.querySelectorAll('input[type="radio"]');
-        const labels = container.querySelectorAll('.option-btn');
-        inputs.forEach(input => input.disabled = true);
-        labels.forEach(label => label.classList.add('disabled', 'pointer-events-none'));
-        
-        // Hide check button
-        document.getElementById(`check-wrapper-${questionId}`).classList.add('hidden');
-        
-        // Grade
+      fetch("{% url 'voice_tutor:api_save_assignment_progress' assignment.id %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({ answers: currentAnswers })
+      }).catch(err => console.error("Failed to auto-save:", err));
+
+      // Show check answer button if not yet graded
+      const checkWrapper = document.getElementById(`check-wrapper-${this.closest('.options-container').dataset.questionId}`);
+      if (checkWrapper && !this.disabled) {
+        checkWrapper.classList.remove('hidden');
+      }
+    });
+  });
+
+  // Check Answer Buttons
+  const checkAnswerBtns = document.querySelectorAll('.check-answer-btn');
+  checkAnswerBtns.forEach(btn => {
+    btn.addEventListener('click', function () {
+      const questionId = this.dataset.questionId;
+      const container = document.querySelector(`.options-container[data-question-id="${questionId}"]`);
+      if (!container) return;
+
+      const selectedRadio = container.querySelector('input[type="radio"]:checked');
+      if (!selectedRadio) return;
+
+      const feedbackBox = document.getElementById(`feedback-${questionId}`);
+      const feedbackText = feedbackBox.querySelector('.feedback-text');
+
+      // Disable inputs
+      const inputs = container.querySelectorAll('input[type="radio"]');
+      const labels = container.querySelectorAll('.option-btn');
+      inputs.forEach(input => input.disabled = true);
+      labels.forEach(label => label.classList.add('disabled', 'pointer-events-none'));
+
+      // Hide check button
+      document.getElementById(`check-wrapper-${questionId}`).classList.add('hidden');
+
+      // Grade
+      const isCorrect = selectedRadio.dataset.isCorrect === 'true';
+      const selectedLabel = selectedRadio.closest('.option-btn');
+
+      const aiTutorLink = feedbackBox.querySelector('a');
+      if (aiTutorLink) {
+        const baseUrl = aiTutorLink.href.split('&student_answer=')[0];
+        aiTutorLink.href = baseUrl + `&student_answer=${encodeURIComponent(selectedRadio.value)}&is_correct=${isCorrect}`;
+      }
+
+      if (isCorrect) {
+        selectedLabel.classList.add('correct');
+        feedbackBox.classList.add('bg-success/10', 'border', 'border-success/20');
+        feedbackText.classList.add('text-success');
+        feedbackText.textContent = "✅ Correct!";
+      } else {
+        selectedLabel.classList.add('incorrect');
+        const correctRadio = container.querySelector('input[data-is-correct="true"]');
+        if (correctRadio) {
+          correctRadio.closest('.option-btn').classList.add('correct');
+        }
+        feedbackBox.classList.add('bg-destructive/10', 'border', 'border-destructive/20');
+        feedbackText.classList.add('text-destructive');
+        feedbackText.textContent = "❌ Incorrect";
+      }
+      feedbackBox.classList.remove('hidden');
+    });
+  });
+
+  // Handle form submission and grading
+  const submitBtn = document.getElementById('submit-btn');
+  const form = document.getElementById('assignment-form');
+  const totalQuestions = {{ assignment.questions| length }};
+
+  const gradeAndSubmit = (isAutoSubmit = false) => {
+    let correctAnswers = 0;
+    let answeredQuestions = 0;
+    let collectedAnswers = {};
+
+    // Grade each question
+    const containers = document.querySelectorAll('.options-container');
+    containers.forEach(container => {
+      const questionId = container.dataset.questionId;
+      const selectedRadio = container.querySelector('input[type="radio"]:checked');
+      const feedbackBox = document.getElementById(`feedback-${questionId}`);
+      const feedbackText = feedbackBox.querySelector('.feedback-text');
+
+      // Hide any check buttons
+      const checkWrapper = document.getElementById(`check-wrapper-${questionId}`);
+      if (checkWrapper) checkWrapper.classList.add('hidden');
+
+      // Disable all inputs to prevent changing answers
+      const inputs = container.querySelectorAll('input[type="radio"]');
+      const labels = container.querySelectorAll('.option-btn');
+      inputs.forEach(input => input.disabled = true);
+      labels.forEach(label => label.classList.add('disabled', 'pointer-events-none'));
+
+      if (selectedRadio) {
+        answeredQuestions++;
+        collectedAnswers[questionId] = selectedRadio.value;
         const isCorrect = selectedRadio.dataset.isCorrect === 'true';
         const selectedLabel = selectedRadio.closest('.option-btn');
-        
+
         const aiTutorLink = feedbackBox.querySelector('a');
         if (aiTutorLink) {
           const baseUrl = aiTutorLink.href.split('&student_answer=')[0];
           aiTutorLink.href = baseUrl + `&student_answer=${encodeURIComponent(selectedRadio.value)}&is_correct=${isCorrect}`;
         }
-        
+
         if (isCorrect) {
+          correctAnswers++;
           selectedLabel.classList.add('correct');
           feedbackBox.classList.add('bg-success/10', 'border', 'border-success/20');
           feedbackText.classList.add('text-success');
           feedbackText.textContent = "✅ Correct!";
         } else {
           selectedLabel.classList.add('incorrect');
+          // Highlight the actual correct answer
           const correctRadio = container.querySelector('input[data-is-correct="true"]');
           if (correctRadio) {
-             correctRadio.closest('.option-btn').classList.add('correct');
+            correctRadio.closest('.option-btn').classList.add('correct');
           }
           feedbackBox.classList.add('bg-destructive/10', 'border', 'border-destructive/20');
           feedbackText.classList.add('text-destructive');
           feedbackText.textContent = "❌ Incorrect";
         }
-        feedbackBox.classList.remove('hidden');
-      });
-    });
-
-    // Handle form submission and grading
-    const submitBtn = document.getElementById('submit-btn');
-    const form = document.getElementById('assignment-form');
-    const totalQuestions = {{ assignment.questions|length }};
-
-    const gradeAndSubmit = (isAutoSubmit = false) => {
-      let correctAnswers = 0;
-      let answeredQuestions = 0;
-      let collectedAnswers = {};
-
-      // Grade each question
-      const containers = document.querySelectorAll('.options-container');
-      containers.forEach(container => {
-        const questionId = container.dataset.questionId;
-        const selectedRadio = container.querySelector('input[type="radio"]:checked');
-        const feedbackBox = document.getElementById(`feedback-${questionId}`);
-        const feedbackText = feedbackBox.querySelector('.feedback-text');
-        
-        // Hide any check buttons
-        const checkWrapper = document.getElementById(`check-wrapper-${questionId}`);
-        if (checkWrapper) checkWrapper.classList.add('hidden');
-        
-        // Disable all inputs to prevent changing answers
-        const inputs = container.querySelectorAll('input[type="radio"]');
-        const labels = container.querySelectorAll('.option-btn');
-        inputs.forEach(input => input.disabled = true);
-        labels.forEach(label => label.classList.add('disabled', 'pointer-events-none'));
-
-        if (selectedRadio) {
-          answeredQuestions++;
-          collectedAnswers[questionId] = selectedRadio.value;
-          const isCorrect = selectedRadio.dataset.isCorrect === 'true';
-          const selectedLabel = selectedRadio.closest('.option-btn');
-
-          const aiTutorLink = feedbackBox.querySelector('a');
-          if (aiTutorLink) {
-            const baseUrl = aiTutorLink.href.split('&student_answer=')[0];
-            aiTutorLink.href = baseUrl + `&student_answer=${encodeURIComponent(selectedRadio.value)}&is_correct=${isCorrect}`;
-          }
-
-          if (isCorrect) {
-            correctAnswers++;
-            selectedLabel.classList.add('correct');
-            feedbackBox.classList.add('bg-success/10', 'border', 'border-success/20');
-            feedbackText.classList.add('text-success');
-            feedbackText.textContent = "✅ Correct!";
-          } else {
-            selectedLabel.classList.add('incorrect');
-            // Highlight the actual correct answer
-            const correctRadio = container.querySelector('input[data-is-correct="true"]');
-            if (correctRadio) {
-               correctRadio.closest('.option-btn').classList.add('correct');
-            }
-            feedbackBox.classList.add('bg-destructive/10', 'border', 'border-destructive/20');
-            feedbackText.classList.add('text-destructive');
-            feedbackText.textContent = "❌ Incorrect";
-          }
-        } else {
-          // Unanswered
-          const correctRadio = container.querySelector('input[data-is-correct="true"]');
-          if (correctRadio) {
-             correctRadio.closest('.option-btn').classList.add('correct');
-          }
-          feedbackBox.classList.add('bg-warning/10', 'border', 'border-warning/20');
-          feedbackText.classList.add('text-warning');
-          feedbackText.textContent = "⚠️ Unanswered";
+      } else {
+        // Unanswered
+        const correctRadio = container.querySelector('input[data-is-correct="true"]');
+        if (correctRadio) {
+          correctRadio.closest('.option-btn').classList.add('correct');
         }
-        
-        feedbackBox.classList.remove('hidden');
-      });
-
-      // Show summary
-      const scorePercentage = Math.round((correctAnswers / totalQuestions) * 100);
-      document.getElementById('score-display').textContent = `${scorePercentage}%`;
-      document.getElementById('correct-count').textContent = correctAnswers;
-      
-      const summaryDiv = document.getElementById('results-summary');
-      summaryDiv.classList.remove('hidden');
-      
-      // Hide submit button
-      submitBtn.style.display = 'none';
-      
-      // Scroll to top to see results if it wasn't an auto-submit on page load
-      if (!isAutoSubmit) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        feedbackBox.classList.add('bg-warning/10', 'border', 'border-warning/20');
+        feedbackText.classList.add('text-warning');
+        feedbackText.textContent = "⚠️ Unanswered";
       }
-      
-      // Update backend if the user explicitly clicked submit
-      if (!isAutoSubmit) {
-        fetch("{% url 'voice_tutor:api_complete_assignment' assignment.id %}", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken")
-          },
-          body: JSON.stringify({ score: scorePercentage, answers: collectedAnswers })
-        }).catch(err => console.error("Failed to update status:", err));
-      }
-    };
 
-    submitBtn.addEventListener('click', () => {
-      isAssignmentCompleted = true;
-      gradeAndSubmit(false);
+      feedbackBox.classList.remove('hidden');
     });
-    
-    // Timer and Heartbeat Logic
-    const timerDisplay = document.getElementById('timer-display');
-    let timeSpentSeconds = parseInt(timerDisplay.getAttribute('data-initial-time')) || 0;
-    let unsavedTimeSeconds = 0;
-    let isAssignmentCompleted = (assignmentStatus === 'completed');
-    
-    // Initialize display immediately
+
+    // Show summary
+    const scorePercentage = Math.round((correctAnswers / totalQuestions) * 100);
+    document.getElementById('score-display').textContent = `${scorePercentage}%`;
+    document.getElementById('correct-count').textContent = correctAnswers;
+
+    const summaryDiv = document.getElementById('results-summary');
+    summaryDiv.classList.remove('hidden');
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+
+    // Hide submit button
+    submitBtn.style.display = 'none';
+
+    // Scroll to top to see results if it wasn't an auto-submit on page load
+    if (!isAutoSubmit) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Update backend if the user explicitly clicked submit
+    if (!isAutoSubmit) {
+      fetch("{% url 'voice_tutor:api_complete_assignment' assignment.id %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({ score: scorePercentage, answers: collectedAnswers })
+      }).catch(err => console.error("Failed to update status:", err));
+    }
+  };
+
+  submitBtn.addEventListener('click', () => {
+    isAssignmentCompleted = true;
+    gradeAndSubmit(false);
+  });
+
+  // Timer and Heartbeat Logic
+  const timerDisplay = document.getElementById('timer-display');
+  let timeSpentSeconds = parseInt(timerDisplay.getAttribute('data-initial-time')) || 0;
+  let unsavedTimeSeconds = 0;
+  let isAssignmentCompleted = (assignmentStatus === 'completed');
+
+  // Initialize display immediately
+  updateTimerDisplay();
+
+  const timerInterval = setInterval(() => {
+    if (isAssignmentCompleted) {
+      clearInterval(timerInterval);
+      return;
+    }
+
+    timeSpentSeconds++;
+    unsavedTimeSeconds++;
     updateTimerDisplay();
 
-    const timerInterval = setInterval(() => {
-      if (isAssignmentCompleted) {
-        clearInterval(timerInterval);
-        return;
-      }
-      
-      timeSpentSeconds++;
-      unsavedTimeSeconds++;
-      updateTimerDisplay();
-      
-      // Send heartbeat every 15 seconds
-      if (unsavedTimeSeconds >= 15) {
-        const delta = unsavedTimeSeconds;
-        unsavedTimeSeconds = 0; // Reset eagerly
-        
-        fetch("{% url 'voice_tutor:api_update_time_spent' assignment.id %}", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken")
-          },
-          body: JSON.stringify({ delta_seconds: delta })
-        }).catch(err => {
-          console.error("Failed to update time spent:", err);
-          unsavedTimeSeconds += delta; // Add back if failed
-        });
-      }
-    }, 1000);
-    
-    function updateTimerDisplay() {
-      const mins = Math.floor(timeSpentSeconds / 60).toString().padStart(2, '0');
-      const secs = (timeSpentSeconds % 60).toString().padStart(2, '0');
-      timerDisplay.textContent = `${mins}:${secs}`;
+    // Send heartbeat every 15 seconds
+    if (unsavedTimeSeconds >= 15) {
+      const delta = unsavedTimeSeconds;
+      unsavedTimeSeconds = 0; // Reset eagerly
+
+      fetch("{% url 'voice_tutor:api_update_time_spent' assignment.id %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify({ delta_seconds: delta })
+      }).catch(err => {
+        console.error("Failed to update time spent:", err);
+        unsavedTimeSeconds += delta; // Add back if failed
+      });
     }
-    
+  }, 1000);
+
+  function updateTimerDisplay() {
+    const mins = Math.floor(timeSpentSeconds / 60).toString().padStart(2, '0');
+    const secs = (timeSpentSeconds % 60).toString().padStart(2, '0');
+    timerDisplay.textContent = `${mins}:${secs}`;
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Pre-fill saved answers
+  if (savedAnswers && Object.keys(savedAnswers).length > 0) {
+    Object.keys(savedAnswers).forEach(questionId => {
+      const answer = savedAnswers[questionId];
+      const container = document.querySelector(`.options-container[data-question-id="${questionId}"]`);
+      if (container) {
+        const radio = container.querySelector(`input[value="${answer}"]`);
+        if (radio) {
+          radio.checked = true;
+          radio.closest('.option-btn').classList.add('selected');
+          const checkWrapper = document.getElementById(`check-wrapper-${questionId}`);
+          if (checkWrapper) checkWrapper.classList.remove('hidden');
+        }
+      }
+    });
+  }
+
+  // If already completed, grade and show results immediately
+  if (isAssignmentCompleted) {
+    gradeAndSubmit(true);
+  }
+  });
+</script>
+
+<!-- Plotly.js for Universal Scientific & ML Visualizations -->
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+<!-- Universal Inline Visualization Controller Script -->
+<script>
+  (function () {
+    const activeSims = {};
+
     function getCookie(name) {
       let cookieValue = null;
       if (document.cookie && document.cookie !== '') {
@@ -421,27 +637,946 @@
       return cookieValue;
     }
 
-    // Pre-fill saved answers
-    if (savedAnswers && Object.keys(savedAnswers).length > 0) {
-      Object.keys(savedAnswers).forEach(questionId => {
-        const answer = savedAnswers[questionId];
-        const container = document.querySelector(`.options-container[data-question-id="${questionId}"]`);
+    // Attach to all Close buttons
+    document.addEventListener('click', function (e) {
+      const closeBtn = e.target.closest('.vis-close-btn');
+      if (closeBtn) {
+        const qId = closeBtn.dataset.questionId;
+        const container = document.getElementById('inline-vis-' + qId);
         if (container) {
-          const radio = container.querySelector(`input[value="${answer}"]`);
-          if (radio) {
-            radio.checked = true;
-            radio.closest('.option-btn').classList.add('selected');
-            const checkWrapper = document.getElementById(`check-wrapper-${questionId}`);
-            if (checkWrapper) checkWrapper.classList.remove('hidden');
+          container.classList.add('hidden');
+          if (activeSims[qId] && activeSims[qId].animId) {
+            cancelAnimationFrame(activeSims[qId].animId);
           }
         }
+      }
+    });
+
+    // Attach to all "Visualize" buttons
+    document.querySelectorAll('.visualize-concept-btn').forEach(btn => {
+      btn.addEventListener('click', async function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const qId = this.dataset.questionId;
+        const container = document.getElementById('inline-vis-' + qId);
+        if (!container) return;
+
+        // Toggle if already visible
+        if (!container.classList.contains('hidden')) {
+          container.classList.add('hidden');
+          return;
+        }
+
+        container.classList.remove('hidden');
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        const loadingEl = document.getElementById('loading-' + qId);
+        const contentEl = document.getElementById('content-' + qId);
+        const titleEl = container.querySelector('.vis-title');
+        const explanationEl = document.getElementById('explanation-' + qId);
+        const metricsEl = document.getElementById('metrics-' + qId);
+        const slidersEl = document.getElementById('sliders-' + qId);
+        const plotEl = document.getElementById('plot-' + qId);
+        const canvasBox = document.getElementById('canvas-box-' + qId);
+        const canvas = document.getElementById('canvas-' + qId);
+        const statusEl = document.getElementById('status-' + qId);
+
+        loadingEl.classList.remove('hidden');
+        contentEl.classList.add('hidden');
+
+        // Extract question text reliably from DOM
+        const qCard = this.closest('.question-card');
+        const qText = qCard ? qCard.querySelector('h3').innerText.replace(/^\d+\.\s*/, '').trim() : '';
+
+        try {
+          const res = await fetch("{% url 'voice_tutor:api_visualize_concept' %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+              question_id: qId,
+              question_text: qText
+            })
+          });
+
+          if (!res.ok) throw new Error('API failed');
+          const data = await res.json();
+          renderUniversalVisualization(qId, data.simulation, qText, titleEl, explanationEl, metricsEl, slidersEl, plotEl, canvasBox, canvas, statusEl, loadingEl, contentEl);
+        } catch (err) {
+          console.warn('API call failed, generating universal fallback:', err);
+          renderUniversalVisualization(qId, null, qText, titleEl, explanationEl, metricsEl, slidersEl, plotEl, canvasBox, canvas, statusEl, loadingEl, contentEl);
+        }
+      });
+    });
+
+    function renderUniversalVisualization(qId, sim, qText, titleEl, explanationEl, metricsEl, slidersEl, plotEl, canvasBox, canvas, statusEl, loadingEl, contentEl) {
+      loadingEl.classList.add('hidden');
+      contentEl.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+
+      // If no simulation was returned by backend or API error, generate client fallback
+      if (!sim) {
+        sim = getClientFallbackSimulation(qText);
+      }
+
+      const qLower = qText.toLowerCase();
+
+      // Mechanical motion simulation (Loaded truck / Momentum / Braking)
+      const isPhysicalSim = (sim && sim.engine === 'physical_simulation') ||
+        qLower.includes('truck') || qLower.includes('stopping');
+
+      if (isPhysicalSim) {
+        plotEl.classList.add('hidden');
+        canvasBox.classList.remove('hidden');
+        if (titleEl) titleEl.textContent = (sim && sim.title) || 'Loaded vs. Unloaded Truck: Momentum & Stopping Effort';
+        if (explanationEl) explanationEl.textContent = (sim && sim.explanation) || 'Linear momentum p = mass × velocity. At the same speed, a loaded truck has substantially more mass and therefore greater momentum, requiring more braking work and skid distance to stop.';
+        setupMomentumSimulation(qId, sim, canvas, metricsEl, slidersEl, statusEl);
+        return;
+      }
+
+      // Universal Plotly Renderer (Machine Learning, Kinematics, Calculus, Physics graphs)
+      canvasBox.classList.add('hidden');
+      plotEl.classList.remove('hidden');
+
+      if (sim && sim.plotly_spec) {
+        if (titleEl) titleEl.textContent = sim.title || 'Interactive Concept Visualization';
+        if (explanationEl) explanationEl.textContent = sim.explanation || 'Explore parameter changes to observe the governing behavior.';
+        renderMetricBadges(metricsEl, sim.metrics || []);
+        renderPlotlySliders(qId, sim.interactive_controls || [], slidersEl, metricsEl, sim);
+        Plotly.newPlot('plot-' + qId, sim.plotly_spec.data || [], sim.plotly_spec.layout || {}, { responsive: true, displayModeBar: false });
+      }
+    }
+
+    function renderMetricBadges(container, metrics) {
+      if (!container || !metrics.length) {
+        if (container) container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = metrics.map(m => `
+        <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 block">${m.label}</span>
+          <span class="text-sm font-bold font-mono text-indigo-400">${m.value}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderPlotlySliders(qId, controls, container, metricsEl, sim) {
+      if (!container) return;
+      container.innerHTML = '';
+      if (!controls || !controls.length) {
+        const parent = container.closest('.vis-sliders')?.parentElement;
+        if (parent) parent.classList.add('hidden');
+        return;
+      }
+      const parent = container.closest('.vis-sliders')?.parentElement;
+      if (parent) parent.classList.remove('hidden');
+
+      // Clone base state for reactive live-updates
+      const baseData = JSON.parse(JSON.stringify(sim.plotly_spec?.data || []));
+      const baseLayout = JSON.parse(JSON.stringify(sim.plotly_spec?.layout || {}));
+      const paramValues = {};
+      controls.forEach(c => { paramValues[c.param] = c.default; });
+
+      controls.forEach(ctrl => {
+        const wrap = document.createElement('div');
+        wrap.className = 'space-y-1';
+        wrap.innerHTML = `
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-medium text-slate-300">${ctrl.label}</span>
+            <span class="font-mono text-indigo-400 font-semibold" id="val-${ctrl.param}-${qId}">${ctrl.default}${ctrl.unit || ''}</span>
+          </div>
+          <input type="range" min="${ctrl.min}" max="${ctrl.max}" step="${ctrl.step || 1}" value="${ctrl.default}" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" id="slider-${ctrl.param}-${qId}">
+        `;
+        container.appendChild(wrap);
+
+        const input = wrap.querySelector(`#slider-${ctrl.param}-${qId}`);
+        input.addEventListener('input', function (e) {
+          const val = parseFloat(e.target.value);
+          paramValues[ctrl.param] = val;
+          const valDisplay = document.getElementById(`val-${ctrl.param}-${qId}`);
+          if (valDisplay) valDisplay.textContent = val + (ctrl.unit || '');
+          applyUniversalSliderUpdate(qId, ctrl, val, paramValues, baseData, baseLayout, metricsEl, sim);
+        });
       });
     }
 
-    // If already completed, grade and show results immediately
-    if (isAssignmentCompleted) {
-      gradeAndSubmit(true);
+    function applyUniversalSliderUpdate(qId, ctrl, val, allParams, baseData, baseLayout, metricsEl, sim) {
+      const plotEl = document.getElementById('plot-' + qId);
+      if (!plotEl) return;
+
+      const p = ctrl.param.toLowerCase();
+      const targetType = ctrl.target_type || '';
+
+      // 1. Threshold Line / Decision Cutoff (Logistic Regression & Classification)
+      if (targetType === 'threshold_y' || p.includes('threshold') || p.includes('tau')) {
+        const updateShapes = JSON.parse(JSON.stringify(baseLayout.shapes || []));
+        let cutoffX = null;
+
+        updateShapes.forEach(shape => {
+          if (shape.type === 'line' && (shape.y0 === shape.y1 || shape.line?.dash === 'dash')) {
+            shape.y0 = val;
+            shape.y1 = val;
+          }
+        });
+
+        // Find intersection x on the first curve trace
+        const mainTrace = baseData.find(t => t.mode && t.mode.includes('lines')) || baseData[0];
+        if (mainTrace && mainTrace.x && mainTrace.y) {
+          let minDiff = Infinity;
+          let bestIdx = 0;
+          for (let i = 0; i < mainTrace.y.length; i++) {
+            const diff = Math.abs(mainTrace.y[i] - val);
+            if (diff < minDiff) {
+              minDiff = diff;
+              bestIdx = i;
+            }
+          }
+          cutoffX = mainTrace.x[bestIdx];
+        }
+
+        updateShapes.forEach(shape => {
+          if (shape.type === 'line' && shape.x0 === shape.x1 && cutoffX !== null) {
+            shape.x0 = cutoffX;
+            shape.x1 = cutoffX;
+          }
+        });
+
+        const updateAnnotations = JSON.parse(JSON.stringify(baseLayout.annotations || []));
+        updateAnnotations.forEach(ann => {
+          if (ann.text && (ann.text.includes('Threshold') || ann.text.includes('τ'))) {
+            ann.text = `Threshold τ = ${val.toFixed(2)}`;
+            ann.y = val + 0.08;
+          } else if (ann.text && (ann.text.includes('Cutoff') || ann.text.includes('x*')) && cutoffX !== null) {
+            ann.text = `Cutoff x* = ${cutoffX}`;
+            ann.x = cutoffX;
+          }
+        });
+
+        Plotly.relayout('plot-' + qId, { shapes: updateShapes, annotations: updateAnnotations });
+
+        if (metricsEl) {
+          metricsEl.querySelectorAll('.bg-slate-900\\/90').forEach(b => {
+            const lbl = (b.querySelector('span:first-child')?.innerText || '').toUpperCase();
+            const valSpan = b.querySelector('span:last-child');
+            if (!valSpan) return;
+            if (lbl.includes('THRESHOLD') || lbl.includes('TAU')) valSpan.textContent = val.toFixed(2);
+            else if ((lbl.includes('CUTOFF') || lbl.includes('DECISION')) && cutoffX !== null) valSpan.textContent = `x ≥ ${cutoffX}`;
+            else if (lbl.includes('BEHAVIOR') || lbl.includes('SENSITIVITY')) valSpan.textContent = val > 0.6 ? 'Strict (Fewer FP)' : (val < 0.4 ? 'Permissive (Fewer FN)' : 'Balanced');
+          });
+        }
+        return;
+      }
+
+      // 2. Scaling Y / Slope / Speed / Amplitude / Weight / Rate
+      if (targetType === 'scale_y' || p.includes('slope') || p.includes('speed') || p.includes('rate') || p.includes('amplitude') || p.includes('weight') || p === 'w') {
+        const factor = ctrl.default !== 0 ? (val / ctrl.default) : 1;
+        const newY = [];
+        const indices = [];
+
+        baseData.forEach((trace, idx) => {
+          if (trace.mode && trace.mode.includes('lines') && trace.y) {
+            newY.push(trace.y.map(y => Number((y * factor).toFixed(2))));
+            indices.push(idx);
+          }
+        });
+
+        if (indices.length > 0) {
+          Plotly.restyle('plot-' + qId, { y: newY }, indices);
+        }
+
+        const updateAnnotations = JSON.parse(JSON.stringify(baseLayout.annotations || []));
+        updateAnnotations.forEach(ann => {
+          if (ann.text && (ann.text.includes('Slope') || ann.text.includes('Rate') || ann.text.includes('v ='))) {
+            ann.text = `Slope = ${val}${ctrl.unit || ''}`;
+          }
+        });
+        Plotly.relayout('plot-' + qId, { annotations: updateAnnotations });
+
+        if (metricsEl) {
+          metricsEl.querySelectorAll('.bg-slate-900\\/90').forEach(b => {
+            const lbl = (b.querySelector('span:first-child')?.innerText || '').toUpperCase();
+            const valSpan = b.querySelector('span:last-child');
+            if (valSpan && (lbl.includes('SPEED') || lbl.includes('SLOPE') || lbl.includes('RATE'))) {
+              valSpan.textContent = `${val}${ctrl.unit || ''}`;
+            }
+          });
+        }
+        return;
+      }
+
+      // 3. Cluster Spread / Variance
+      if (targetType === 'cluster_spread' || p.includes('spread') || p.includes('variance')) {
+        baseData.forEach((trace, idx) => {
+          if (trace.mode && trace.mode.includes('markers') && !trace.name?.includes('Centroid')) {
+            const avgX = trace.x.reduce((a, b) => a + b, 0) / trace.x.length;
+            const avgY = trace.y.reduce((a, b) => a + b, 0) / trace.y.length;
+            const newX = trace.x.map(x => Number((avgX + (x - avgX) * (val / ctrl.default)).toFixed(2)));
+            const newY = trace.y.map(y => Number((avgY + (y - avgY) * (val / ctrl.default)).toFixed(2)));
+            Plotly.restyle('plot-' + qId, { x: [newX], y: [newY] }, [idx]);
+          }
+        });
+        return;
+      }
+
+      // 4. Detour / Path Winding Factor
+      if (targetType === 'detour' || p.includes('detour') || p.includes('winding')) {
+        const factor = val;
+        const newY = [0, 4 * factor, 2 * factor, 6 * factor, 5 * factor, 8 * factor, 6];
+        const newDist = (11.7 * factor * 1.15).toFixed(1);
+        Plotly.restyle('plot-' + qId, { y: [newY] }, [0]);
+        if (metricsEl) {
+          metricsEl.querySelectorAll('.bg-slate-900\\/90').forEach(b => {
+            const lbl = (b.querySelector('span:first-child')?.innerText || '').toUpperCase();
+            const valSpan = b.querySelector('span:last-child');
+            if (valSpan && (lbl.includes('PATH') || lbl.includes('DISTANCE'))) {
+              valSpan.textContent = `${newDist} m`;
+            }
+          });
+        }
+        return;
+      }
+
+      // 5. Tangent Probe Along Calculus Curve (Local Maxima / Minima / Derivatives)
+      if (targetType === 'tangent_probe' || p.includes('probe') || p.includes('tangent')) {
+        const x0 = val;
+        let a = -0.5;
+        let c = 3.0;
+        if (baseData.length > 0 && baseData[0].x && baseData[0].y) {
+          const midIdx = Math.floor(baseData[0].x.length / 2);
+          c = baseData[0].y[midIdx] || 3.0;
+          const endIdx = baseData[0].x.length - 1;
+          const dx = baseData[0].x[endIdx];
+          const dy = baseData[0].y[endIdx] - c;
+          if (dx !== 0) a = dy / (dx * dx);
+        }
+
+        const slope = 2 * a * x0;
+        const y0 = a * x0 * x0 + c;
+
+        const tangX = [x0 - 1.2, x0, x0 + 1.2];
+        const tangY = [y0 - slope * 1.2, y0, y0 + slope * 1.2];
+
+        Plotly.restyle('plot-' + qId, { x: [tangX], y: [tangY] }, [1]);
+        if (baseData.length > 2) {
+          Plotly.restyle('plot-' + qId, { x: [[x0]], y: [[y0]] }, [2]);
+        }
+
+        const updateAnnotations = JSON.parse(JSON.stringify(baseLayout.annotations || []));
+        let slopeText = "";
+        if (Math.abs(slope) < 0.05) {
+          slopeText = "Flat Tangent: f'(x) = 0.0";
+        } else if (slope > 0) {
+          slopeText = `Rising Slope: f'(x) = +${slope.toFixed(2)}`;
+        } else {
+          slopeText = `Falling Slope: f'(x) = ${slope.toFixed(2)}`;
+        }
+
+        updateAnnotations.forEach(ann => {
+          ann.x = x0;
+          ann.y = y0;
+          ann.text = slopeText;
+        });
+        Plotly.relayout('plot-' + qId, { annotations: updateAnnotations });
+
+        if (metricsEl) {
+          metricsEl.querySelectorAll('.bg-slate-900\\/90').forEach(b => {
+            const lbl = (b.querySelector('span:first-child')?.innerText || '').toUpperCase();
+            const valSpan = b.querySelector('span:last-child');
+            if (!valSpan) return;
+            if (lbl.includes("TANGENT") || lbl.includes("SLOPE") || lbl.includes("F'")) {
+              valSpan.textContent = Math.abs(slope) < 0.05 ? "0.0 (Horizontal Tangent)" : `${slope.toFixed(2)} (${slope > 0 ? 'Rising' : 'Falling'})`;
+            } else if (lbl.includes("PROBE") || lbl.includes("POSITION")) {
+              valSpan.textContent = x0.toFixed(1);
+            }
+          });
+        }
+        return;
+      }
+
+      // 6. Gradient Descent Steps Down Cost Bowl J(w)
+      if (targetType === 'gradient_step' || p.includes('step') || p.includes('iteration')) {
+        const stepIdx = Math.max(0, Math.min(Math.round(val), 6));
+        const lr = 0.2;
+        const wOpt = 2.0;
+
+        // Precompute sequence
+        let wCurr = -1.0;
+        const stepsW = [wCurr];
+        const stepsJ = [Number((0.4 * Math.pow(wCurr - wOpt, 2) + 0.3).toFixed(3))];
+        for (let i = 0; i < 6; i++) {
+          const grad = 0.8 * (wCurr - wOpt);
+          wCurr = Number((wCurr - lr * grad).toFixed(3));
+          stepsW.push(wCurr);
+          stepsJ.push(Number((0.4 * Math.pow(wCurr - wOpt, 2) + 0.3).toFixed(3)));
+        }
+
+        const activeW = stepsW[stepIdx];
+        const activeJ = stepsJ[stepIdx];
+        const activeGrad = Number((0.8 * (activeW - wOpt)).toFixed(3));
+
+        // Update descent path trace [1]
+        Plotly.restyle('plot-' + qId, {
+          x: [stepsW.slice(0, stepIdx + 1)],
+          y: [stepsJ.slice(0, stepIdx + 1)]
+        }, [1]);
+
+        // Update active marker trace [2]
+        Plotly.restyle('plot-' + qId, {
+          x: [[activeW]],
+          y: [[activeJ]]
+        }, [2]);
+
+        const updateAnnotations = JSON.parse(JSON.stringify(baseLayout.annotations || []));
+        updateAnnotations.forEach(ann => {
+          if (ann.text && (ann.text.includes('Step') || ann.text.includes('J(w)'))) {
+            ann.x = activeW;
+            ann.y = activeJ;
+            ann.text = `Step ${stepIdx}: J(w) = ${activeJ.toFixed(3)}`;
+          }
+        });
+        Plotly.relayout('plot-' + qId, { annotations: updateAnnotations });
+
+        if (metricsEl) {
+          metricsEl.querySelectorAll('.bg-slate-900\\/90').forEach(b => {
+            const lbl = (b.querySelector('span:first-child')?.innerText || '').toUpperCase();
+            const valSpan = b.querySelector('span:last-child');
+            if (!valSpan) return;
+            if (lbl.includes('COST') || lbl.includes('LOSS')) {
+              valSpan.textContent = activeJ.toFixed(3);
+            } else if (lbl.includes('GRADIENT') || lbl.includes('SLOPE')) {
+              valSpan.textContent = `${activeGrad > 0 ? '+' : ''}${activeGrad.toFixed(2)}`;
+            } else if (lbl.includes('STATUS')) {
+              valSpan.textContent = Math.abs(activeW - wOpt) < 0.15 ? "Converged at Minimum" : "Descending Downhill";
+            }
+          });
+        }
+        return;
+      }
+
+      // General metric label update fallback
+      if (metricsEl) {
+        metricsEl.querySelectorAll('.bg-slate-900\\/90').forEach(b => {
+          const lbl = (b.querySelector('span:first-child')?.innerText || '').toLowerCase();
+          const valSpan = b.querySelector('span:last-child');
+          if (valSpan && (lbl.includes(p) || lbl.includes(ctrl.label.toLowerCase()))) {
+            valSpan.textContent = `${val}${ctrl.unit || ''}`;
+          }
+        });
+      }
     }
-  });
+
+    // Client-side generic fallbacks when offline or on API timeout
+    function getClientFallbackSimulation(qText) {
+      const q = (qText || '').toLowerCase();
+
+      // 0. Calculus / Maxima / Minima / Optimization / Derivatives / Profit
+      if (q.includes('maxima') || q.includes('minima') || q.includes('maximum') || q.includes('minimum') || q.includes('derivative') || q.includes('profit maximization')) {
+        const isMax = !(q.includes('minimum') || q.includes('minima'));
+        const a = isMax ? -0.5 : 0.5;
+        const c = isMax ? 3.0 : 0.5;
+        const xs = [];
+        const ys = [];
+        for (let x = -3.0; x <= 3.01; x += 0.25) {
+          xs.push(Number(x.toFixed(2)));
+          ys.push(Number((a * x * x + c).toFixed(3)));
+        }
+        const kind = isMax ? 'Crest (Peak)' : 'Trough (Valley)';
+        const concavityDesc = isMax ? 'Concave Down (Bends Downward)' : 'Concave Up (Bends Upward)';
+
+        return {
+          engine: 'plotly',
+          title: 'Function Curve & Tangent Slope Exploration',
+          explanation: 'Scrub the probe point along the curve to observe how the tangent slope f\'(x) changes across rising slopes, crests (peaks), and falling slopes. Notice the tangent line slope and how the curve curves at the crest.',
+          metrics: [
+            { label: "Probe Position (x)", value: "0.0" },
+            { label: "Tangent Slope f'(x)", value: "0.0 (Horizontal Tangent)" },
+            { label: "Curvature / Concavity", value: concavityDesc }
+          ],
+          interactive_controls: [
+            { param: 'x_probe', label: 'Probe Position (x)', min: -2.0, max: 2.0, step: 0.5, default: 0.0, unit: '', target_type: 'tangent_probe' }
+          ],
+          plotly_spec: {
+            data: [
+              { x: xs, y: ys, mode: 'lines', name: 'Function Curve f(x)', line: { color: '#6366f1', width: 3, shape: 'spline', smoothing: 1.3 } },
+              { x: [-1.2, 0, 1.2], y: [c, c, c], mode: 'lines', name: "Tangent Line at Probe", line: { color: '#f59e0b', width: 2, dash: 'dash' } },
+              { x: [0], y: [c], mode: 'markers', name: 'Probe Point (x₀)', marker: { color: '#10b981', size: 10 } }
+            ],
+            layout: {
+              paper_bgcolor: '#020617', plot_bgcolor: '#0f172a', font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+              margin: { l: 45, r: 25, t: 35, b: 35 },
+              xaxis: { title: 'Input Position (x)', gridcolor: 'rgba(255,255,255,0.08)', range: [-3.5, 3.5] },
+              yaxis: { title: 'Function Value f(x)', gridcolor: 'rgba(255,255,255,0.08)', range: [-2.0, 4.0] },
+              annotations: [
+                { x: 0, y: c, text: `${kind}: Tangent Slope f'(x) = 0.0`, showarrow: true, arrowhead: 2, font: { color: '#10b981', size: 10 }, yshift: 10 }
+              ]
+            }
+          }
+        };
+      }
+
+      // 0.5. Optimization: Gradient Descent & Cost Minimization
+      if (q.includes('gradient descent') || q.includes('cost function') || q.includes('loss function') || q.includes('learning rate')) {
+        const ws = [];
+        const ys = [];
+        for (let w = -1.5; w <= 5.51; w += 0.15) {
+          ws.push(Number(w.toFixed(2)));
+          ys.push(Number((0.4 * Math.pow(w - 2.0, 2) + 0.3).toFixed(3)));
+        }
+        return {
+          engine: 'plotly',
+          archetype: 'gradient_descent',
+          title: 'Gradient Descent: Minimizing the Cost Function',
+          explanation: 'Gradient descent computes the slope of the cost function with respect to weights and takes iterative steps downhill in the opposite direction. Notice how the cost J(w) decreases with each step toward the global minimum.',
+          metrics: [
+            { label: 'Current Cost J(w)', value: '1.860' },
+            { label: 'Gradient Slope dJ/dw', value: '-2.40' },
+            { label: 'Optimization Status', value: 'Descending Downhill' }
+          ],
+          interactive_controls: [
+            { param: 'step', label: 'Descent Iteration (Step)', min: 0, max: 6, step: 1, default: 0, unit: '', target_type: 'gradient_step' }
+          ],
+          plotly_spec: {
+            data: [
+              { x: ws, y: ys, mode: 'lines', name: 'Cost Function J(w)', line: { color: '#6366f1', width: 3, shape: 'spline', smoothing: 1.3 } },
+              { x: [-1.0], y: [1.86], mode: 'lines+markers', name: 'Descent Path', line: { color: '#f59e0b', width: 2, dash: 'dot' }, marker: { color: '#f59e0b', size: 6 } },
+              { x: [-1.0], y: [1.86], mode: 'markers', name: 'Current Weight (w_t)', marker: { color: '#10b981', size: 14, line: { color: '#ffffff', width: 2 } } }
+            ],
+            layout: {
+              title: { text: 'Gradient Descent: Cost Function J(w) Minimization', font: { color: '#f8fafc', size: 14 } },
+              paper_bgcolor: '#020617', plot_bgcolor: '#0f172a', font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+              margin: { l: 55, r: 25, t: 35, b: 35 },
+              xaxis: { title: 'Model Weight / Parameter (w)', gridcolor: 'rgba(255,255,255,0.08)', range: [-2.0, 6.0] },
+              yaxis: { title: 'Cost / Loss J(w)', gridcolor: 'rgba(255,255,255,0.08)', range: [0.0, 5.5] },
+              annotations: [
+                { x: 2.0, y: 0.3, text: 'Global Minimum (Lowest Cost)', showarrow: true, arrowhead: 2, arrowcolor: '#38bdf8', font: { color: '#38bdf8', size: 10 }, yshift: -12 },
+                { x: -1.0, y: 1.86, text: 'Step 0: J(w) = 1.860', showarrow: true, arrowhead: 2, arrowcolor: '#10b981', font: { color: '#10b981', size: 10 }, yshift: 12 }
+              ]
+            }
+          }
+        };
+      }
+
+      // 1. Logistic Regression
+      if (q.includes('logistic') || q.includes('sigmoid') || q.includes('threshold')) {
+        const xs = [0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0];
+        const ys = xs.map(x => Number((1 / (1 + Math.exp(-(1.5 * x - 4.5)))).toFixed(3)));
+        return {
+          engine: 'plotly',
+          title: 'Logistic Regression: Sigmoid Curve & Decision Threshold',
+          explanation: 'In Logistic Regression, instances with predicted probability P(y=1) ≥ τ are classified as positive. Tuning the threshold balances precision and recall.',
+          metrics: [
+            { label: 'Decision Cutoff (x*)', value: 'x ≥ 3.0' },
+            { label: 'Threshold (τ)', value: '0.50' },
+            { label: 'Model Sensitivity', value: 'Balanced' }
+          ],
+          interactive_controls: [
+            { param: 'threshold', label: 'Decision Threshold (τ)', min: 0.1, max: 0.9, step: 0.05, default: 0.5, unit: '', target_type: 'threshold_y' },
+            { param: 'w', label: 'Weight / Slope (w)', min: 0.5, max: 3.5, step: 0.2, default: 1.5, unit: '', target_type: 'scale_y' }
+          ],
+          plotly_spec: {
+            data: [
+              { x: [0.8, 1.4, 2.0, 2.5], y: [0, 0, 0, 0], mode: 'markers', name: 'Class 0 (Negative)', marker: { color: '#ef4444', size: 10 } },
+              { x: [3.6, 4.2, 5.0, 6.2], y: [1, 1, 1, 1], mode: 'markers', name: 'Class 1 (Positive)', marker: { color: '#10b981', size: 10 } },
+              { x: xs, y: ys, mode: 'lines', name: 'P(y=1) Sigmoid', line: { color: '#6366f1', width: 3 } }
+            ],
+            layout: {
+              paper_bgcolor: '#020617', plot_bgcolor: '#0f172a', font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+              margin: { l: 45, r: 25, t: 35, b: 35 },
+              xaxis: { title: 'Input Feature Value (x)', gridcolor: 'rgba(255,255,255,0.08)' },
+              yaxis: { title: 'Probability P(y=1)', range: [-0.15, 1.15], gridcolor: 'rgba(255,255,255,0.08)' },
+              shapes: [
+                { type: 'line', x0: 0, x1: 7, y0: 0.5, y1: 0.5, line: { dash: 'dash', color: '#f59e0b', width: 2 } },
+                { type: 'line', x0: 3.0, x1: 3.0, y0: 0, y1: 1, line: { dash: 'dot', color: '#38bdf8', width: 2 } }
+              ],
+              annotations: [
+                { x: 6.0, y: 0.58, text: 'Threshold τ = 0.50', showarrow: false, font: { color: '#f59e0b', size: 10 } },
+                { x: 3.0, y: 0.05, text: 'Cutoff x* = 3.0', showarrow: true, arrowhead: 2, font: { color: '#38bdf8', size: 10 } }
+              ]
+            }
+          }
+        };
+      }
+
+      // 2. K-Means / Clustering
+      if (q.includes('cluster') || q.includes('k-means') || q.includes('kmeans')) {
+        return {
+          engine: 'plotly',
+          title: 'K-Means Clustering Space (K = 3)',
+          explanation: 'K-Means iteratively partitions feature points to minimize within-cluster Euclidean distance variances from centroids.',
+          metrics: [
+            { label: 'Number of Clusters (K)', value: '3' },
+            { label: 'Distance Metric', value: 'Euclidean (L2)' },
+            { label: 'Status', value: 'Converged' }
+          ],
+          interactive_controls: [
+            { param: 'spread', label: 'Cluster Spread Variance', min: 0.5, max: 2.0, step: 0.1, default: 1.0, unit: 'x', target_type: 'cluster_spread' }
+          ],
+          plotly_spec: {
+            data: [
+              { x: [1.2, 1.8, 1.5, 2.2, 1.9], y: [1.5, 2.2, 1.8, 2.5, 2.0], mode: 'markers', name: 'Cluster A', marker: { color: '#3b82f6', size: 10 } },
+              { x: [5.1, 5.8, 5.5, 6.2, 5.9], y: [5.2, 6.1, 5.8, 6.5, 6.0], mode: 'markers', name: 'Cluster B', marker: { color: '#10b981', size: 10 } },
+              { x: [7.8, 8.4, 8.1, 8.9, 8.5], y: [1.8, 2.4, 2.0, 2.6, 2.2], mode: 'markers', name: 'Cluster C', marker: { color: '#f59e0b', size: 10 } },
+              { x: [1.7, 5.7, 8.3], y: [2.0, 5.9, 2.2], mode: 'markers', name: 'Centroids (μ)', marker: { color: '#ec4899', size: 16, symbol: 'star' } }
+            ],
+            layout: {
+              paper_bgcolor: '#020617', plot_bgcolor: '#0f172a', font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+              margin: { l: 45, r: 25, t: 35, b: 35 },
+              xaxis: { title: 'Feature 1 (X₁)', gridcolor: 'rgba(255,255,255,0.08)' },
+              yaxis: { title: 'Feature 2 (X₂)', gridcolor: 'rgba(255,255,255,0.08)' }
+            }
+          }
+        };
+      }
+
+      // 3. Distance vs. Displacement
+      if (q.includes('displacement') || q.includes('scalar') || q.includes('vector')) {
+        return {
+          engine: 'plotly',
+          title: 'Distance (Scalar Path) vs. Displacement (Vector Arrow)',
+          explanation: 'Distance is the total length traveled along the scalar path. Displacement is the straight-line vector pointing directly from Start to Finish.',
+          metrics: [
+            { label: 'Path Distance (Scalar)', value: '24.5 m' },
+            { label: 'Net Displacement (Vector)', value: '11.7 m @ 31°' },
+            { label: 'Key Property', value: 'Distance ≥ Displacement' }
+          ],
+          interactive_controls: [
+            { param: 'detour', label: 'Path Detour / Winding Factor', min: 1.0, max: 3.0, step: 0.2, default: 1.8, unit: 'x', target_type: 'detour' }
+          ],
+          plotly_spec: {
+            data: [
+              { x: [0, 2, 4, 3, 6, 8, 10], y: [0, 4, 2, 6, 5, 8, 6], mode: 'lines+markers', name: 'Actual Path Traveled', line: { color: '#f59e0b', width: 3, dash: 'dot' }, marker: { size: 6 } },
+              { x: [0, 10], y: [0, 6], mode: 'lines+markers', name: 'Displacement Vector', line: { color: '#38bdf8', width: 4 }, marker: { size: 10, color: '#38bdf8' } }
+            ],
+            layout: {
+              paper_bgcolor: '#020617', plot_bgcolor: '#0f172a', font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+              margin: { l: 45, r: 25, t: 35, b: 35 },
+              xaxis: { title: 'East-West Position (m)', gridcolor: 'rgba(255,255,255,0.08)' },
+              yaxis: { title: 'North-South Position (m)', gridcolor: 'rgba(255,255,255,0.08)' },
+              annotations: [
+                { x: 0, y: 0, text: 'Start (A)', showarrow: true, arrowhead: 2, font: { color: '#10b981', size: 10 } },
+                { x: 10, y: 6, text: 'Finish (B)', showarrow: true, arrowhead: 2, font: { color: '#f43f5e', size: 10 } }
+              ]
+            }
+          }
+        };
+      }
+
+      // 4. Rate of Motion / Speed
+      if (q.includes('speed') || q.includes('velocity') || q.includes('rate of motion')) {
+        return {
+          engine: 'plotly',
+          title: 'Average Speed: Slope of Distance vs. Time (v = Δd / Δt)',
+          explanation: 'Average speed equals the total distance covered divided by elapsed time. On a distance-time graph, line steepness represents speed.',
+          metrics: [
+            { label: 'Total Distance', value: '150 m' },
+            { label: 'Total Time', value: '10 s' },
+            { label: 'Average Speed (Slope)', value: '15.0 m/s' }
+          ],
+          interactive_controls: [
+            { param: 'speed', label: 'Average Speed / Slope (v)', min: 5, max: 40, step: 2, default: 15, unit: ' m/s', target_type: 'scale_y' }
+          ],
+          plotly_spec: {
+            data: [
+              { x: [0, 2.5, 5, 7.5, 10], y: [0, 37.5, 75, 112.5, 150], mode: 'lines+markers', name: 'Uniform Motion (v = 15 m/s)', line: { color: '#10b981', width: 3 }, marker: { size: 8, color: '#34d399' } }
+            ],
+            layout: {
+              paper_bgcolor: '#020617', plot_bgcolor: '#0f172a', font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+              margin: { l: 45, r: 25, t: 35, b: 35 },
+              xaxis: { title: 'Elapsed Time (seconds)', gridcolor: 'rgba(255,255,255,0.08)' },
+              yaxis: { title: 'Total Distance (meters)', gridcolor: 'rgba(255,255,255,0.08)' },
+              annotations: [
+                { x: 6, y: 90, text: 'Slope = v = 15 m/s', showarrow: true, arrowhead: 2, font: { color: '#10b981', size: 11 } }
+              ]
+            }
+          }
+        };
+      }
+
+      // 5. Universal Generic STEM Model
+      return {
+        engine: 'plotly',
+        title: 'Parametric Science & Rate Relationship',
+        explanation: 'Observe how parameter changes modulate system response across the coordinate domain.',
+        metrics: [
+          { label: 'Model Type', value: 'Direct Proportionality' },
+          { label: 'Rate Slope (k)', value: '2.0' },
+          { label: 'System State', value: 'Linear Dynamic' }
+        ],
+        interactive_controls: [
+          { param: 'rate', label: 'Rate Constant (k)', min: 0.5, max: 5.0, step: 0.25, default: 2.0, unit: '', target_type: 'scale_y' }
+        ],
+        plotly_spec: {
+          data: [
+            { x: [0, 1, 2, 3, 4, 5], y: [0, 2, 4, 6, 8, 10], mode: 'lines+markers', name: 'Response Curve', line: { color: '#6366f1', width: 3 } }
+          ],
+          layout: {
+            paper_bgcolor: '#020617', plot_bgcolor: '#0f172a', font: { color: '#94a3b8', family: 'Inter, sans-serif' },
+            margin: { l: 45, r: 25, t: 35, b: 35 },
+            xaxis: { title: 'Independent Parameter (X)', gridcolor: 'rgba(255,255,255,0.08)' },
+            yaxis: { title: 'System Output (Y)', gridcolor: 'rgba(255,255,255,0.08)' }
+          }
+        }
+      };
+    }
+
+    // --- MOMENTUM SIMULATION (Loaded Truck vs Unloaded Truck) ---
+    function setupMomentumSimulation(qId, sim, canvas, metricsEl, slidersEl, statusEl) {
+      const p = (sim && sim.parameters) || (sim && sim.simulation_spec && sim.simulation_spec.parameters) || {};
+      const state = {
+        loaded_mass: p.loaded_mass || 9000,
+        unloaded_mass: p.unloaded_mass || 3000,
+        speed_kmh: p.speed_kmh || 60,
+        braking_force: p.braking_force || 8000,
+        animProgress: 1.0,
+        animating: false,
+        animId: null
+      };
+      activeSims[qId] = state;
+
+      function calc() {
+        const v = state.speed_kmh / 3.6;
+        const p_loaded = Math.round(state.loaded_mass * v);
+        const p_unloaded = Math.round(state.unloaded_mass * v);
+        const d_loaded = Number(((state.loaded_mass * v * v) / (2 * state.braking_force)).toFixed(1));
+        const d_unloaded = Number(((state.unloaded_mass * v * v) / (2 * state.braking_force)).toFixed(1));
+        const ratio = (state.loaded_mass / state.unloaded_mass).toFixed(1);
+
+        return { v, p_loaded, p_unloaded, d_loaded, d_unloaded, ratio };
+      }
+
+      function updateMetrics() {
+        const c = calc();
+        metricsEl.innerHTML = `
+          <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center">
+            <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 block">Loaded Momentum (p=mv)</span>
+            <span class="text-sm font-bold font-mono text-amber-400">${c.p_loaded.toLocaleString()} kg·m/s</span>
+          </div>
+          <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center">
+            <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 block">Stopping Distance</span>
+            <span class="text-sm font-bold font-mono text-rose-400">${c.d_loaded} m (${c.ratio}x farther)</span>
+          </div>
+          <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center">
+            <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 block">Stopping Effort</span>
+            <span class="text-sm font-bold font-mono text-indigo-400">${c.ratio}x More Braking Work</span>
+          </div>
+        `;
+      }
+
+      function draw() {
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        const c = calc();
+        const maxDist = Math.max(c.d_loaded * 1.35, 120);
+
+        const roadX = 50;
+        const roadW = w - 80;
+        const toX = (m) => roadX + (m / maxDist) * roadW;
+
+        // Road Background
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(roadX - 20, 20, roadW + 40, h - 60);
+
+        // Lane divider
+        ctx.setLineDash([8, 8]);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(roadX - 20, 115);
+        ctx.lineTo(roadX + roadW + 20, 115);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Distance markers
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px Inter, monospace';
+        for (let d = 0; d <= maxDist; d += 25) {
+          const xPos = toX(d);
+          ctx.strokeStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.moveTo(xPos, 20);
+          ctx.lineTo(xPos, h - 40);
+          ctx.stroke();
+          ctx.fillText(d + 'm', xPos - 8, h - 25);
+        }
+
+        // --- LANE 1: LOADED TRUCK ---
+        const lane1Y = 65;
+        const loadedStopX = toX(c.d_loaded);
+        const curLoadedX = toX(c.d_loaded * state.animProgress);
+
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(toX(0), lane1Y);
+        ctx.lineTo(curLoadedX, lane1Y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#1d4ed8'; // Cab
+        ctx.fillRect(curLoadedX - 16, lane1Y - 14, 16, 28);
+        ctx.fillStyle = '#f59e0b'; // Heavy Cargo
+        ctx.fillRect(curLoadedX - 48, lane1Y - 16, 30, 32);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '9px Inter, sans-serif';
+        ctx.fillText('CARGO', curLoadedX - 44, lane1Y + 4);
+
+        // Wheels
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(curLoadedX - 46, lane1Y - 18, 8, 3);
+        ctx.fillRect(curLoadedX - 46, lane1Y + 15, 8, 3);
+        ctx.fillRect(curLoadedX - 12, lane1Y - 18, 8, 3);
+        ctx.fillRect(curLoadedX - 12, lane1Y + 15, 8, 3);
+
+        // Momentum Vector
+        const arrowLen = Math.min((c.p_loaded / 250000) * 110, 140);
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(curLoadedX, lane1Y);
+        ctx.lineTo(curLoadedX + arrowLen, lane1Y);
+        ctx.stroke();
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.moveTo(curLoadedX + arrowLen, lane1Y - 5);
+        ctx.lineTo(curLoadedX + arrowLen + 8, lane1Y);
+        ctx.lineTo(curLoadedX + arrowLen, lane1Y + 5);
+        ctx.fill();
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.fillText(`Loaded Truck: ${state.loaded_mass}kg (p = ${c.p_loaded.toLocaleString()} kg·m/s)`, roadX - 10, lane1Y - 22);
+
+        // --- LANE 2: UNLOADED TRUCK ---
+        const lane2Y = 160;
+        const unloadedStopX = toX(c.d_unloaded);
+        const curUnloadedX = toX(c.d_unloaded * Math.min(state.animProgress * (c.d_loaded / Math.max(c.d_unloaded, 1)), 1.0));
+
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(toX(0), lane2Y);
+        ctx.lineTo(curUnloadedX, lane2Y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#059669'; // Cab
+        ctx.fillRect(curUnloadedX - 16, lane2Y - 14, 16, 28);
+        ctx.fillStyle = '#334155'; // Empty Flatbed
+        ctx.fillRect(curUnloadedX - 44, lane2Y - 12, 26, 24);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '8px Inter, sans-serif';
+        ctx.fillText('EMPTY', curUnloadedX - 40, lane2Y + 3);
+
+        // Wheels
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(curUnloadedX - 42, lane2Y - 14, 8, 3);
+        ctx.fillRect(curUnloadedX - 42, lane2Y + 11, 8, 3);
+        ctx.fillRect(curUnloadedX - 12, lane2Y - 14, 8, 3);
+        ctx.fillRect(curUnloadedX - 12, lane2Y + 11, 8, 3);
+
+        const arrowLen2 = Math.min((c.p_unloaded / 250000) * 110, 140);
+        ctx.strokeStyle = '#34d399';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(curUnloadedX, lane2Y);
+        ctx.lineTo(curUnloadedX + arrowLen2, lane2Y);
+        ctx.stroke();
+        ctx.fillStyle = '#34d399';
+        ctx.beginPath();
+        ctx.moveTo(curUnloadedX + arrowLen2, lane2Y - 5);
+        ctx.lineTo(curUnloadedX + arrowLen2 + 8, lane2Y);
+        ctx.lineTo(curUnloadedX + arrowLen2, lane2Y + 5);
+        ctx.fill();
+
+        ctx.fillStyle = '#34d399';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.fillText(`Unloaded Truck: ${state.unloaded_mass}kg (p = ${c.p_unloaded.toLocaleString()} kg·m/s)`, roadX - 10, lane2Y - 20);
+
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillText(`Stop: ${c.d_loaded}m`, loadedStopX - 15, lane1Y + 28);
+        ctx.fillStyle = '#10b981';
+        ctx.fillText(`Stop: ${c.d_unloaded}m`, unloadedStopX - 15, lane2Y + 26);
+      }
+
+      function renderSliders() {
+        slidersEl.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-medium text-slate-300">Loaded Truck Mass (Cargo Weight)</span>
+              <span class="font-mono text-indigo-400 font-semibold" id="val-loaded-m-${qId}">${state.loaded_mass} kg</span>
+            </div>
+            <input type="range" min="4000" max="15000" step="500" value="${state.loaded_mass}" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" id="slider-loaded-m-${qId}">
+          </div>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-medium text-slate-300">Vehicle Speed</span>
+              <span class="font-mono text-amber-400 font-semibold" id="val-spd-${qId}">${state.speed_kmh} km/h</span>
+            </div>
+            <input type="range" min="30" max="100" step="5" value="${state.speed_kmh}" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" id="slider-spd-${qId}">
+          </div>
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-medium text-slate-300">Braking Friction Force</span>
+              <span class="font-mono text-emerald-400 font-semibold" id="val-f-${qId}">${state.braking_force} N</span>
+            </div>
+            <input type="range" min="4000" max="14000" step="500" value="${state.braking_force}" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" id="slider-f-${qId}">
+          </div>
+        `;
+
+        document.getElementById(`slider-loaded-m-${qId}`).addEventListener('input', (e) => {
+          state.loaded_mass = parseFloat(e.target.value);
+          document.getElementById(`val-loaded-m-${qId}`).textContent = state.loaded_mass + ' kg';
+          updateMetrics();
+          draw();
+        });
+
+        document.getElementById(`slider-spd-${qId}`).addEventListener('input', (e) => {
+          state.speed_kmh = parseFloat(e.target.value);
+          document.getElementById(`val-spd-${qId}`).textContent = state.speed_kmh + ' km/h';
+          updateMetrics();
+          draw();
+        });
+
+        document.getElementById(`slider-f-${qId}`).addEventListener('input', (e) => {
+          state.braking_force = parseFloat(e.target.value);
+          document.getElementById(`val-f-${qId}`).textContent = state.braking_force + ' N';
+          updateMetrics();
+          draw();
+        });
+      }
+
+      const testBtn = document.querySelector(`.sim-test-btn[data-question-id="${qId}"]`);
+      if (testBtn) {
+        testBtn.onclick = function () {
+          if (state.animating) return;
+          state.animating = true;
+          state.animProgress = 0.0;
+          if (statusEl) statusEl.textContent = 'Brakes Applied! Skidding...';
+
+          function step() {
+            state.animProgress += 0.015;
+            if (state.animProgress >= 1.0) {
+              state.animProgress = 1.0;
+              state.animating = false;
+              if (statusEl) statusEl.textContent = 'Both Vehicles Stopped';
+              draw();
+              return;
+            }
+            draw();
+            state.animId = requestAnimationFrame(step);
+          }
+          state.animId = requestAnimationFrame(step);
+        };
+      }
+
+      updateMetrics();
+      renderSliders();
+      setTimeout(draw, 50);
+    }
+  })();
 </script>
 {% endblock %}
