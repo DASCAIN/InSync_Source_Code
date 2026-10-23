@@ -20,7 +20,7 @@ aiohttp
 aiofiles
 python-docx
 python-pptx
-pymupdf4llm
+pymupdf4llm==1.28.0
 pytesseract
 sentence-transformers
 tiktoken
