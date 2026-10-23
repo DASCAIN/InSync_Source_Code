@@ -1,0 +1,910 @@
+{% extends 'dashboard_base.html' %}
+{% load static %}
+
+{% block title %}Student Preview: {{ topic.name }} — InSync{% endblock %}
+
+{% block dashboard_head %}
+<link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  /* Sticky Top Preview Bar */
+  .preview-top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #0f172a;
+    color: #f8fafc;
+    border-bottom: 1px solid #1e293b;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  .preview-badge {
+    background: #f59e0b;
+    color: #000;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .preview-exit-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--prof-radius-md);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: var(--prof-transition);
+  }
+  .preview-exit-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.35);
+  }
+
+  /* Preview Stepper Navigation */
+  .preview-stepper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--prof-card-bg);
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-lg);
+    padding: 0.35rem;
+    margin-bottom: 1.5rem;
+  }
+  .preview-step-tab {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    border: none;
+    background: transparent;
+    border-radius: var(--prof-radius-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--prof-text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: var(--prof-transition);
+  }
+  .preview-step-tab.active {
+    background: var(--prof-primary);
+    color: #ffffff;
+    box-shadow: var(--prof-shadow-sm);
+  }
+  .preview-step-tab:hover:not(.active) {
+    background: var(--prof-bg);
+    color: var(--prof-text-main);
+  }
+  .preview-container.has-game {
+    max-width: 76rem !important;
+  }
+
+  /* Professor-authored game plan */
+  .game-plan-shell {
+    overflow: hidden;
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-xl);
+    background: var(--prof-card-bg);
+    box-shadow: var(--prof-shadow-sm);
+  }
+  .game-plan-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.4rem;
+    border-bottom: 1px solid var(--prof-border);
+    background: linear-gradient(135deg, var(--prof-card-bg), var(--prof-bg));
+  }
+  .game-plan-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-width: 0;
+  }
+  .game-plan-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.75rem;
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: #7c3aed;
+    background: #ede9fe;
+    border: 1px solid #ddd6fe;
+  }
+  .game-plan-heading h2 {
+    margin: 0;
+    color: var(--prof-text-main);
+    font-family: var(--prof-font-display);
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+  .game-plan-heading p {
+    margin: 0.18rem 0 0;
+    color: var(--prof-text-muted);
+    font-size: 0.8rem;
+  }
+  .game-plan-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    background: #f0fdf4;
+    color: #15803d;
+    font-size: 0.72rem;
+    font-weight: 750;
+    flex: none;
+  }
+  .game-plan-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid var(--prof-border);
+  }
+  .game-plan-stat {
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-lg);
+    background: var(--prof-bg);
+  }
+  .game-plan-stat span {
+    display: block;
+    color: var(--prof-text-muted);
+    font-size: 0.67rem;
+    font-weight: 750;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+  }
+  .game-plan-stat strong {
+    display: block;
+    margin-top: 0.22rem;
+    color: var(--prof-text-main);
+    font-size: 0.88rem;
+  }
+  .game-plan-levels {
+    display: grid;
+    gap: 1rem;
+    padding: 1.4rem;
+  }
+  .game-plan-level {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.9rem;
+  }
+  .game-plan-level-number {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.65rem;
+    display: grid;
+    place-items: center;
+    background: #7c3aed;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    box-shadow: 0 5px 12px rgba(124, 58, 237, .2);
+  }
+  .game-plan-level-card {
+    min-width: 0;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--prof-border);
+    border-radius: var(--prof-radius-lg);
+    background: var(--prof-card-bg);
+  }
+  .game-plan-level-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.9rem;
+  }
+  .game-plan-level-top h3 {
+    margin: 0;
+    color: var(--prof-text-main);
+    font-size: 0.98rem;
+    font-weight: 750;
+  }
+  .game-plan-topic {
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: #ede9fe;
+    color: #6d28d9;
+    font-size: 0.68rem;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+  .game-plan-section + .game-plan-section {
+    margin-top: 0.8rem;
+  }
+  .game-plan-section-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+    color: var(--prof-text-muted);
+    font-size: 0.67rem;
+    font-weight: 800;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+  }
+  .game-plan-question,
+  .game-plan-criteria {
+    padding: 0.78rem 0.9rem;
+    border-radius: var(--prof-radius-md);
+    font-size: 0.83rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+  }
+  .game-plan-question {
+    border-left: 3px solid var(--prof-primary);
+    background: var(--prof-primary-light);
+    color: var(--prof-text-main);
+  }
+  .game-plan-criteria {
+    border: 1px solid var(--prof-border);
+    background: var(--prof-bg);
+    color: var(--prof-text-main);
+  }
+  .game-plan-criteria > :last-child { margin-bottom: 0; }
+  .game-plan-criteria p { margin: 0 0 .55rem; }
+  .game-plan-criteria pre {
+    margin: .65rem 0;
+    padding: .8rem .9rem;
+    overflow-x: auto;
+    border-radius: .55rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    white-space: pre;
+  }
+  .game-plan-criteria code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .78rem;
+  }
+  html.dark .game-plan-icon {
+    color: #c4b5fd;
+    background: rgba(109, 40, 217, .24);
+    border-color: #6d28d9;
+  }
+  html.dark .game-plan-status {
+    border-color: #166534;
+    background: rgba(20, 83, 45, .25);
+    color: #86efac;
+  }
+  html.dark .game-plan-topic {
+    background: rgba(109, 40, 217, .24);
+    color: #c4b5fd;
+  }
+  @media (max-width: 720px) {
+    .game-plan-header,
+    .game-plan-level-top {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .game-plan-summary {
+      grid-template-columns: 1fr;
+    }
+    .game-plan-level {
+      grid-template-columns: 1fr;
+    }
+    .game-plan-level-number {
+      margin-bottom: -0.35rem;
+    }
+  }
+
+  /* Prose for Study Notes */
+  .preview-prose {
+    color: var(--prof-text-main);
+    line-height: 1.75;
+    font-size: 0.95rem;
+  }
+  .preview-prose h1 { font-size: 1.85rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 1rem; color: var(--prof-text-main); line-height: 1.3; }
+  .preview-prose h2 { font-size: 1.35rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; color: var(--prof-text-main); border-bottom: 1px solid var(--prof-border); padding-bottom: 0.5rem; }
+  .preview-prose h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; color: var(--prof-primary); }
+  .preview-prose p { margin-bottom: 1rem; color: var(--prof-text-main); }
+  .preview-prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+  .preview-prose ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1.25rem; }
+  .preview-prose li { margin-bottom: 0.4rem; }
+  .preview-prose strong { font-weight: 700; color: var(--prof-text-main); }
+  .preview-prose blockquote { border-left: 4px solid var(--prof-primary); padding: 0.75rem 1rem; margin-bottom: 1rem; color: var(--prof-text-muted); font-style: italic; background-color: var(--prof-bg); border-radius: 0 var(--prof-radius-md) var(--prof-radius-md) 0; }
+  .preview-prose code { background-color: var(--prof-bg); border: 1px solid var(--prof-border); padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.85em; color: var(--prof-primary); }
+  .preview-prose pre { background-color: #0f172a; color: #f8fafc; padding: 1rem; border-radius: var(--prof-radius-md); overflow-x: auto; margin-bottom: 1.25rem; }
+  .preview-prose pre code { background-color: transparent; border: none; padding: 0; color: inherit; }
+
+  /* Quiz Sandbox Options */
+  .quiz-option-btn {
+    width: 100%;
+    text-align: left;
+    padding: 0.85rem 1.15rem;
+    border: 1.5px solid var(--prof-border);
+    border-radius: var(--prof-radius-lg);
+    background: var(--prof-card-bg);
+    color: var(--prof-text-main);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--prof-transition);
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .quiz-option-btn:hover:not(:disabled) {
+    border-color: var(--prof-primary);
+    background: var(--prof-primary-light);
+  }
+  .quiz-option-btn.opt-correct {
+    background: #dcfce7 !important;
+    border-color: #22c55e !important;
+    color: #15803d !important;
+  }
+  .quiz-option-btn.opt-incorrect {
+    background: #fee2e2 !important;
+    border-color: #ef4444 !important;
+    color: #b91c1c !important;
+  }
+  .quiz-option-letter {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--prof-radius-sm);
+    background: var(--prof-bg);
+    border: 1px solid var(--prof-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    font-family: monospace;
+    flex-shrink: 0;
+  }
+</style>
+{% endblock %}
+
+{% block inner_content %}
+<!-- Sticky Top Bar -->
+<div class="preview-top-bar">
+  <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
+    <span class="preview-badge">
+      <i data-lucide="eye" style="width: 0.85rem; height: 0.85rem;"></i>
+      Student Preview Mode
+    </span>
+    <span style="font-size: 0.85rem; color: #94a3b8;">
+      Simulating student view for <strong style="color: #ffffff;">{{ topic.name }}</strong> ({{ subject.code }}) &bull; Batch: {{ batch_name }}
+    </span>
+  </div>
+  <a href="{% url 'voice_tutor:professor_topics' %}" class="preview-exit-btn">
+    <i data-lucide="log-out" style="width: 0.9rem; height: 0.9rem;"></i>
+    Exit Preview
+  </a>
+</div>
+
+<div class="prof-scope" style="padding-top: 1.5rem;">
+  <div class="prof-container preview-container{% if game_enabled %} has-game{% endif %}" style="max-width: 56rem; margin: 0 auto;">
+
+    <!-- Stepper Navigation -->
+    <div class="preview-stepper">
+      <button onclick="switchTab('notes')" id="tab-btn-notes" class="preview-step-tab active">
+        <i data-lucide="book-open" style="width: 1rem; height: 1rem;"></i>
+        Step 1: Study Notes
+      </button>
+      <button onclick="switchTab('quiz')" id="tab-btn-quiz" class="preview-step-tab">
+        <i data-lucide="help-circle" style="width: 1rem; height: 1rem;"></i>
+        Step 2: Practice Quiz ({{ question_count }})
+      </button>
+      <button onclick="switchTab('tutor')" id="tab-btn-tutor" class="preview-step-tab">
+        <i data-lucide="{% if game_enabled %}gamepad-2{% else %}bot{% endif %}" style="width: 1rem; height: 1rem;"></i>
+        Step 3: {% if game_enabled %}Game Plan{% else %}Sage Voice Tutor{% endif %}
+      </button>
+    </div>
+
+    <!-- ==================== TAB 1: STUDY NOTES ==================== -->
+    <div id="tab-view-notes">
+      <div style="background: var(--prof-card-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-xl); padding: 2rem 2.5rem; box-shadow: var(--prof-shadow-sm);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--prof-border); flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <span style="font-size: 0.75rem; font-weight: 700; color: var(--prof-primary); text-transform: uppercase; letter-spacing: 0.04em;">
+              {{ subject.name }} ({{ subject.code }})
+            </span>
+            <h1 style="font-family: var(--prof-font-display); font-size: 1.65rem; font-weight: 700; color: var(--prof-text-main); margin: 0.25rem 0 0 0;">
+              {% if note %}{{ note.title }}{% else %}{{ topic.name }} - Study Notes{% endif %}
+            </h1>
+          </div>
+          <span class="prof-tag" style="background: var(--prof-bg); color: var(--prof-text-muted); border: 1px solid var(--prof-border); font-size: 0.75rem;">
+            <i data-lucide="clock" style="width: 0.8rem; height: 0.8rem;"></i>
+            ~10 min reading time
+          </span>
+        </div>
+
+        {% if note and note.content %}
+        <div id="notes-rendered-content" class="preview-prose">
+          <!-- Markdown will be rendered here -->
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--prof-text-muted);">
+          <i data-lucide="file-text" style="width: 2.5rem; height: 2.5rem; margin: 0 auto 0.75rem; opacity: 0.5;"></i>
+          <h3 style="font-size: 1.05rem; font-weight: 600; color: var(--prof-text-main); margin-bottom: 0.25rem;">No Study Notes Published Yet</h3>
+          <p style="font-size: 0.85rem; max-width: 24rem; margin: 0 auto 1.5rem;">Use Plan Mode to generate and publish comprehensive study notes for this topic.</p>
+          <a href="{% url 'voice_tutor:professor_plan' %}?topic={{ topic.name|urlencode }}&subject={{ subject.name|urlencode }}" class="prof-btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+            <i data-lucide="compass" style="width: 0.95rem; height: 0.95rem;"></i>
+            Open in Plan Mode
+          </a>
+        </div>
+        {% endif %}
+
+        {% if question_count > 0 %}
+        <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--prof-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <span style="font-size: 0.85rem; color: var(--prof-text-muted);">
+            Finished reading? Test your understanding with the practice assignment.
+          </span>
+          <button onclick="switchTab('quiz')" class="prof-btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+            Proceed to Practice Quiz ({{ question_count }} Questions)
+            <i data-lucide="arrow-right" style="width: 0.95rem; height: 0.95rem;"></i>
+          </button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ==================== TAB 2: INTERACTIVE QUIZ SANDBOX ==================== -->
+    <div id="tab-view-quiz" style="display: none;">
+      <div style="background: var(--prof-card-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-xl); padding: 2rem 2.5rem; box-shadow: var(--prof-shadow-sm);">
+
+        {% if question_count > 0 %}
+        <!-- Active Question View -->
+        <div id="quiz-active-container">
+          <!-- Quiz Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--prof-border); flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <span id="quiz-step-indicator" style="font-size: 0.75rem; font-weight: 700; color: var(--prof-primary); text-transform: uppercase; letter-spacing: 0.04em;">
+                Question 1 of {{ question_count }}
+              </span>
+              <h2 id="quiz-question-title" style="font-family: var(--prof-font-display); font-size: 1.25rem; font-weight: 700; color: var(--prof-text-main); margin: 0.25rem 0 0 0; line-height: 1.4;">
+                <!-- Question content -->
+              </h2>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <span id="quiz-diff-badge" class="prof-tag" style="background: var(--prof-bg); color: var(--prof-text-muted); border: 1px solid var(--prof-border); font-size: 0.75rem; text-transform: capitalize;">
+                Medium
+              </span>
+            </div>
+          </div>
+
+          <!-- Options List -->
+          <div id="quiz-options-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Feedback Box -->
+          <div id="quiz-feedback-box" style="display: none; padding: 1rem 1.25rem; border-radius: var(--prof-radius-lg); margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.35rem;" id="quiz-feedback-title">
+              <!-- Result -->
+            </div>
+            <p id="quiz-feedback-desc" style="font-size: 0.85rem; margin: 0; line-height: 1.5; color: var(--prof-text-main);">
+              <!-- Explanation -->
+            </p>
+          </div>
+
+          <!-- Quiz Controls -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--prof-border);">
+            <button onclick="prevQuestion()" id="btn-quiz-prev" class="prof-btn-secondary" style="display: inline-flex; align-items: center; gap: 0.4rem;" disabled>
+              <i data-lucide="arrow-left" style="width: 0.9rem; height: 0.9rem;"></i>
+              Previous
+            </button>
+            <div style="font-size: 0.85rem; color: var(--prof-text-muted);">
+              Score: <strong id="quiz-score-display" style="color: var(--prof-primary);">0</strong> / {{ question_count }}
+            </div>
+            <button onclick="nextQuestion()" id="btn-quiz-next" class="prof-btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+              Next
+              <i data-lucide="arrow-right" style="width: 0.9rem; height: 0.9rem;"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quiz Completed Summary View -->
+        <div id="quiz-summary-container" style="display: none; text-align: center; padding: 2rem 1rem;">
+          <div style="width: 3.5rem; height: 3.5rem; border-radius: 50%; background: var(--prof-primary-light); color: var(--prof-primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+            <i data-lucide="award" style="width: 1.85rem; height: 1.85rem;"></i>
+          </div>
+          <h2 style="font-family: var(--prof-font-display); font-size: 1.5rem; font-weight: 700; color: var(--prof-text-main); margin-bottom: 0.35rem;">
+            Practice Quiz Completed!
+          </h2>
+          <p style="font-size: 0.9rem; color: var(--prof-text-muted); margin-bottom: 1.5rem;">
+            You scored <strong id="summary-final-score" style="color: var(--prof-primary); font-size: 1.15rem;"></strong> out of {{ question_count }}.
+          </p>
+          <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+            <button onclick="resetQuiz()" class="prof-btn-secondary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="rotate-ccw" style="width: 0.9rem; height: 0.9rem;"></i>
+              Retake Quiz
+            </button>
+            <button onclick="switchTab('tutor')" class="prof-btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="{% if game_enabled %}gamepad-2{% else %}bot{% endif %}" style="width: 0.9rem; height: 0.9rem;"></i>
+              {% if game_enabled %}View Game Plan{% else %}Test Sage Voice Tutor{% endif %}
+            </button>
+          </div>
+        </div>
+
+        {% else %}
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--prof-text-muted);">
+          <i data-lucide="help-circle" style="width: 2.5rem; height: 2.5rem; margin: 0 auto 0.75rem; opacity: 0.5;"></i>
+          <h3 style="font-size: 1.05rem; font-weight: 600; color: var(--prof-text-main); margin-bottom: 0.25rem;">No Assessment Published Yet</h3>
+          <p style="font-size: 0.85rem; max-width: 24rem; margin: 0 auto 1.5rem;">Use Plan Mode to generate multiple-choice questions for this topic.</p>
+          <a href="{% url 'voice_tutor:professor_plan' %}?topic={{ topic.name|urlencode }}&subject={{ subject.name|urlencode }}" class="prof-btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+            <i data-lucide="compass" style="width: 0.95rem; height: 0.95rem;"></i>
+            Open in Plan Mode
+          </a>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+    <!-- ==================== TAB 3: STUDENT GAME / VOICE TUTOR ==================== -->
+    <div id="tab-view-tutor" style="display: none;">
+      {% if game_enabled %}
+      <section class="game-plan-shell" aria-labelledby="game-plan-title">
+        <div class="game-plan-header">
+          <div class="game-plan-heading">
+            <span class="game-plan-icon">
+              <i data-lucide="gamepad-2" style="width: 1.25rem; height: 1.25rem;"></i>
+            </span>
+            <div>
+              <h2 id="game-plan-title">{{ game_title|default:"Oral Defense" }}</h2>
+              <p>The complete Oral Defense plan prepared for this topic.</p>
+            </div>
+          </div>
+          <span class="game-plan-status">
+            <i data-lucide="check-circle-2" style="width: 0.85rem; height: 0.85rem;"></i>
+            Included for students
+          </span>
+        </div>
+        <div class="game-plan-summary">
+          <div class="game-plan-stat">
+            <span>Game template</span>
+            <strong>Oral Defense</strong>
+          </div>
+          <div class="game-plan-stat">
+            <span>Progression</span>
+            <strong>{{ game_levels|length }} sequential level{{ game_levels|length|pluralize }}</strong>
+          </div>
+          <div class="game-plan-stat">
+            <span>Student response</span>
+            <strong>Spoken explanation</strong>
+          </div>
+        </div>
+        <div class="game-plan-levels">
+          {% for level in game_levels %}
+          <article class="game-plan-level">
+            <span class="game-plan-level-number">{{ forloop.counter }}</span>
+            <div class="game-plan-level-card">
+              <div class="game-plan-level-top">
+                <h3>{{ level.title|default:"Oral Defense Level" }}</h3>
+                <span class="game-plan-topic">{{ level.topic|default:topic.name }}</span>
+              </div>
+              <div class="game-plan-section">
+                <div class="game-plan-section-label">
+                  <i data-lucide="message-circle-question" style="width: 0.8rem; height: 0.8rem;"></i>
+                  Spoken challenge
+                </div>
+                <div class="game-plan-question">{{ level.question }}</div>
+              </div>
+              <div class="game-plan-section">
+                <div class="game-plan-section-label">
+                  <i data-lucide="clipboard-check" style="width: 0.8rem; height: 0.8rem;"></i>
+                  Professor evaluation criteria
+                </div>
+                <div class="game-plan-criteria" data-game-level-criteria="{{ forloop.counter0 }}">{{ level.knowledge_base }}</div>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      {% else %}
+      <div style="background: var(--prof-card-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-xl); padding: 2rem 2.5rem; box-shadow: var(--prof-shadow-sm);">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--prof-border);">
+          <div style="width: 2.75rem; height: 2.75rem; border-radius: var(--prof-radius-md); background: var(--prof-primary-light); color: var(--prof-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i data-lucide="sparkles" style="width: 1.4rem; height: 1.4rem;"></i>
+          </div>
+          <div>
+            <h2 style="font-family: var(--prof-font-display); font-size: 1.25rem; font-weight: 700; color: var(--prof-text-main); margin: 0 0 0.2rem 0;">
+              Sage AI Voice Tutor Grounding
+            </h2>
+            <p style="font-size: 0.85rem; color: var(--prof-text-muted); margin: 0;">
+              Sage is tuned on this topic's published study notes to assist your students with interactive Q&amp;A.
+            </p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+          <div style="background: var(--prof-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-lg); padding: 1rem;">
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--prof-text-muted); text-transform: uppercase;">Grounding Material</span>
+            <div style="font-size: 0.9rem; font-weight: 600; color: var(--prof-text-main); margin-top: 0.25rem;">
+              {% if note %}{{ note.title }}{% else %}{{ topic.name }} Notes{% endif %}
+            </div>
+          </div>
+          <div style="background: var(--prof-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-lg); padding: 1rem;">
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--prof-text-muted); text-transform: uppercase;">Active Class Batch</span>
+            <div style="font-size: 0.9rem; font-weight: 600; color: var(--prof-text-main); margin-top: 0.25rem;">
+              {{ batch_name }}
+            </div>
+          </div>
+          <div style="background: var(--prof-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-lg); padding: 1rem;">
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--prof-text-muted); text-transform: uppercase;">Curated Questions</span>
+            <div style="font-size: 0.9rem; font-weight: 600; color: var(--prof-text-main); margin-top: 0.25rem;">
+              {{ question_count }} Questions in Bank
+            </div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--prof-text-main); margin-bottom: 0.75rem;">
+          Sample Questions Students Can Ask Sage:
+        </h3>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 2rem;">
+          <div style="padding: 0.75rem 1rem; background: var(--prof-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-md); font-size: 0.85rem; color: var(--prof-text-main); display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="message-square" style="width: 0.85rem; height: 0.85rem; color: var(--prof-primary);"></i>
+            "Can you explain {{ topic.name }} in simple terms with a real-world analogy?"
+          </div>
+          <div style="padding: 0.75rem 1rem; background: var(--prof-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-md); font-size: 0.85rem; color: var(--prof-text-main); display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="message-square" style="width: 0.85rem; height: 0.85rem; color: var(--prof-primary);"></i>
+            "What are the main edge cases and trade-offs when implementing this algorithm?"
+          </div>
+          <div style="padding: 0.75rem 1rem; background: var(--prof-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-md); font-size: 0.85rem; color: var(--prof-text-main); display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="message-square" style="width: 0.85rem; height: 0.85rem; color: var(--prof-primary);"></i>
+            "Give me a hint for Question 1 without revealing the direct answer."
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+          <a href="{% url 'voice_tutor:openai_voice_tutor' %}" target="_blank" class="prof-btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+            <i data-lucide="mic" style="width: 0.95rem; height: 0.95rem;"></i>
+            Launch Live Voice Tutor Sandbox
+          </a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+{% if game_enabled %}{{ game_levels|json_script:"game-plan-levels-data" }}{% endif %}
+<script>
+  // Raw Notes Markdown Injection
+  document.addEventListener('DOMContentLoaded', () => {
+    {% if note and note.content %}
+    const rawMarkdown = `{{ note.content|escapejs }}`;
+    const target = document.getElementById('notes-rendered-content');
+    if (target && window.marked) {
+      target.innerHTML = marked.parse(rawMarkdown);
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([target]).catch(err => console.log('MathJax error:', err));
+      }
+    }
+    {% endif %}
+
+    renderGamePlan();
+
+    // Init Quiz
+    initQuiz();
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  });
+
+  // Tab Switcher
+  function switchTab(tabId) {
+    document.getElementById('tab-view-notes').style.display = tabId === 'notes' ? 'block' : 'none';
+    document.getElementById('tab-view-quiz').style.display = tabId === 'quiz' ? 'block' : 'none';
+    document.getElementById('tab-view-tutor').style.display = tabId === 'tutor' ? 'block' : 'none';
+
+    document.getElementById('tab-btn-notes').classList.toggle('active', tabId === 'notes');
+    document.getElementById('tab-btn-quiz').classList.toggle('active', tabId === 'quiz');
+    document.getElementById('tab-btn-tutor').classList.toggle('active', tabId === 'tutor');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  }
+
+  function escapeGameMarkdown(value) {
+    return String(value || '').replace(/[&<>]/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;'
+    }[char]));
+  }
+
+  function normalizeGameMarkdown(value) {
+    return String(value || '')
+      .replace(/`\s*``(?=\s*[A-Za-z])/g, '```')
+      .replace(/``\s*`/g, '```');
+  }
+
+  function renderGamePlan() {
+    const dataNode = document.getElementById('game-plan-levels-data');
+    const gameTab = document.getElementById('tab-view-tutor');
+    if (!dataNode || !gameTab) return;
+
+    let levels = [];
+    try {
+      levels = JSON.parse(dataNode.textContent || '[]');
+    } catch (_) {
+      levels = [];
+    }
+
+    document.querySelectorAll('[data-game-level-criteria]').forEach(target => {
+      const level = levels[Number(target.dataset.gameLevelCriteria)] || {};
+      const content = normalizeGameMarkdown(level.knowledge_base || target.textContent);
+      if (window.marked) {
+        target.innerHTML = marked.parse(escapeGameMarkdown(content));
+      } else {
+        target.textContent = content;
+      }
+    });
+
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([gameTab]).catch(err => console.log('MathJax error:', err));
+    }
+  }
+
+  // Quiz Sandbox Engine (100% Client-Side, No DB Mutations)
+  const quizQuestions = {{ questions_json|safe|default:"[]" }};
+  let currentIdx = 0;
+  let userAnswers = {}; // { questionIdx: { selectedLetter, isCorrect } }
+
+  function initQuiz() {
+    if (!quizQuestions || quizQuestions.length === 0) return;
+    renderQuestion(0);
+  }
+
+  function renderQuestion(idx) {
+    currentIdx = idx;
+    const q = quizQuestions[idx];
+    if (!q) return;
+
+    document.getElementById('quiz-step-indicator').textContent = `Question ${idx + 1} of ${quizQuestions.length}`;
+    document.getElementById('quiz-question-title').textContent = q.content;
+    document.getElementById('quiz-diff-badge').textContent = q.difficulty || 'Medium';
+
+    const optsList = document.getElementById('quiz-options-list');
+    optsList.innerHTML = '';
+
+    const answered = userAnswers[idx];
+
+    q.options.forEach((opt, optIdx) => {
+      const btn = document.createElement('button');
+      btn.className = 'quiz-option-btn';
+      btn.innerHTML = `
+        <span class="quiz-option-letter">${opt.letter.toUpperCase()}</span>
+        <span style="flex: 1;">${opt.text}</span>
+      `;
+
+      if (answered) {
+        btn.disabled = true;
+        if (opt.is_correct) {
+          btn.classList.add('opt-correct');
+        } else if (opt.letter === answered.selectedLetter) {
+          btn.classList.add('opt-incorrect');
+        }
+      } else {
+        btn.onclick = () => selectOption(idx, opt.letter, opt.is_correct);
+      }
+
+      optsList.appendChild(btn);
+    });
+
+    // Feedback
+    const fbBox = document.getElementById('quiz-feedback-box');
+    const fbTitle = document.getElementById('quiz-feedback-title');
+    const fbDesc = document.getElementById('quiz-feedback-desc');
+
+    if (answered) {
+      fbBox.style.display = 'block';
+      if (answered.isCorrect) {
+        fbBox.style.background = '#dcfce7';
+        fbBox.style.border = '1px solid #86efac';
+        fbTitle.style.color = '#15803d';
+        fbTitle.innerHTML = '<i data-lucide="check-circle" style="width: 1rem; height: 1rem;"></i> Correct Answer';
+        fbDesc.textContent = 'Well done! You identified the correct concept accurately.';
+      } else {
+        fbBox.style.background = '#fee2e2';
+        fbBox.style.border = '1px solid #fca5a5';
+        fbTitle.style.color = '#b91c1c';
+        fbTitle.innerHTML = '<i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i> Incorrect Answer';
+        fbDesc.textContent = `The correct answer is Option ${q.correct_answer.toUpperCase()}. Review the study notes to strengthen this concept.`;
+      }
+    } else {
+      fbBox.style.display = 'none';
+    }
+
+    // Prev / Next button states
+    document.getElementById('btn-quiz-prev').disabled = idx === 0;
+    const nextBtn = document.getElementById('btn-quiz-next');
+    if (idx === quizQuestions.length - 1) {
+      nextBtn.innerHTML = 'Finish Quiz <i data-lucide="check" style="width: 0.9rem; height: 0.9rem;"></i>';
+    } else {
+      nextBtn.innerHTML = 'Next <i data-lucide="arrow-right" style="width: 0.9rem; height: 0.9rem;"></i>';
+    }
+
+    updateScoreDisplay();
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  }
+
+  function selectOption(qIdx, letter, isCorrect) {
+    userAnswers[qIdx] = { selectedLetter: letter, isCorrect: isCorrect };
+    renderQuestion(qIdx);
+  }
+
+  function nextQuestion() {
+    if (currentIdx < quizQuestions.length - 1) {
+      renderQuestion(currentIdx + 1);
+    } else {
+      showQuizSummary();
+    }
+  }
+
+  function prevQuestion() {
+    if (currentIdx > 0) {
+      renderQuestion(currentIdx - 1);
+    }
+  }
+
+  function updateScoreDisplay() {
+    const score = Object.values(userAnswers).filter(a => a.isCorrect).length;
+    const scoreEl = document.getElementById('quiz-score-display');
+    if (scoreEl) {
+      scoreEl.textContent = score;
+    }
+  }
+
+  function showQuizSummary() {
+    const score = Object.values(userAnswers).filter(a => a.isCorrect).length;
+    document.getElementById('quiz-active-container').style.display = 'none';
+    document.getElementById('quiz-summary-container').style.display = 'block';
+    document.getElementById('summary-final-score').textContent = `${score}`;
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  }
+
+  function resetQuiz() {
+    userAnswers = {};
+    document.getElementById('quiz-summary-container').style.display = 'none';
+    document.getElementById('quiz-active-container').style.display = 'block';
+    renderQuestion(0);
+  }
+</script>
+{% endblock %}

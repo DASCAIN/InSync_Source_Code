@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional
 
 import aiohttp
+from openai import AuthenticationError, BadRequestError, OpenAI, PermissionDeniedError
 
 from services.mem0_service import get_mem0_service
 from services.tutor_agent_service import SYSTEM_PROMPT
@@ -47,6 +48,47 @@ class OpenAIVoiceService:
             "near_field",
         )
         self.mem0_service = get_mem0_service()
+
+    def transcribe_audio(
+        self,
+        audio_file: Any,
+        filename: str,
+        content_type: str = "audio/webm",
+    ) -> str:
+        """Transcribe a short uploaded recording without persisting the audio."""
+        if not audio_file:
+            raise ValueError("Audio recording is empty")
+
+        client = OpenAI(api_key=self.api_key)
+        request: Dict[str, Any] = {
+            "model": self.transcription_model,
+            "file": (filename or "topic-brief.webm", audio_file, content_type or "audio/webm"),
+            "response_format": "json",
+        }
+        language = self.transcription_language.strip()
+        if language:
+            request["language"] = language
+        prompt = self.transcription_prompt.strip()
+        if prompt and self.transcription_model != "gpt-realtime-whisper":
+            request["prompt"] = prompt
+
+        try:
+            response = client.audio.transcriptions.create(**request)
+        except BadRequestError as exc:
+            logger.warning("OpenAI rejected the transcription audio: %s", exc)
+            raise ValueError(
+                "OpenAI could not read that recording. Speak for at least two seconds and try again."
+            ) from exc
+        except (AuthenticationError, PermissionDeniedError) as exc:
+            logger.error("OpenAI transcription credentials or permissions failed: %s", exc)
+            raise RuntimeError("OpenAI voice transcription is not available for this account.") from exc
+        text = getattr(response, "text", "")
+        if not text and isinstance(response, dict):
+            text = response.get("text", "")
+        text = str(text or "").strip()
+        if not text:
+            raise ValueError("No speech was detected in the recording")
+        return text
 
     async def create_realtime_session(
         self,

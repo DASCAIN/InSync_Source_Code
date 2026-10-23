@@ -1,30 +1,119 @@
 import logging
+import json
+import os
+import time
 from pathlib import Path
 
 import inngest
 from app.services.inngest_client import inngest_client
 from app.services.document_processor import process_file, chunk_text
-from app.services.vector_store import add_documents
+from app.services.ingestion_artifacts import (
+    cleanup_artifacts,
+    read_documents_artifact,
+    read_pages_artifact,
+    sha256_file,
+    write_documents_artifact,
+    write_pages_artifact,
+)
+from app.services.vector_store import add_documents, get_document_index_status
 
 logger = logging.getLogger(__name__)
 
-def update_job_status(job_id, status_str, progress):
+def update_job_status(job_id, status_str, progress, step=None, **details):
     if not job_id:
         return
     try:
         from config import get_settings
-        import json
         settings = get_settings()
-        job_file = settings.UPLOADS_DIR / "jobs" / f"{job_id}.json"
+        jobs_dir = settings.UPLOADS_DIR / "jobs"
+        jobs_dir.mkdir(parents=True, exist_ok=True)
+        job_file = jobs_dir / f"{job_id}.json"
+        data = {}
         if job_file.exists():
-            with open(job_file, "r") as f:
-                data = json.load(f)
-            data["status"] = status_str
-            data["progress"] = progress
-            with open(job_file, "w") as f:
-                json.dump(data, f)
+            try:
+                with open(job_file, "r") as f:
+                    data = json.load(f)
+            except Exception:
+                data = {}
+        data["status"] = status_str
+        data["progress"] = progress
+        data.update(details)
+        if step is not None:
+            cur_step = data.get("step", 1)
+            data["step"] = max(cur_step, step)
+        temporary = job_file.with_suffix(".json.tmp")
+        with open(temporary, "w") as f:
+            json.dump(data, f)
+        os.replace(temporary, job_file)
     except Exception as e:
         logger.error(f"Failed to update job status: {e}")
+
+
+def _artifact_id(job_id: str | None, file_path: str) -> str:
+    if job_id:
+        return job_id
+    path = Path(file_path)
+    try:
+        version = path.stat().st_mtime_ns
+    except OSError:
+        version = 0
+    return f"ingest-{path.name}-{version}"
+
+
+def _extract_to_artifact(
+    file_path: str,
+    artifact_id: str,
+    *,
+    existing_artifact_path: str = "",
+    known_file_hash: str = "",
+) -> dict:
+    started_at = time.perf_counter()
+    if existing_artifact_path and Path(existing_artifact_path).exists():
+        artifact_hash, pages = read_pages_artifact(existing_artifact_path)
+        file_hash = known_file_hash or artifact_hash or sha256_file(file_path)
+        artifact_path = existing_artifact_path
+        reused = True
+    else:
+        file_hash = known_file_hash or sha256_file(file_path)
+        pages = process_file(file_path)
+        artifact_path = write_pages_artifact(
+            artifact_id,
+            pages,
+            file_sha256=file_hash,
+        )
+        reused = False
+
+    return {
+        "pages_artifact_path": artifact_path,
+        "file_sha256": file_hash,
+        "page_count": len(pages),
+        "ocr_page_count": sum(page.get("extraction_method") == "ocr" for page in pages),
+        "artifact_reused": reused,
+        "duration_seconds": round(time.perf_counter() - started_at, 3),
+    }
+
+
+def _chunk_to_artifact(
+    extraction: dict,
+    artifact_id: str,
+    subject: str,
+    topic: str,
+    filename: str,
+) -> dict:
+    started_at = time.perf_counter()
+    _, pages = read_pages_artifact(extraction["pages_artifact_path"])
+    documents = chunk_text(pages, subject, topic, filename)
+    chunks_path = write_documents_artifact(
+        artifact_id,
+        documents,
+        file_sha256=extraction["file_sha256"],
+    )
+    return {
+        "chunks_artifact_path": chunks_path,
+        "file_sha256": extraction["file_sha256"],
+        "chunk_count": len(documents),
+        "duration_seconds": round(time.perf_counter() - started_at, 3),
+    }
 
 @inngest_client.create_function(
     fn_id="RAG: Ingest PDF",
@@ -56,62 +145,157 @@ async def rag_ingest_pdf(*args, **kwargs) -> dict:
     """
     # Simplify payload for direct testing: only pdf_path (or file_path) is strictly required
     file_path = ctx.event.data.get("pdf_path") or ctx.event.data.get("file_path")
+    job_id = ctx.event.data.get("job_id")
     if not file_path:
+        update_job_status(job_id, "Missing file path", 100)
         return {"status": "failed", "message": "Missing 'pdf_path' in event data."}
 
     filename = ctx.event.data.get("filename", Path(file_path).name)
     subject = ctx.event.data.get("subject", "Test Subject")
     topic = ctx.event.data.get("topic", "Test Topic")
+    tenant_id = str(ctx.event.data.get("tenant_id") or "default")
+    artifact_id = _artifact_id(job_id, file_path)
+    pages_artifact_path = str(ctx.event.data.get("pages_artifact_path") or "")
+    known_file_hash = str(ctx.event.data.get("file_sha256") or "")
 
     logger.info(f"Inngest started processing document: {file_path}")
+    update_job_status(job_id, "Fingerprinting document", 10, step=1)
 
-    # Step 1: Extract Text
+    def _fingerprint_file():
+        return known_file_hash or sha256_file(file_path)
+
+    file_hash = await step.run("fingerprint_file", _fingerprint_file)
+
+    def _check_existing_index():
+        return get_document_index_status(
+            subject,
+            topic,
+            filename,
+            file_hash,
+            tenant_id=tenant_id,
+        )
+
+    existing_index = await step.run("check_existing_index", _check_existing_index)
+    if existing_index.get("complete"):
+        update_job_status(
+            job_id,
+            "Ready (already indexed)",
+            100,
+            step=3,
+            document_id=existing_index["document_id"],
+            reused_chunks=existing_index["indexed_count"],
+        )
+        cleanup_artifacts(pages_artifact_path)
+        return {
+            "status": "success",
+            "chunks_processed": existing_index["indexed_count"],
+            "artifact_reused": False,
+            "qdrant": {
+                "status": "already_indexed",
+                "document_id": existing_index["document_id"],
+                "indexed_count": 0,
+                "reused_count": existing_index["indexed_count"],
+            },
+        }
+
+    update_job_status(job_id, "Reading pages", 20, step=1)
+
+    # Step 1: Extract once and persist a small artifact reference. Plan Mode can
+    # provide an artifact it already created, avoiding a second PDF/OCR pass.
     def _extract_text():
         logger.info("Step 1: Extracting text")
-        return process_file(file_path)
+        return _extract_to_artifact(
+            file_path,
+            artifact_id,
+            existing_artifact_path=pages_artifact_path,
+            known_file_hash=file_hash,
+        )
     
-    extracted_pages = await step.run("extract_text", _extract_text)
+    extraction = await step.run("extract_text", _extract_text)
 
-    if not extracted_pages:
+    if not extraction or not extraction.get("page_count"):
         logger.error("Extraction failed or returned empty text.")
+        update_job_status(job_id, "Extraction failed", 100)
         return {"status": "failed", "message": "Extraction failed or returned empty text."}
+
+    update_job_status(
+        job_id,
+        "Finding key concepts",
+        55,
+        step=2,
+        page_count=extraction["page_count"],
+        ocr_page_count=extraction["ocr_page_count"],
+        extraction_seconds=extraction["duration_seconds"],
+    )
 
     # Step 2: Chunk Text
     def _chunk_text():
         logger.info("Step 2: Chunking text")
-        # chunk_text returns a list of LangChain Document objects.
-        # Inngest step results must be JSON serializable, so we serialize them manually.
-        docs = chunk_text(extracted_pages, subject, topic, filename)
-        return [
-            {
-                "page_content": doc.page_content,
-                "metadata": doc.metadata
-            }
-            for doc in docs
-        ]
+        return _chunk_to_artifact(
+            extraction,
+            artifact_id,
+            subject,
+            topic,
+            filename,
+        )
 
-    chunks_data = await step.run("chunk_text", _chunk_text)
+    chunking = await step.run("chunk_text", _chunk_text)
 
-    if not chunks_data:
+    if not chunking or not chunking.get("chunk_count"):
         logger.error("Chunking failed or returned empty chunks.")
+        update_job_status(job_id, "Chunking failed", 100)
         return {"status": "failed", "message": "Chunking failed or returned empty chunks."}
+
+    update_job_status(
+        job_id,
+        "Embedding and indexing",
+        85,
+        step=3,
+        chunk_count=chunking["chunk_count"],
+        chunking_seconds=chunking["duration_seconds"],
+    )
 
     # Step 3: Embed & Store in Vector DB
     def _store_vectors():
         logger.info("Step 3: Storing vectors in Qdrant")
-        from langchain_core.documents import Document
-        # Reconstruct LangChain Document objects
-        docs = [
-            Document(page_content=c["page_content"], metadata=c["metadata"])
-            for c in chunks_data
-        ]
-        add_documents(subject, topic, docs)
-        return True
+        file_hash, documents = read_documents_artifact(chunking["chunks_artifact_path"])
+        return add_documents(
+            subject,
+            topic,
+            documents,
+            file_sha256=file_hash,
+            tenant_id=tenant_id,
+        )
 
-    await step.run("store_vectors", _store_vectors)
+    indexing = await step.run("store_vectors", _store_vectors)
 
-    logger.info(f"Successfully processed and indexed {len(chunks_data)} chunks for {file_path}")
-    return {"status": "success", "chunks_processed": len(chunks_data)}
+    update_job_status(
+        job_id,
+        "Ready",
+        100,
+        step=3,
+        document_id=indexing.get("document_id"),
+        indexed_chunks=indexing.get("indexed_count", 0),
+        reused_chunks=indexing.get("reused_count", 0),
+    )
+    cleanup_artifacts(
+        extraction.get("pages_artifact_path", ""),
+        chunking.get("chunks_artifact_path", ""),
+    )
+    logger.info(
+        "Successfully processed %d chunks for %s (Qdrant status: %s)",
+        chunking["chunk_count"],
+        file_path,
+        indexing.get("status"),
+    )
+    return {
+        "status": "success",
+        "chunks_processed": chunking["chunk_count"],
+        "pages_processed": extraction["page_count"],
+        "ocr_pages": extraction["ocr_page_count"],
+        "artifact_reused": extraction["artifact_reused"],
+        "qdrant": indexing,
+    }
 
 
 @inngest_client.create_function(
@@ -244,29 +428,56 @@ async def rag_generate_assignment(*args, **kwargs) -> dict:
     topic = ctx.event.data.get("topic", "Test Topic")
     batch_id = ctx.event.data.get("batch_id", "C101")
     filename = ctx.event.data.get("filename", Path(file_path).name)
+    tenant_id = str(ctx.event.data.get("tenant_id") or "default")
+    artifact_id = _artifact_id(job_id, file_path)
+    known_file_hash = str(ctx.event.data.get("file_sha256") or "")
 
     logger.info(f"Generating assignment from {file_path}")
 
-    # Step 1: Extract & Chunk Text
+    # Step 1: Persist parsed pages and chunks outside the Inngest step payload.
     def _extract_and_chunk():
-        extracted = process_file(file_path)
-        docs = chunk_text(extracted, subject, topic, filename)
-        return [{"page_content": doc.page_content, "metadata": doc.metadata} for doc in docs]
+        extraction = _extract_to_artifact(
+            file_path,
+            artifact_id,
+            known_file_hash=known_file_hash,
+        )
+        chunking = _chunk_to_artifact(
+            extraction,
+            artifact_id,
+            subject,
+            topic,
+            filename,
+        )
+        return {"extraction": extraction, "chunking": chunking}
 
-    chunks_data = await step.run("extract_and_chunk", _extract_and_chunk)
+    prepared = await step.run("extract_and_chunk", _extract_and_chunk)
 
-    if not chunks_data:
+    if not prepared or not prepared.get("chunking", {}).get("chunk_count"):
         update_job_status(job_id, "Extraction/Chunking failed.", 100)
         return {"status": "failed", "message": "Extraction/Chunking failed."}
+
+    extraction = prepared["extraction"]
+    chunking = prepared["chunking"]
         
-    update_job_status(job_id, "Extracting text and chunking...", 25)
+    update_job_status(
+        job_id,
+        "Extracted and chunked",
+        25,
+        page_count=extraction["page_count"],
+        ocr_page_count=extraction["ocr_page_count"],
+        chunk_count=chunking["chunk_count"],
+    )
 
     # Step 2: Ingest into Qdrant for the AI Chat Tutor
     def _store_vectors():
-        from langchain_core.documents import Document
-        docs = [Document(page_content=c["page_content"], metadata=c["metadata"]) for c in chunks_data]
-        add_documents(subject, topic, docs)
-        return True
+        file_hash, documents = read_documents_artifact(chunking["chunks_artifact_path"])
+        return add_documents(
+            subject,
+            topic,
+            documents,
+            file_sha256=file_hash,
+            tenant_id=tenant_id,
+        )
 
     await step.run("store_vectors", _store_vectors)
     
@@ -276,7 +487,8 @@ async def rag_generate_assignment(*args, **kwargs) -> dict:
     async def _generate_json():
         from app.services.generator import generate_structured_assignment
         # Combine all chunk text to provide the full assignment context
-        context_str = "\n\n".join([c["page_content"] for c in chunks_data])
+        _, documents = read_documents_artifact(chunking["chunks_artifact_path"])
+        context_str = "\n\n".join(document.page_content for document in documents)
         # Calling the new structured output function
         assignment_data = await generate_structured_assignment(subject, topic, context_str)
         # Pydantic models need to be dumped to dict for Inngest step output
@@ -310,10 +522,16 @@ async def rag_generate_assignment(*args, **kwargs) -> dict:
     
     update_job_status(job_id, "Completed!", 100)
 
+    cleanup_artifacts(
+        extraction.get("pages_artifact_path", ""),
+        chunking.get("chunks_artifact_path", ""),
+    )
+
     return {
         "status": "success",
         "assignment_code": assign_code,
-        "questions_generated": len(assignment_json.get("questions", []))
+        "questions_generated": len(assignment_json.get("questions", [])),
+        "chunks_processed": chunking["chunk_count"],
     }
 
 @inngest_client.create_function(
@@ -406,4 +624,3 @@ async def rag_tutor_chat(*args, **kwargs) -> dict:
         "user_id": user_id,
         "metrics": metrics
     }
-

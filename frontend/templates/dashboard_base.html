@@ -196,6 +196,15 @@
             <span class="font-medium">Dashboard</span>
           </a>
           <a
+            href="{% url 'voice_tutor:professor_plan' %}"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group"
+            style="{% if active_tab == 'plan' %}background-color: hsl(217, 91%, 60%); color: #fff; box-shadow: 0 4px 12px -2px hsla(217, 91%, 60%, 0.3);{% else %}color: var(--db-sidebar-text);{% endif %}"
+            {% if active_tab != 'plan' %}onmouseenter="this.style.backgroundColor='hsl(214 95% 93%)'; this.style.color='hsl(217 91% 60%)'" onmouseleave="this.style.backgroundColor=''; this.style.color='hsl(220 9% 46%)'"{% endif %}
+          >
+            <i data-lucide="compass" class="w-5 h-5"></i>
+            <span class="font-medium">Plan Mode</span>
+          </a>
+          <a
             href="{% url 'voice_tutor:professor_batchs' %}"
             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group"
             style="{% if active_tab == 'batchs' %}background-color: hsl(217, 91%, 60%); color: #fff; box-shadow: 0 4px 12px -2px hsla(217, 91%, 60%, 0.3);{% else %}color: var(--db-sidebar-text);{% endif %}"
@@ -394,8 +403,9 @@
   }
 
   (function initDarkMode() {
-    if (localStorage.getItem('darkMode') === 'true') {
+    if (localStorage.getItem('darkMode') === 'true' || localStorage.getItem('insync-dark-mode') === '1') {
       document.documentElement.classList.add('dark');
+      document.documentElement.setAttribute('data-theme', 'dark');
     }
     // Icons are created by lucide.createIcons() in base.html before this script.
     // Use a micro-delay to ensure SVGs are fully in the DOM.
@@ -404,7 +414,9 @@
 
   function toggleDarkMode() {
     const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('darkMode', isDark);
+    localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+    localStorage.setItem('insync-dark-mode', isDark ? '1' : '0');
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     lucide.createIcons();
     updateDarkModeUI();
   }

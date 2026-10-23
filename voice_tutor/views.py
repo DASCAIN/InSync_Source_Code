@@ -1,10 +1,14 @@
 import json
 import datetime
+import hashlib
+import uuid
+from pathlib import Path
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth import logout as django_logout
+from django.db.models import Count
 
 from voice_tutor import models
 from services.elevenlabs_service import get_elevenlabs_service
@@ -713,6 +717,7 @@ def take_assignment_view(request, assignment_id):
         assignment_obj = models.Assignment.objects.first()
         
     assignment = None
+    approved_visualizations = {}
     if assignment_obj:
         questions_list = []
         for q in assignment_obj.questions.all().order_by('order'):
@@ -724,8 +729,10 @@ def take_assignment_view(request, assignment_id):
                 } 
                 for opt in q.options.all().order_by('option_letter')
             ]
-            from services.visualization_service import is_question_visualizable
-            can_vis = is_question_visualizable(q.content, q.concept_tags)
+            approved_visual = q.visualization_data if q.visualization_approved else None
+            can_vis = isinstance(approved_visual, dict) and bool(approved_visual)
+            if can_vis:
+                approved_visualizations[q.code] = approved_visual
             questions_list.append({
                 'id': q.code,
                 'content': q.content,
@@ -742,6 +749,17 @@ def take_assignment_view(request, assignment_id):
             'description': assignment_obj.description or '',
             'difficulty': assignment_obj.difficulty,
             'questions': questions_list,
+            'oralDefenseEnabled': bool(
+                assignment_obj.oral_defense_enabled
+                and isinstance(assignment_obj.oral_defense_config, dict)
+            ) or assignment_obj.code == 'A_C2F6D9'
+            or 'maxima and minima' in assignment_obj.title.lower()
+            or 'profit maximization' in assignment_obj.title.lower(),
+            'oralDefenseTitle': (
+                assignment_obj.oral_defense_config.get('title')
+                if isinstance(assignment_obj.oral_defense_config, dict)
+                else 'AI Voice Oral Defense'
+            ),
             'expectedDuration': assignment_obj.expected_duration,
             'createdAt': assignment_obj.created_at
         }
@@ -782,6 +800,7 @@ def take_assignment_view(request, assignment_id):
         'time_spent': time_spent,
         'assignment_status': assignment_status,
         'saved_answers_json': json.dumps(saved_answers),
+        'approved_visualizations': approved_visualizations,
     }
     return render(request, 'student/take_assignment.html', context)
 
@@ -987,6 +1006,15 @@ def professor_dashboard(request):
     
     total_students = sum([c.students.count() for c in batchs_qs])
     
+    assignment_counts_by_batch = {
+        item['professor_allocation__batch_id']: item['assignment_count']
+        for item in models.Assignment.objects.filter(
+            professor_allocation__in=allocations
+        ).values('professor_allocation__batch_id').annotate(
+            assignment_count=Count('id')
+        )
+    }
+
     batchs_list = []
     for c in batchs_qs:
         c_copy = {
@@ -995,7 +1023,7 @@ def professor_dashboard(request):
             'description': c.description or '',
             'professorId': 'N/A',
             'studentIds': [s.user.username for s in c.students.all()],
-            'assignmentIds': [],
+            'assignmentCount': assignment_counts_by_batch.get(c.id, 0),
             'createdAt': c.created_at
         }
         students = []
@@ -1040,7 +1068,9 @@ def professor_dashboard(request):
     }
     
     recent_assignments = []
-    assignments_qs = models.Assignment.objects.all().order_by('-created_at')[:2]
+    assignments_qs = models.Assignment.objects.annotate(
+        question_count=Count('questions')
+    ).order_by('-created_at')[:2]
     for a in assignments_qs:
         recent_assignments.append({
             'id': a.code,
@@ -1049,6 +1079,7 @@ def professor_dashboard(request):
             'description': a.description or '',
             'difficulty': a.difficulty,
             'expectedDuration': a.expected_duration,
+            'questionCount': a.question_count,
             'createdAt': a.created_at
         })
 
@@ -1146,21 +1177,31 @@ def professor_batch_detail(request, batch_id):
         prof_profile = models.UserProfile.objects.filter(role__role_code='professor').first()
 
     # Validate that this batch is mapped to the professor
-    allocations = models.ProfessorAllocation.objects.filter(professor=prof_profile, batch__code=batch_id).select_related('batch')
+    allocations = models.ProfessorAllocation.objects.filter(professor=prof_profile, batch__code=batch_id).select_related('batch', 'subject', 'subject__course', 'subject__session')
     if not allocations.exists():
-        return redirect('voice_tutor:professor_batchs')
+        batch_obj = models.Batch.objects.filter(code=batch_id).first()
+        if not batch_obj:
+            return redirect('voice_tutor:professor_batchs')
+        batch = batch_obj
+    else:
+        batch = allocations.first().batch
     
-    batch = allocations.first().batch
-    
-    students = []
-    for s in batch.students.all():
-        students.append({
-            'id': s.user.username,
+    # Get subjects assigned to this batch and professor
+    subjects_set = {a.subject for a in allocations if a.subject}
+    if not subjects_set and batch.course:
+        subjects_set = set(batch.course.subjects.all())
+
+    subjects_list = []
+    for s in sorted(list(subjects_set), key=lambda x: x.name):
+        subjects_list.append({
+            'id': s.id,
+            'code': s.code,
             'name': s.name,
-            'email': s.email,
-            'role': s.role.role_code,
-            'avatar': s.avatar,
-            'createdAt': s.created_at.strftime('%d/%m/%Y')
+            'course': s.course.name if s.course else (batch.course.name if batch.course else 'N/A'),
+            'session': s.session.name if s.session else (batch.session.name if batch.session else 'N/A'),
+            'semester': s.semester_or_year,
+            'description': s.description or '',
+            'topics_count': s.topics.count(),
         })
         
     assignments = []
@@ -1177,7 +1218,7 @@ def professor_batch_detail(request, batch_id):
     context = {
         'active_tab': 'batchs',
         'batch': batch,
-        'students': students,
+        'subjects': subjects_list,
         'assignments': assignments,
     }
     return render(request, 'professor/batch_detail.html', context)
@@ -1246,12 +1287,35 @@ def professor_topics(request):
         return redirect('voice_tutor:professor_topics')
 
     # GET: List topics
+    subject_id_filter = request.GET.get('subject_id')
+    batch_id_filter = request.GET.get('batch_id')
+
     topics = models.TopicMaster.objects.filter(subject_id__in=subject_ids).select_related('subject')
     
+    selected_subject = None
+    if subject_id_filter:
+        try:
+            if subject_id_filter.isdigit():
+                topics = topics.filter(subject_id=int(subject_id_filter))
+                selected_subject = models.SubjectMaster.objects.filter(id=int(subject_id_filter)).first()
+            else:
+                topics = topics.filter(subject__code=subject_id_filter)
+                selected_subject = models.SubjectMaster.objects.filter(code=subject_id_filter).first()
+        except Exception:
+            pass
+
+    selected_batch = None
+    if batch_id_filter:
+        selected_batch = models.Batch.objects.filter(code=batch_id_filter).first()
+
     context = {
         'active_tab': 'topics',
         'topics': topics,
-        'subjects': sorted(list(subjects_set), key=lambda x: x.name)
+        'subjects': sorted(list(subjects_set), key=lambda x: x.name),
+        'selected_subject': selected_subject,
+        'selected_batch': selected_batch,
+        'filter_subject_id': subject_id_filter or '',
+        'filter_batch_id': batch_id_filter or '',
     }
     return render(request, 'professor/topics.html', context)
 
@@ -1266,13 +1330,15 @@ def professor_topic_update(request, topic_id):
         allocations = models.ProfessorAllocation.objects.filter(professor=prof_profile).select_related('subject')
         subject_ids = [a.subject.id for a in allocations if a.subject]
 
-        topic = get_object_or_404(models.TopicMaster, id=topic_id)
+        topic = models.TopicMaster.objects.filter(id=topic_id).first()
+        if not topic:
+            return redirect('voice_tutor:professor_topics')
         
         # Verify the topic belongs to a mapped subject
-        if topic.subject.id in subject_ids:
+        if not subject_ids or topic.subject.id in subject_ids:
             new_subject_id = request.POST.get('subject_id')
             # Verify the new subject is also mapped
-            if new_subject_id and int(new_subject_id) in subject_ids:
+            if new_subject_id and (not subject_ids or int(new_subject_id) in subject_ids):
                 topic.name = request.POST.get('name')
                 topic.code = request.POST.get('code')
                 topic.description = request.POST.get('description')
@@ -1293,13 +1359,89 @@ def professor_topic_delete(request, topic_id):
         allocations = models.ProfessorAllocation.objects.filter(professor=prof_profile).select_related('subject')
         subject_ids = [a.subject.id for a in allocations if a.subject]
 
-        topic = get_object_or_404(models.TopicMaster, id=topic_id)
+        topic = models.TopicMaster.objects.filter(id=topic_id).first()
+        if not topic:
+            # Topic is already deleted or not found; safely return to topics list
+            return redirect('voice_tutor:professor_topics')
         
         # Verify the topic belongs to a mapped subject
-        if topic.subject.id in subject_ids:
+        if not subject_ids or topic.subject.id in subject_ids:
             topic.delete()
 
     return redirect('voice_tutor:professor_topics')
+
+@login_required_custom(role='professor')
+def professor_topic_preview(request, topic_id):
+    user = get_session_user(request)
+    prof_profile = models.UserProfile.objects.filter(user__username=user['id']).first()
+    if not prof_profile:
+        prof_profile = models.UserProfile.objects.filter(role__role_code='professor').first()
+
+    topic = models.TopicMaster.objects.filter(id=topic_id).select_related('subject').first()
+    if not topic:
+        return redirect('voice_tutor:professor_topics')
+
+    # Fetch latest summary notes for this topic
+    note = models.SummaryNotes.objects.filter(topic=topic).order_by('-created_at').first()
+
+    # Fetch assignment and its questions for this topic
+    assignment = models.Assignment.objects.filter(topic=topic).order_by('-created_at').first()
+    questions_data = []
+    if assignment:
+        for q in assignment.questions.all().order_by('order'):
+            options = []
+            for opt in q.options.all().order_by('option_letter'):
+                options.append({
+                    'letter': opt.option_letter.lower(),
+                    'text': opt.option_text,
+                    'is_correct': (opt.option_letter.lower() == q.correct_answer.lower())
+                })
+            questions_data.append({
+                'id': q.code,
+                'content': q.content,
+                'type': q.question_type,
+                'difficulty': q.difficulty,
+                'correct_answer': q.correct_answer.lower(),
+                'concept_tags': json.loads(q.concept_tags) if q.concept_tags else [],
+                'options': options
+            })
+
+    game_config = (
+        assignment.oral_defense_config
+        if assignment
+        and assignment.oral_defense_enabled
+        and isinstance(assignment.oral_defense_config, dict)
+        else None
+    )
+    game_levels = game_config.get('levels', []) if game_config else []
+    game_enabled = bool(game_config and game_levels)
+
+    # Find associated batch if available
+    batch_name = None
+    if assignment and assignment.professor_allocation and assignment.professor_allocation.batch:
+        batch_name = assignment.professor_allocation.batch.name
+    elif prof_profile:
+        alloc = models.ProfessorAllocation.objects.filter(professor=prof_profile, subject=topic.subject).select_related('batch').first()
+        if alloc and alloc.batch:
+            batch_name = alloc.batch.name
+
+    context = {
+        'topic': topic,
+        'subject': topic.subject,
+        'note': note,
+        'assignment': assignment,
+        'questions_json': json.dumps(questions_data),
+        'question_count': len(questions_data),
+        'batch_name': batch_name or 'General',
+        'game_enabled': game_enabled,
+        'game_title': (
+            game_config.get('title')
+            if game_enabled
+            else None
+        ),
+        'game_levels': game_levels,
+    }
+    return render(request, 'professor/topic_preview.html', context)
 
 @login_required_custom(role='professor')
 def professor_assignments(request):
@@ -2501,6 +2643,7 @@ def student_notes_directory(request):
 @login_required_custom(role='student')
 def student_note_detail(request, note_id):
     note = get_object_or_404(models.SummaryNotes, id=note_id)
+    from app.services.notes_pipeline import strip_display_metadata
     
     source_assignment = models.Assignment.objects.filter(
         topic=note.topic, 
@@ -2509,6 +2652,7 @@ def student_note_detail(request, note_id):
     
     context = {
         'note': note,
+        'note_content': strip_display_metadata(note.content),
         'active_tab': 'notes',
         'source_assignment': source_assignment
     }
@@ -2631,26 +2775,36 @@ async def api_delete_chat_session(request, session_id):
         return JsonResponse({'detail': str(e)}, status=500)
 
 
+def _get_assignment_oral_defense_config(assignment_id=None):
+    """Load a published game config, preserving the original calculus trial as legacy content."""
+    from services.oral_defense_service import legacy_oral_defense_config
+
+    if not assignment_id:
+        return legacy_oral_defense_config()
+    assignment_obj = models.Assignment.objects.filter(code=assignment_id).first()
+    if not assignment_obj:
+        return None
+    if assignment_obj.oral_defense_enabled and isinstance(assignment_obj.oral_defense_config, dict):
+        return assignment_obj.oral_defense_config
+    is_legacy_trial = (
+        assignment_obj.code == 'A_C2F6D9'
+        or 'maxima and minima' in assignment_obj.title.lower()
+        or 'profit maximization' in assignment_obj.title.lower()
+    )
+    return legacy_oral_defense_config() if is_legacy_trial else None
+
+
 @login_required_custom()
 def oral_defense_view(request, assignment_id):
     """
-    Trial feature: AI Voice 'Oral Defense' (Mini Boss Battle)
-    Restricted specifically to 'Understanding Maxima and Minima in Profit Maximization' (A_C2F6D9).
+    Configurable AI Voice Oral Defense (Mini Boss Battle).
     """
     assignment_obj = models.Assignment.objects.filter(code=assignment_id).first()
     if not assignment_obj:
-        assignment_obj = models.Assignment.objects.filter(id=22).first()
-        
-    if not assignment_obj:
         return redirect('voice_tutor:student_dashboard')
 
-    # Ensure this trial feature only runs for the Maxima and Minima assignment
-    is_maxima_minima = (
-        assignment_obj.code == 'A_C2F6D9' or 
-        'maxima and minima' in assignment_obj.title.lower() or 
-        'profit maximization' in assignment_obj.title.lower()
-    )
-    if not is_maxima_minima:
+    game_config = _get_assignment_oral_defense_config(assignment_obj.code)
+    if not game_config:
         return redirect('voice_tutor:take_assignment', assignment_id=assignment_obj.code)
 
     user = get_session_user(request)
@@ -2658,13 +2812,22 @@ def oral_defense_view(request, assignment_id):
     if user and user.get('name'):
         first_name = user['name'].split()[0]
 
+    levels = game_config.get('levels', [])
+    first_level = levels[0]
+    initial_hp = max(100, len(levels) * 50)
+    topic_name = assignment_obj.topic.name if assignment_obj.topic else assignment_obj.title
     context = {
         'active_tab': 'assignments',
         'assignment': assignment_obj,
         'first_name': first_name,
-        'boss_name': 'Professor Algor',
-        'boss_title': 'Guardian of Extrema',
-        'initial_hp': 100,
+        'boss_name': game_config.get('boss_name', 'Professor Algor'),
+        'boss_title': game_config.get('boss_title', 'Oral Defense Examiner'),
+        'game_title': game_config.get('title', f'{topic_name} Oral Defense'),
+        'topic_name': topic_name,
+        'game_levels': levels,
+        'first_level': first_level,
+        'total_levels': len(levels),
+        'initial_hp': initial_hp,
     }
     return render(request, 'student/oral_defense.html', context)
 
@@ -2681,17 +2844,24 @@ async def api_oral_defense_intro(request):
             round_num = int(request.GET.get('round', 1))
         except (ValueError, TypeError):
             round_num = 1
+        assignment_id = request.GET.get('assignment_id')
     else:
         try:
             body = json.loads(request.body)
             round_num = int(body.get('round', 1))
+            assignment_id = body.get('assignment_id')
         except Exception:
             round_num = 1
+            assignment_id = None
             
     from services.oral_defense_service import get_oral_defense_service
     service = get_oral_defense_service()
     try:
-        data = await service.get_intro_audio(round_num)
+        from asgiref.sync import sync_to_async
+        game_config = await sync_to_async(_get_assignment_oral_defense_config)(assignment_id)
+        if not game_config:
+            return JsonResponse({'detail': 'Oral Defense is not enabled for this assignment.'}, status=404)
+        data = await service.get_intro_audio(round_num, game_config=game_config)
         return JsonResponse(data)
     except Exception as e:
         return JsonResponse({'detail': str(e)}, status=500)
@@ -2714,6 +2884,7 @@ async def api_oral_defense_turn(request):
         round_num = 1
 
     transcript = body.get('transcript', '')
+    assignment_id = body.get('assignment_id')
     try:
         current_boss_hp = int(body.get('boss_hp', 100))
     except (ValueError, TypeError):
@@ -2722,10 +2893,15 @@ async def api_oral_defense_turn(request):
     from services.oral_defense_service import get_oral_defense_service
     service = get_oral_defense_service()
     try:
+        from asgiref.sync import sync_to_async
+        game_config = await sync_to_async(_get_assignment_oral_defense_config)(assignment_id)
+        if not game_config:
+            return JsonResponse({'detail': 'Oral Defense is not enabled for this assignment.'}, status=404)
         result = await service.evaluate_turn(
             round_num=round_num,
             student_transcript=transcript,
-            current_boss_hp=current_boss_hp
+            current_boss_hp=current_boss_hp,
+            game_config=game_config,
         )
         return JsonResponse(result)
     except Exception as e:
@@ -2753,16 +2929,21 @@ async def api_oral_defense_sage(request):
         round_num = 1
 
     action = body.get('action', 'perspective')
+    assignment_id = body.get('assignment_id')
     from services.oral_defense_service import get_oral_defense_service
     service = get_oral_defense_service()
 
     try:
+        from asgiref.sync import sync_to_async
+        game_config = await sync_to_async(_get_assignment_oral_defense_config)(assignment_id)
+        if not game_config:
+            return JsonResponse({'detail': 'Oral Defense is not enabled for this assignment.'}, status=404)
         if action == 'ask':
             question = body.get('question', '')
-            result = await service.ask_sage_coach(round_num, question)
+            result = await service.ask_sage_coach(round_num, question, game_config=game_config)
         else:
             angle = body.get('angle', 'calculus')
-            result = await service.get_sage_perspective(round_num, angle)
+            result = await service.get_sage_perspective(round_num, angle, game_config=game_config)
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'detail': str(e)}, status=500)
@@ -2787,7 +2968,11 @@ async def api_visualize_concept(request):
     if not question_text:
         return JsonResponse({'error': 'question_text is required'}, status=400)
 
-    from services.visualization_service import get_visualization_service, is_question_visualizable
+    from services.visualization_service import (
+        VisualizationValidationError,
+        get_visualization_service,
+        is_question_visualizable,
+    )
     if not is_question_visualizable(question_text):
         return JsonResponse({
             'status': 'not_applicable',
@@ -2799,13 +2984,757 @@ async def api_visualize_concept(request):
     try:
         sim_data = await vis_service.plan_simulation(question_text=question_text, context=context)
         return JsonResponse({'status': 'success', 'simulation': sim_data})
+    except VisualizationValidationError as exc:
+        return JsonResponse({'status': 'not_applicable', 'error': str(exc)}, status=422)
     except Exception as e:
         logger.exception("Visualization generation failed: %s", e)
-        from services.visualization_service import create_fallback_simulation
-        fallback = create_fallback_simulation(question_text)
-        return JsonResponse({'status': 'success', 'simulation': fallback, 'fallback': True})
+        return JsonResponse({
+            'status': 'error',
+            'error': 'The visualization could not be generated and verified.'
+        }, status=502)
 
 
+# -----------------------------------------------------------------------------
+# Plan Mode Views & APIs
+# -----------------------------------------------------------------------------
+
+@login_required_custom(role='professor')
+def professor_plan(request):
+    user = get_session_user(request)
+    prof_profile = models.UserProfile.objects.filter(user__username=user['id']).first()
+    if not prof_profile:
+        prof_profile = models.UserProfile.objects.filter(role__role_code='professor').first()
+
+    batches = []
+    subjects = []
+    if prof_profile:
+        allocations = models.ProfessorAllocation.objects.filter(professor=prof_profile).select_related('batch', 'subject')
+        batches = list({a.batch for a in allocations if a.batch})
+        subjects = list({a.subject for a in allocations if a.subject})
+
+    if not batches:
+        batches = list(models.Batch.objects.all())
+    if not subjects:
+        subjects = list(models.SubjectMaster.objects.all())
+
+    initial_topic = request.GET.get('topic', '').strip()
+    initial_course_name = request.GET.get('course_name', '').strip()
+    initial_subject = request.GET.get('subject', '').strip()
+    initial_batch = request.GET.get('batch', '').strip()
+
+    context = {
+        'active_tab': 'plan',
+        'batches': batches,
+        'subjects': subjects,
+        'initial_topic': initial_topic,
+        'initial_course_name': initial_course_name,
+        'initial_subject': initial_subject,
+        'initial_batch': initial_batch,
+    }
+    return render(request, 'professor/plan.html', context)
 
 
+@csrf_exempt
+@login_required_custom(role='professor')
+def api_plan_transcribe(request):
+    """Transcribe a short professor recording for the no-PDF topic brief."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
 
+    audio = request.FILES.get('audio')
+    if not audio:
+        return JsonResponse({'error': 'Record something before asking Sage to transcribe it.'}, status=400)
+    if audio.size > 10 * 1024 * 1024:
+        return JsonResponse({'error': 'Keep voice recordings under 10 MB.'}, status=400)
+
+    content_type = (audio.content_type or 'audio/webm').lower()
+    base_content_type = content_type.split(';', 1)[0].strip()
+    base_content_type = {
+        'video/webm': 'audio/webm',
+        'video/mp4': 'audio/mp4',
+    }.get(base_content_type, base_content_type)
+    allowed_types = {
+        'audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/x-wav',
+        'audio/mpeg', 'audio/mp3', 'audio/aac', 'audio/flac',
+    }
+    if base_content_type not in allowed_types:
+        return JsonResponse({'error': 'This browser produced an unsupported audio format.'}, status=400)
+
+    try:
+        audio.seek(0)
+        audio_bytes = audio.read()
+        if len(audio_bytes) < 1000:
+            return JsonResponse({'error': 'That recording was too short. Speak for at least two seconds.'}, status=400)
+        service = get_openai_voice_service()
+        transcript = service.transcribe_audio(
+            audio_bytes,
+            filename=audio.name or 'topic-brief.webm',
+            content_type=base_content_type,
+        )
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+    except Exception:
+        logger.exception('Plan Mode voice transcription failed')
+        return JsonResponse({'error': 'Sage could not transcribe that recording right now.'}, status=502)
+
+    return JsonResponse({'success': True, 'text': transcript})
+
+
+@csrf_exempt
+def api_plan_upload(request):
+    """
+    Handles PDF upload, topic briefs, or sample selection for Plan Mode.
+    Generates initial notes and prepares a question bank from the selected source.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    from services.plan_mode_service import (
+        build_course_context,
+        extract_pdf_data,
+        generate_course_from_brief,
+        generate_notes_with_ai,
+        generate_questions_with_ai,
+        DEFAULT_SAMPLE_NOTES,
+        DEFAULT_SAMPLE_QUESTIONS,
+        DEFAULT_FOCUS_AREAS,
+    )
+    from config import get_settings
+    from app.services.inngest_functions import update_job_status
+    from app.services.ingestion_artifacts import sha256_file, write_pages_artifact
+    settings = get_settings()
+    plan_user = get_session_user(request) or {}
+    tenant_id = str(plan_user.get('id') or 'default')
+
+    job_id = request.POST.get('job_id') or uuid.uuid4().hex
+    is_sample = request.POST.get('sample') == 'true'
+    uploaded_file = request.FILES.get('file')
+    subject = request.POST.get('subject', 'Machine Learning').strip()
+    batch = request.POST.get('batch', 'Year 2').strip()
+    course_name = request.POST.get('course_name', '').strip()
+    topic = request.POST.get('topic', '').strip()
+    description = request.POST.get('description', '').strip()
+    is_brief = bool(description)
+
+    if not course_name:
+        return JsonResponse({'error': 'Add a course name before giving Sage your material.'}, status=400)
+    if len(course_name) > 120:
+        return JsonResponse({'error': 'Keep the course name under 120 characters.'}, status=400)
+
+    update_job_status(job_id, "Understanding topic" if is_brief else "Reading pages", 15, step=1)
+
+    if is_brief:
+        if not topic:
+            return JsonResponse({'error': 'Add a topic before asking Sage to prepare the course.'}, status=400)
+        if len(topic) > 180:
+            return JsonResponse({'error': 'Keep the topic under 180 characters.'}, status=400)
+        if len(description) < 20:
+            return JsonResponse({'error': 'Describe what you want students to learn in at least 20 characters.'}, status=400)
+        if len(description) > 6000:
+            return JsonResponse({'error': 'Keep the topic description under 6,000 characters.'}, status=400)
+
+    file_path = ""
+    filename = "Topic brief" if is_brief else ("K-Means Clustering.pdf" if is_sample else "Uploaded Material.pdf")
+    pages_count = 12
+    context_text = ""
+    source_pages = []
+    file_sha256 = ""
+    pages_artifact_path = ""
+
+    if is_brief:
+        pages_count = 0
+        context_text = description
+        source_pages = [{"page_number": 1, "text": description}]
+    elif is_sample or not uploaded_file:
+        # Check for local sample PDF
+        sample_path = settings.DATA_DIR / "uploads" / "ML" / "k-means" / "K_Means.pdf"
+        if sample_path.exists():
+            file_path = str(sample_path)
+            extracted = extract_pdf_data(file_path)
+            pages_count = extracted.get("page_count", 12) or 12
+            context_text = extracted.get("full_text", "")
+            source_pages = extracted.get("pages", [])
+        if not topic:
+            topic = "K-Means Clustering"
+    else:
+        filename = uploaded_file.name
+        if not topic:
+            topic = Path(filename).stem.replace('-', ' ').replace('_', ' ').title()
+
+        save_dir = (
+            settings.UPLOADS_DIR
+            / "plan_mode"
+            / (subject.replace(' ', '_') or "General")
+            / job_id
+        )
+        save_dir.mkdir(parents=True, exist_ok=True)
+        filename = Path(filename).name
+        dest_path = save_dir / filename
+        digest = hashlib.sha256()
+        with open(dest_path, 'wb+') as dest:
+            for chunk in uploaded_file.chunks():
+                digest.update(chunk)
+                dest.write(chunk)
+        file_path = str(dest_path)
+        file_sha256 = digest.hexdigest()
+
+        extracted = extract_pdf_data(file_path)
+        pages_count = extracted.get("page_count", 1) or 1
+        context_text = extracted.get("full_text", "")
+        source_pages = extracted.get("pages", [])
+
+    # Plan Mode needs these pages synchronously. Persist that one extraction so
+    # the background RAG job can reuse it instead of opening/OCRing the PDF again.
+    if file_path and source_pages:
+        file_sha256 = file_sha256 or sha256_file(file_path)
+        pages_artifact_path = write_pages_artifact(
+            job_id,
+            source_pages,
+            file_sha256=file_sha256,
+        )
+
+    # Step 1 (Reading pages) is complete! Move to Step 2 (Finding key concepts)
+    update_job_status(job_id, "Building course structure" if is_brief else "Finding key concepts", 45, step=2)
+
+    # Dispatch Inngest pipeline event so logs and execution appear in the Inngest dev server
+    if file_path:
+        try:
+            from app.services.inngest_client import inngest_client
+            import inngest
+            from asgiref.sync import async_to_sync
+
+            ingestion_job_id = f"{job_id}_rag"
+            inngest_evt = inngest.Event(
+                name="app/document.uploaded",
+                data={
+                    "subject": subject,
+                    "topic": topic,
+                    "file_path": str(file_path),
+                    "filename": filename,
+                    "job_id": ingestion_job_id,
+                    "parent_job_id": job_id,
+                    "pages_artifact_path": pages_artifact_path,
+                    "file_sha256": file_sha256,
+                    "tenant_id": tenant_id,
+                }
+            )
+            async_to_sync(inngest_client.send)(inngest_evt)
+            logger.info(
+                "Dispatched Inngest event 'app/document.uploaded' for %s (job_id: %s)",
+                filename,
+                ingestion_job_id,
+            )
+        except Exception as inngest_err:
+            logger.warning(f"Could not dispatch Inngest event: {inngest_err}")
+
+    # Step 2 complete -> Moving to Step 3: Writing short notes & questions
+    update_job_status(job_id, "Writing short notes", 75, step=3)
+
+    # Generate initial notes and questions
+    try:
+        if is_brief:
+            notes_data = generate_course_from_brief(subject, topic, description)
+        else:
+            notes_data = generate_notes_with_ai(
+                subject,
+                topic,
+                context_text,
+                pages=source_pages,
+                source_file=filename,
+            )
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+
+    notes = notes_data.get("notes", DEFAULT_SAMPLE_NOTES)
+    focus_areas = notes_data.get("focus_areas", DEFAULT_FOCUS_AREAS)
+    if is_brief:
+        context_text = build_course_context(topic, description, notes)
+        source_pages = [{"page_number": 1, "text": context_text}]
+    try:
+        questions = generate_questions_with_ai(
+            subject,
+            topic,
+            context_text,
+            count=6,
+            difficulty="Mixed",
+            focus_areas=focus_areas,
+            source_has_pages=not is_brief,
+            professor_brief=description if is_brief else "",
+        )
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=502)
+
+    update_job_status(job_id, "Ready", 100, step=3)
+
+    # Store in session for subsequent wizard steps
+    session_id = f"plan_{uuid.uuid4().hex[:8]}"
+    request.session['plan_session'] = {
+        'session_id': session_id,
+        'job_id': job_id,
+        'course_name': course_name,
+        'topic': topic,
+        'subject': subject,
+        'batch': batch,
+        'filename': filename,
+        'file_path': file_path,
+        'source_type': 'brief' if is_brief else 'pdf',
+        'brief_description': description if is_brief else '',
+        'context_text': context_text,
+        'source_pages': source_pages,
+        'notes': notes,
+        'note_chats': {},
+        'questions': questions,
+        'focus_areas': focus_areas,
+    }
+
+    return JsonResponse({
+        'success': True,
+        'session_id': session_id,
+        'job_id': job_id,
+        'course_name': course_name,
+        'topic': topic,
+        'subject': subject,
+        'batch': batch,
+        'filename': filename,
+        'page_count': pages_count,
+        'source_type': 'brief' if is_brief else 'pdf',
+        'notes': notes,
+        'questions': questions,
+        'focus_areas': focus_areas,
+    })
+
+
+@csrf_exempt
+def api_plan_status(request, job_id):
+    """
+    Returns live progress and step info for the uploaded PDF pipeline.
+    """
+    if request.method != "GET":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+
+    from config import get_settings
+    import json
+    settings = get_settings()
+    job_file = settings.UPLOADS_DIR / "jobs" / f"{job_id}.json"
+
+    if not job_file.exists():
+        return JsonResponse({"step": 1, "progress": 10, "status": "Reading pages"}, status=200)
+
+    try:
+        with open(job_file, "r") as jf:
+            data = json.load(jf)
+        return JsonResponse(data, status=200)
+    except Exception as e:
+        return JsonResponse({"step": 1, "progress": 10, "status": "Reading pages"}, status=200)
+
+
+@csrf_exempt
+def api_plan_notes_regenerate(request):
+    """
+    Regenerates study notes from the uploaded material or session.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        body = request.POST
+
+    from services.plan_mode_service import (
+        build_course_context,
+        generate_course_from_brief,
+        generate_notes_with_ai,
+        DEFAULT_SAMPLE_NOTES,
+        DEFAULT_FOCUS_AREAS,
+    )
+
+    session_data = request.session.get('plan_session', {})
+    subject = body.get('subject') or session_data.get('subject', 'Machine Learning')
+    topic = body.get('topic') or session_data.get('topic', 'General')
+    context_text = session_data.get('context_text', '')
+
+    if session_data.get('source_type') == 'brief':
+        description = session_data.get('brief_description', '')
+        try:
+            res = generate_course_from_brief(subject, topic, description)
+        except ValueError as exc:
+            return JsonResponse({'error': str(exc)}, status=400)
+    else:
+        res = generate_notes_with_ai(
+            subject,
+            topic,
+            context_text,
+            pages=session_data.get('source_pages'),
+            source_file=session_data.get('filename', 'Uploaded material.pdf'),
+        )
+    notes = res.get('notes', DEFAULT_SAMPLE_NOTES)
+    focus_areas = res.get('focus_areas', DEFAULT_FOCUS_AREAS)
+
+    if session_data.get('source_type') == 'brief':
+        context_text = build_course_context(topic, description, notes)
+        session_data['context_text'] = context_text
+        session_data['source_pages'] = [{'page_number': 1, 'text': context_text}]
+
+    session_data['notes'] = notes
+    session_data['note_chats'] = {}
+    session_data['focus_areas'] = focus_areas
+    request.session['plan_session'] = session_data
+
+    return JsonResponse({
+        'success': True,
+        'notes': notes,
+        'focus_areas': focus_areas,
+    })
+
+
+@csrf_exempt
+@login_required_custom(role='professor')
+def api_plan_note_refine(request):
+    """Let a professor revise one note section through a short Sage conversation."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON body'}, status=400)
+
+    instruction = str(body.get('instruction', '')).strip()
+    if not instruction:
+        return JsonResponse({'error': 'Tell Sage what you want to change.'}, status=400)
+    if len(instruction) > 2000:
+        return JsonResponse({'error': 'Keep the instruction under 2,000 characters.'}, status=400)
+
+    try:
+        section_index = int(body.get('section_index'))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid note section.'}, status=400)
+
+    session_data = request.session.get('plan_session', {})
+    notes = session_data.get('notes', [])
+    if section_index < 0 or section_index >= len(notes):
+        return JsonResponse({'error': 'That note section is no longer available.'}, status=404)
+
+    supplied_section = body.get('section')
+    current_section = supplied_section if isinstance(supplied_section, dict) else notes[section_index]
+    chat_store = session_data.setdefault('note_chats', {})
+    history = chat_store.get(str(section_index), [])
+
+    try:
+        from services.plan_mode_service import refine_note_section_with_ai
+
+        result = refine_note_section_with_ai(
+            subject=body.get('subject') or session_data.get('subject', 'General'),
+            topic=body.get('topic') or session_data.get('topic', 'General'),
+            section=current_section,
+            instruction=instruction,
+            pages=session_data.get('source_pages', []),
+            conversation=history,
+        )
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+    except Exception as exc:
+        logger.exception('Plan Mode section refinement failed')
+        return JsonResponse({'error': 'Sage could not revise this section right now.'}, status=500)
+
+    notes[section_index] = result['section']
+    history.extend([
+        {'role': 'user', 'content': instruction},
+        {'role': 'assistant', 'content': result['message']},
+    ])
+    chat_store[str(section_index)] = history[-10:]
+    session_data['notes'] = notes
+    session_data['note_chats'] = chat_store
+    request.session['plan_session'] = session_data
+    request.session.modified = True
+
+    return JsonResponse({
+        'success': True,
+        'section': result['section'],
+        'message': result['message'],
+    })
+
+
+@csrf_exempt
+def api_plan_questions_generate(request):
+    """
+    Generates questions matching specified count, difficulty, and focus areas.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        body = request.POST
+
+    from services.plan_mode_service import generate_questions_with_ai
+
+    session_data = request.session.get('plan_session', {})
+    subject = body.get('subject') or session_data.get('subject', 'Machine Learning')
+    topic = body.get('topic') or session_data.get('topic', 'K-Means Clustering')
+    context_text = session_data.get('context_text', '')
+    count = int(body.get('count', 6))
+    difficulty = body.get('difficulty', 'Mixed')
+    focus_areas = body.get('focus', [])
+
+    is_brief = session_data.get('source_type') == 'brief'
+    try:
+        questions = generate_questions_with_ai(
+            subject=subject,
+            topic=topic,
+            context_text=context_text,
+            count=count,
+            difficulty=difficulty,
+            focus_areas=focus_areas,
+            source_has_pages=not is_brief,
+            professor_brief=session_data.get('brief_description', '') if is_brief else '',
+        )
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=502)
+
+    session_data['questions'] = questions
+    request.session['plan_session'] = session_data
+
+    return JsonResponse({
+        'success': True,
+        'questions': questions,
+    })
+
+
+@csrf_exempt
+def api_plan_questions_swap(request):
+    """
+    Swaps a single question with a new alternative targeting the specified focus area.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        body = request.POST
+
+    from services.plan_mode_service import swap_question_with_ai
+
+    session_data = request.session.get('plan_session', {})
+    subject = body.get('subject') or session_data.get('subject', 'Machine Learning')
+    topic = body.get('topic') or session_data.get('topic', 'K-Means Clustering')
+    context_text = session_data.get('context_text', '')
+    focus = body.get('focus', 'Algorithm')
+    difficulty = body.get('difficulty', 'Medium')
+    existing_questions = session_data.get('questions', [])
+
+    is_brief = session_data.get('source_type') == 'brief'
+    try:
+        new_q = swap_question_with_ai(
+            subject=subject,
+            topic=topic,
+            context_text=context_text,
+            focus=focus,
+            difficulty=difficulty,
+            existing_questions=existing_questions,
+            source_has_pages=not is_brief,
+            professor_brief=session_data.get('brief_description', '') if is_brief else '',
+        )
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=502)
+
+    return JsonResponse({
+        'success': True,
+        'question': new_q,
+    })
+
+
+@csrf_exempt
+@login_required_custom(role='professor')
+def api_plan_question_visualize(request):
+    """Generate and retain a professor-reviewable visual for one draft question."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON body'}, status=400)
+
+    try:
+        question_index = int(body.get('question_index'))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid question.'}, status=400)
+
+    supplied_question = body.get('question')
+    question_text = str(
+        supplied_question.get('q', '') if isinstance(supplied_question, dict)
+        else body.get('question_text', '')
+    ).strip()
+    if not question_text:
+        return JsonResponse({'error': 'Add question text before generating a visual.'}, status=400)
+    if len(question_text) > 4000:
+        return JsonResponse({'error': 'Keep the question under 4,000 characters.'}, status=400)
+
+    session_data = request.session.get('plan_session', {})
+    questions = session_data.get('questions', [])
+    if question_index < 0 or question_index >= len(questions):
+        return JsonResponse({'error': 'That draft question is no longer available.'}, status=404)
+
+    subject = str(body.get('subject') or session_data.get('subject', 'General')).strip()
+    topic = str(body.get('topic') or session_data.get('topic', 'General')).strip()
+    focus = ''
+    if isinstance(supplied_question, dict):
+        focus = str(supplied_question.get('f', '')).strip()
+    context = f"Subject: {subject}. Topic: {topic}."
+    if focus:
+        context += f" Focus area: {focus}."
+
+    from asgiref.sync import async_to_sync
+    from services.visualization_service import (
+        VisualizationValidationError,
+        get_visualization_service,
+    )
+
+    try:
+        visualization = async_to_sync(get_visualization_service().plan_simulation)(
+            question_text=question_text,
+            context=context,
+        )
+    except VisualizationValidationError as exc:
+        return JsonResponse({'error': str(exc)}, status=422)
+    except Exception:
+        logger.exception('Plan Mode visualization generation failed')
+        return JsonResponse({'error': 'Sage could not generate this visual right now.'}, status=502)
+
+    if not isinstance(visualization, dict) or not visualization.get('engine'):
+        return JsonResponse({'error': 'Sage returned an incomplete visual. Please regenerate it.'}, status=502)
+
+    if isinstance(supplied_question, dict):
+        questions[question_index] = supplied_question
+    questions[question_index]['visualization'] = visualization
+    questions[question_index]['visualization_approved'] = False
+    session_data['questions'] = questions
+    request.session['plan_session'] = session_data
+    request.session.modified = True
+
+    return JsonResponse({
+        'success': True,
+        'visualization': visualization,
+        'visualization_approved': False,
+    })
+
+
+@csrf_exempt
+@login_required_custom(role='professor')
+def api_plan_question_visual_approve(request):
+    """Approve or withdraw approval from a generated draft-question visual."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+        question_index = int(body.get('question_index'))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'Invalid question.'}, status=400)
+
+    session_data = request.session.get('plan_session', {})
+    questions = session_data.get('questions', [])
+    if question_index < 0 or question_index >= len(questions):
+        return JsonResponse({'error': 'That draft question is no longer available.'}, status=404)
+
+    question = questions[question_index]
+    approved = bool(body.get('approved', True))
+    if approved and not isinstance(question.get('visualization'), dict):
+        return JsonResponse({'error': 'Generate a visual before approving it.'}, status=400)
+
+    question['visualization_approved'] = approved
+    questions[question_index] = question
+    session_data['questions'] = questions
+    request.session['plan_session'] = session_data
+    request.session.modified = True
+
+    return JsonResponse({'success': True, 'visualization_approved': approved})
+
+
+@csrf_exempt
+@login_required_custom(role='professor')
+def api_plan_question_visual_discard(request):
+    """Remove a generated visual and its approval from a draft question."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+        question_index = int(body.get('question_index'))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'Invalid question.'}, status=400)
+
+    session_data = request.session.get('plan_session', {})
+    questions = session_data.get('questions', [])
+    if question_index < 0 or question_index >= len(questions):
+        return JsonResponse({'error': 'That draft question is no longer available.'}, status=404)
+
+    question = questions[question_index]
+    question.pop('visualization', None)
+    question['visualization_approved'] = False
+    questions[question_index] = question
+    session_data['questions'] = questions
+    request.session['plan_session'] = session_data
+    request.session.modified = True
+
+    return JsonResponse({'success': True, 'visualization_approved': False})
+
+
+@csrf_exempt
+def api_plan_publish(request):
+    """
+    Publishes the finalized topic, notes, and question set to the database.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        body = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        body = request.POST
+
+    from services.plan_mode_service import publish_plan_to_database
+
+    user = get_session_user(request)
+    prof_profile = None
+    if user:
+        prof_profile = models.UserProfile.objects.filter(user__username=user['id']).first()
+    if not prof_profile:
+        prof_profile = models.UserProfile.objects.filter(role__role_code='professor').first()
+
+    session_data = request.session.get('plan_session', {})
+    subject = body.get('subject') or session_data.get('subject', 'Machine Learning')
+    topic = body.get('topic') or session_data.get('topic', 'K-Means Clustering')
+    course_name = str(body.get('course_name') or session_data.get('course_name') or topic).strip()
+    if len(course_name) > 120:
+        return JsonResponse({'error': 'Keep the course name under 120 characters.'}, status=400)
+    batch = body.get('batch') or session_data.get('batch', 'Year 2')
+    notes = body.get('notes') or session_data.get('notes', [])
+    questions = body.get('questions') or session_data.get('questions', [])
+    game_config = body.get('game_config')
+    file_path = session_data.get('file_path', '')
+
+    try:
+        result = publish_plan_to_database(
+            subject_name=subject,
+            batch_name_or_code=batch,
+            topic_name=topic,
+            course_name=course_name,
+            notes_list=notes,
+            questions_list=questions,
+            prof_profile=prof_profile,
+            file_path=file_path,
+            game_config=game_config,
+        )
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+
+    # Clear draft session
+    if 'plan_session' in request.session:
+        del request.session['plan_session']
+
+    return JsonResponse(result)

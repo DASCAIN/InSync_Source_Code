@@ -12,12 +12,14 @@ urlpatterns = [
     path('logout', views.logout_view, name='logout'),
     
     path('professor', views.professor_dashboard, name='professor_dashboard'),
+    path('professor/plan', views.professor_plan, name='professor_plan'),
     path('professor/batchs', views.professor_batchs, name='professor_batchs'),
     path('professor/batchs/<str:batch_id>', views.professor_batch_detail, name='professor_batch_detail'),
     path('professor/subjects', views.professor_subjects, name='professor_subjects'),
     path('professor/topics', views.professor_topics, name='professor_topics'),
     path('professor/topics/<int:topic_id>/update', views.professor_topic_update, name='professor_topic_update'),
     path('professor/topics/<int:topic_id>/delete', views.professor_topic_delete, name='professor_topic_delete'),
+    path('professor/topics/<int:topic_id>/preview', views.professor_topic_preview, name='professor_topic_preview'),
     path('professor/assignments', views.professor_assignments, name='professor_assignments'),
     path('professor/assignments/<str:assignment_id>', views.professor_assignment_detail, name='professor_assignment_detail'),
     path('professor/assignments/<str:assignment_id>/delete', views.professor_assignment_delete, name='professor_assignment_delete'),
@@ -62,5 +64,17 @@ urlpatterns = [
     path('api/student/oral-defense/turn', views.api_oral_defense_turn, name='api_oral_defense_turn'),
     path('api/student/oral-defense/sage', views.api_oral_defense_sage, name='api_oral_defense_sage'),
     path('api/student/visualize-concept', views.api_visualize_concept, name='api_visualize_concept'),
-]
 
+    # Plan Mode APIs
+    path('api/professor/plan/transcribe', views.api_plan_transcribe, name='api_plan_transcribe'),
+    path('api/professor/plan/upload', views.api_plan_upload, name='api_plan_upload'),
+    path('api/professor/plan/status/<str:job_id>', views.api_plan_status, name='api_plan_status'),
+    path('api/professor/plan/notes/regenerate', views.api_plan_notes_regenerate, name='api_plan_notes_regenerate'),
+    path('api/professor/plan/notes/refine', views.api_plan_note_refine, name='api_plan_note_refine'),
+    path('api/professor/plan/questions/generate', views.api_plan_questions_generate, name='api_plan_questions_generate'),
+    path('api/professor/plan/questions/swap', views.api_plan_questions_swap, name='api_plan_questions_swap'),
+    path('api/professor/plan/questions/visualize', views.api_plan_question_visualize, name='api_plan_question_visualize'),
+    path('api/professor/plan/questions/visual/approve', views.api_plan_question_visual_approve, name='api_plan_question_visual_approve'),
+    path('api/professor/plan/questions/visual/discard', views.api_plan_question_visual_discard, name='api_plan_question_visual_discard'),
+    path('api/professor/plan/publish', views.api_plan_publish, name='api_plan_publish'),
+]

@@ -6,8 +6,8 @@ section/heading hierarchy tracking, and token-based Parent-Child text splitting.
 """
 
 import logging
-import json
 import re
+import time
 from pathlib import Path
 
 import pymupdf4llm
@@ -22,9 +22,25 @@ from app.services.vector_store import _sanitize_name
 logger = logging.getLogger(__name__)
 
 
+def _meaningful_text_length(text: str) -> int:
+    """Count useful native characters, ignoring whitespace and punctuation."""
+    return len(re.sub(r"[^\w]+", "", text or "", flags=re.UNICODE))
+
+
+def _page_text(chunk) -> str:
+    if isinstance(chunk, dict):
+        return str(chunk.get("text", "")).strip()
+    return str(chunk or "").strip()
+
+
 def extract_text_from_pdf(file_path: str) -> list[dict]:
     """
-    Extract text from a PDF file page-by-page using pymupdf4llm's JSON output.
+    Extract a PDF page-by-page using a fast native-text pass first.
+
+    OCR is deliberately limited to pages whose native text layer is empty or
+    nearly empty. Image-heavy slide decks commonly contain perfectly usable
+    native text; allowing pymupdf4llm to auto-OCR those pages makes ingestion
+    an order of magnitude slower without materially improving the result.
 
     Args:
         file_path: Absolute path to the PDF file.
@@ -32,27 +48,87 @@ def extract_text_from_pdf(file_path: str) -> list[dict]:
     Returns:
         List of dictionaries with 'text' and 'page_number' (1-indexed).
     """
-    logger.info("Extracting structured page text from PDF: %s", file_path)
-    pages = []
+    from config import get_settings
+
+    settings = get_settings()
+    min_native_chars = max(0, settings.PDF_OCR_MIN_NATIVE_CHARS)
+    ocr_batch_size = max(1, settings.PDF_OCR_BATCH_SIZE)
+    started_at = time.perf_counter()
+    full_ocr_fallback = False
+
+    logger.info("Extracting native page text from PDF: %s", file_path)
     try:
-        json_data = pymupdf4llm.to_json(file_path)
-        if json_data:
-            data = json.loads(json_data)
-            for page_data in data.get("pages", []):
-                pages.append({
-                    "text": page_data.get("fulltext", "").strip(),
-                    "page_number": page_data.get("page_number", len(pages) + 1)
-                })
+        native_chunks = pymupdf4llm.to_markdown(
+            file_path,
+            page_chunks=True,
+            use_ocr=False,
+        )
     except Exception as e:
-        logger.error("Failed to extract pages from PDF via to_json: %s. Falling back to to_markdown.", str(e))
+        logger.error("Native PDF extraction failed for %s: %s", file_path, str(e))
         try:
-            text = pymupdf4llm.to_markdown(file_path)
-            pages.append({
-                "text": text,
-                "page_number": 1
-            })
+            full_ocr_fallback = True
+            native_chunks = pymupdf4llm.to_markdown(
+                file_path,
+                page_chunks=True,
+                force_ocr=True,
+            )
         except Exception as fallback_err:
-            logger.error("PDF fallback to_markdown failed: %s", str(fallback_err))
+            logger.error("PDF OCR fallback failed for %s: %s", file_path, str(fallback_err))
+            return []
+
+    if not isinstance(native_chunks, list):
+        logger.error("PDF extraction returned an unexpected result for %s", file_path)
+        return []
+
+    pages = [
+        {
+            "text": _page_text(chunk),
+            "page_number": index + 1,
+            "extraction_method": "ocr" if full_ocr_fallback else "native",
+        }
+        for index, chunk in enumerate(native_chunks)
+    ]
+
+    ocr_indices = [] if full_ocr_fallback else [
+        index
+        for index, page in enumerate(pages)
+        if _meaningful_text_length(page["text"]) < min_native_chars
+    ]
+
+    for start in range(0, len(ocr_indices), ocr_batch_size):
+        page_indices = ocr_indices[start:start + ocr_batch_size]
+        try:
+            ocr_chunks = pymupdf4llm.to_markdown(
+                file_path,
+                pages=page_indices,
+                page_chunks=True,
+                force_ocr=True,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Selective OCR failed for %s pages %s: %s",
+                file_path,
+                [index + 1 for index in page_indices],
+                exc,
+            )
+            continue
+
+        if not isinstance(ocr_chunks, list):
+            continue
+
+        for page_index, ocr_chunk in zip(page_indices, ocr_chunks):
+            ocr_text = _page_text(ocr_chunk)
+            if _meaningful_text_length(ocr_text) >= _meaningful_text_length(pages[page_index]["text"]):
+                pages[page_index]["text"] = ocr_text
+                pages[page_index]["extraction_method"] = "ocr"
+
+    elapsed = time.perf_counter() - started_at
+    logger.info(
+        "Extracted %d PDF pages in %.2fs; OCR used on %d page(s).",
+        len(pages),
+        elapsed,
+        sum(page["extraction_method"] == "ocr" for page in pages),
+    )
     return pages
 
 

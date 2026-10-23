@@ -976,6 +976,8 @@
     const html = document.documentElement;
     const isDark = html.classList.toggle('dark');
     localStorage.setItem('insync-dark-mode', isDark ? '1' : '0');
+    localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     applyDarkModeUI(isDark);
   }
 

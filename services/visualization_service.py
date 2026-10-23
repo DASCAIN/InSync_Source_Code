@@ -8,7 +8,7 @@ import json
 import math
 import os
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 from openai import AsyncOpenAI
 
@@ -16,6 +16,113 @@ from config import get_settings
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+MAX_PLOT_TRACES = 12
+MAX_POINTS_PER_TRACE = 300
+ALLOWED_ENGINES = {"plotly", "physical_simulation"}
+ALLOWED_PHYSICAL_SIMULATIONS = {"momentum_stopping"}
+ALLOWED_CONTROL_TARGETS = {
+    "threshold_y", "scale_y", "shift_x", "cluster_spread", "point_marker",
+    "gradient_step", "tangent_probe", "detour",
+}
+
+
+class VisualizationValidationError(ValueError):
+    """Raised when a generated visual cannot be verified as safe and coherent."""
+
+
+def _finite_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value))
+
+
+def _question_number(
+    text: str,
+    labels: List[str],
+    units: Optional[List[str]] = None,
+) -> Optional[float]:
+    """Extract a number explicitly tied to a label, without guessing unlabeled values."""
+    label_pattern = "|".join(re.escape(label) for label in labels)
+    unit_pattern = "|".join(re.escape(unit) for unit in (units or []))
+    suffix = rf"\s*(?:{unit_pattern})\b" if units else ""
+    patterns = [
+        rf"(?:{label_pattern})\s*(?:=|:|is|of)?\s*(-?\d+(?:\.\d+)?)%?{suffix}",
+        rf"(-?\d+(?:\.\d+)?)%?{suffix}\s*(?:for\s+)?(?:the\s+)?(?:{label_pattern})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            try:
+                return float(match.group(1))
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def _extract_explicit_parameters(question_text: str) -> Dict[str, float]:
+    """Extract only quantities stated in the question; missing values stay missing."""
+    text = question_text.replace("−", "-")
+    params: Dict[str, float] = {}
+
+    threshold_match = re.search(
+        r"(?:threshold|tau|τ)\s*(?:=|:|is|of)?\s*(\d+(?:\.\d+)?)\s*(%)?",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if threshold_match:
+        threshold = float(threshold_match.group(1))
+        if threshold_match.group(2) or threshold > 1:
+            threshold /= 100.0
+        params["threshold"] = threshold
+
+    for key, labels in {
+        "weight": ["weight", "coefficient", "w"],
+        "bias": ["bias", "intercept", "b"],
+        "learning_rate": ["learning rate", "step size", "alpha", "α"],
+        "loaded_mass": ["loaded mass", "loaded truck mass", "loaded vehicle mass"],
+        "unloaded_mass": ["unloaded mass", "empty mass", "unloaded truck mass"],
+        "braking_force": ["braking force", "brake force", "friction force"],
+        "launch_speed": ["launch speed", "initial speed", "initial velocity"],
+        "launch_angle": ["launch angle", "angle of projection", "angle"],
+        "gravity": ["gravity", "gravitational acceleration", "g"],
+    }.items():
+        units = None
+        if key in {"loaded_mass", "unloaded_mass"}:
+            units = ["kg", "kilograms", "kilogram"]
+        elif key == "braking_force":
+            units = ["N", "newtons", "newton"]
+        elif key == "launch_speed":
+            units = ["m/s", "m s-1", "metres per second", "meters per second"]
+        elif key == "launch_angle":
+            units = ["degrees", "degree", "deg", "°"]
+        value = _question_number(text, labels, units)
+        if value is not None:
+            params[key] = value
+
+    speed_match = re.search(r"(\d+(?:\.\d+)?)\s*(km/h|kmph|kph|m/s)\b", text, flags=re.IGNORECASE)
+    if speed_match:
+        speed = float(speed_match.group(1))
+        if speed_match.group(2).lower() == "m/s":
+            speed *= 3.6
+        params["speed_kmh"] = speed
+
+    k_match = re.search(r"(?:k\s*=|k\s+of|into)\s*(\d+)\s*(?:clusters?)?", text, flags=re.IGNORECASE)
+    if k_match:
+        params["cluster_count"] = float(k_match.group(1))
+
+    return params
+
+
+def _add_accuracy_metadata(
+    visual: Dict[str, Any],
+    method: str,
+    equations: List[str],
+    assumptions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    visual["generation_method"] = method
+    visual["source_equations"] = equations
+    visual["assumptions"] = assumptions or []
+    visual["accuracy_status"] = "verified" if not visual["assumptions"] else "verified_with_assumptions"
+    return visual
 
 SIMULATION_TOOL = {
     "type": "function",
@@ -28,7 +135,7 @@ SIMULATION_TOOL = {
                 "engine": {
                     "type": "string",
                     "enum": ["plotly", "physical_simulation"],
-                    "description": "Use 'plotly' for ML (Logistic Regression, K-Means, Loss curves), Math (Functions, Derivatives), and Kinematics graphs. Use 'physical_simulation' for vehicle braking/skid or projectile trajectories."
+                    "description": "Use 'plotly' for ML, mathematics, kinematics, and projectile trajectories. Use 'physical_simulation' only for vehicle braking/skid."
                 },
                 "title": {
                     "type": "string",
@@ -53,7 +160,7 @@ SIMULATION_TOOL = {
                     "type": "object",
                     "description": "Simulation parameters when engine is 'physical_simulation'.",
                     "properties": {
-                        "sim_type": {"type": "string", "enum": ["momentum_stopping", "projectile_motion"]},
+                        "sim_type": {"type": "string", "enum": ["momentum_stopping"]},
                         "parameters": {"type": "object"}
                     }
                 },
@@ -94,6 +201,16 @@ SIMULATION_TOOL = {
                 "explanation": {
                     "type": "string",
                     "description": "Socratic explanation of the governing mechanism and what the student should observe. DO NOT reveal the direct test option letter."
+                },
+                "source_equations": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Equations used to compute or justify the visual. Use an empty array for a non-numeric conceptual visual."
+                },
+                "assumptions": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Every illustrative value or simplifying assumption not explicitly stated in the question."
                 }
             },
             "required": ["engine", "title", "explanation"]
@@ -134,8 +251,8 @@ ENGINES:
    - Layout MUST use dark aesthetic: paper_bgcolor: "#020617", plot_bgcolor: "#0f172a", font color: "#94a3b8".
 
 2. 'physical_simulation' (Mechanical Motion):
-   - Vehicle momentum & braking (sim_type: "momentum_stopping")
-   - Projectile launch trajectory (sim_type: "projectile_motion")
+   - Vehicle momentum & braking only (sim_type: "momentum_stopping")
+   - Projectile motion must use Plotly so its equation-derived trajectory renders consistently.
 """
 
 
@@ -175,24 +292,33 @@ def compute_momentum_physics(loaded_mass: float, unloaded_mass: float = 3000.0, 
 
 def create_logistic_regression_spec(w: float = 1.5, b: float = -4.5, threshold: float = 0.5) -> Dict[str, Any]:
     """Generates a Plotly interactive specification for Logistic Regression."""
-    xs = [round(i * 0.1, 2) for i in range(0, 71)]
-    sigmoids = [round(1.0 / (1.0 + math.exp(-(w * x + b))), 3) for x in xs]
-
+    w = max(-20.0, min(float(w), 20.0))
+    if abs(w) < 0.05:
+        w = 0.05
+    b = max(-100.0, min(float(b), 100.0))
+    threshold = max(0.01, min(float(threshold), 0.99))
     # Calculate boundary cutoff x* where sigma(x) = threshold
     # threshold = 1 / (1 + e^{-(wx + b)}) => wx + b = ln(tau / (1 - tau))
     tau = max(0.01, min(threshold, 0.99))
     x_cutoff = round((math.log(tau / (1.0 - tau)) - b) / w, 2)
+    x_min = x_cutoff - 4.0
+    x_max = x_cutoff + 4.0
+    xs = [round(x_min + i * 0.1, 2) for i in range(81)]
+    sigmoids = [round(1.0 / (1.0 + math.exp(-(w * x + b))), 3) for x in xs]
+    left_samples = [round(x_cutoff - offset, 2) for offset in (3.0, 2.2, 1.4, 0.6)]
+    right_samples = [round(x_cutoff + offset, 2) for offset in (0.6, 1.4, 2.2, 3.0)]
+    class_zero_x, class_one_x = (left_samples, right_samples) if w > 0 else (right_samples, left_samples)
 
     data = [
         {
-            "x": [0.8, 1.4, 2.0, 2.5],
+            "x": class_zero_x,
             "y": [0, 0, 0, 0],
             "mode": "markers",
             "name": "Class 0 (Negative)",
             "marker": {"color": "#ef4444", "size": 10, "symbol": "circle"}
         },
         {
-            "x": [3.6, 4.2, 5.0, 6.2],
+            "x": class_one_x,
             "y": [1, 1, 1, 1],
             "mode": "markers",
             "name": "Class 1 (Positive)",
@@ -213,16 +339,16 @@ def create_logistic_regression_spec(w: float = 1.5, b: float = -4.5, threshold: 
         "plot_bgcolor": "#0f172a",
         "font": {"color": "#94a3b8", "family": "Inter, sans-serif"},
         "margin": {"l": 50, "r": 30, "t": 40, "b": 40},
-        "xaxis": {"title": "Input Feature Value (x)", "gridcolor": "rgba(255,255,255,0.08)", "zerolinecolor": "rgba(255,255,255,0.2)"},
+        "xaxis": {"title": "Input Feature Value (x)", "range": [x_min, x_max], "gridcolor": "rgba(255,255,255,0.08)", "zerolinecolor": "rgba(255,255,255,0.2)"},
         "yaxis": {"title": "Predicted Probability P(y=1)", "range": [-0.15, 1.15], "gridcolor": "rgba(255,255,255,0.08)", "zerolinecolor": "rgba(255,255,255,0.2)"},
         "shapes": [
             # Horizontal threshold line
-            {"type": "line", "x0": 0, "x1": 7, "y0": threshold, "y1": threshold, "line": {"dash": "dash", "color": "#f59e0b", "width": 2}},
+            {"type": "line", "x0": x_min, "x1": x_max, "y0": threshold, "y1": threshold, "line": {"dash": "dash", "color": "#f59e0b", "width": 2}},
             # Vertical decision cutoff
             {"type": "line", "x0": x_cutoff, "x1": x_cutoff, "y0": 0, "y1": 1, "line": {"dash": "dot", "color": "#38bdf8", "width": 2}}
         ],
         "annotations": [
-            {"x": 6.2, "y": threshold + 0.07, "text": f"Threshold τ = {threshold}", "showarrow": False, "font": {"color": "#f59e0b", "size": 11}},
+            {"x": x_max - 0.8, "y": threshold + 0.07, "text": f"Threshold τ = {threshold}", "showarrow": False, "font": {"color": "#f59e0b", "size": 11}},
             {"x": x_cutoff, "y": 0.05, "text": f"Decision Cutoff x* = {x_cutoff}", "showarrow": True, "arrowhead": 2, "font": {"color": "#38bdf8", "size": 10}}
         ]
     }
@@ -237,8 +363,7 @@ def create_logistic_regression_spec(w: float = 1.5, b: float = -4.5, threshold: 
             {"label": "Model Behavior", "value": "Strict" if threshold > 0.6 else ("Permissive" if threshold < 0.4 else "Balanced")}
         ],
         "interactive_controls": [
-            {"param": "threshold", "label": "Decision Threshold (τ)", "min": 0.1, "max": 0.9, "step": 0.05, "default": threshold, "unit": "", "target_type": "threshold_y"},
-            {"param": "w", "label": "Weight / Slope (w)", "min": 0.5, "max": 4.0, "step": 0.1, "default": w, "unit": "", "target_type": "scale_y"}
+            {"param": "threshold", "label": "Decision Threshold (τ)", "min": 0.1, "max": 0.9, "step": 0.05, "default": threshold, "unit": "", "target_type": "threshold_y"}
         ],
         "explanation": "In Logistic Regression, points with P(y=1) ≥ τ are predicted as positive. Raising the threshold shifts the decision cutoff to the right, requiring stronger evidence to predict Class 1, thereby reducing false positives while increasing false negatives."
     }
@@ -252,6 +377,8 @@ def create_gradient_descent_spec(w_opt: float = 2.0, lr: float = 0.2, initial_st
     Trace 2: Gradient descent iteration path.
     Trace 3: Active parameter point (w_t, J(w_t)).
     """
+    w_opt = max(-20.0, min(float(w_opt), 20.0))
+    lr = max(0.001, min(float(lr), 1.0))
     ws = [round(-1.5 + i * 0.15, 2) for i in range(51)]
     cost_ys = [round(0.4 * ((w - w_opt) ** 2) + 0.3, 3) for w in ws]
 
@@ -344,14 +471,130 @@ def create_gradient_descent_spec(w_opt: float = 2.0, lr: float = 0.2, initial_st
     }
 
 
+def create_projectile_motion_spec(
+    launch_speed: float = 25.0,
+    launch_angle: float = 45.0,
+    gravity: float = 9.81,
+) -> Dict[str, Any]:
+    """Create an equation-derived projectile trajectory without invented plot points."""
+    launch_speed = max(1.0, min(float(launch_speed), 250.0))
+    launch_angle = max(1.0, min(float(launch_angle), 89.0))
+    gravity = max(1.0, min(float(gravity), 30.0))
+    theta = math.radians(launch_angle)
+    flight_time = (2.0 * launch_speed * math.sin(theta)) / gravity
+    horizontal_range = launch_speed * math.cos(theta) * flight_time
+    max_height = (launch_speed ** 2) * (math.sin(theta) ** 2) / (2.0 * gravity)
+    times = [flight_time * i / 60.0 for i in range(61)]
+    xs = [round(launch_speed * math.cos(theta) * t, 3) for t in times]
+    ys = [round(max(0.0, launch_speed * math.sin(theta) * t - 0.5 * gravity * t * t), 3) for t in times]
+
+    return {
+        "engine": "plotly",
+        "archetype": "projectile_motion",
+        "title": "Projectile Motion: Equation-Derived Trajectory",
+        "plotly_spec": {
+            "data": [{
+                "x": xs,
+                "y": ys,
+                "mode": "lines",
+                "name": "Projectile path",
+                "line": {"color": "#818cf8", "width": 4},
+            }],
+            "layout": {
+                "title": {"text": "Projectile trajectory (without air resistance)", "font": {"color": "#f8fafc", "size": 14}},
+                "paper_bgcolor": "#020617",
+                "plot_bgcolor": "#0f172a",
+                "font": {"color": "#94a3b8", "family": "Inter, sans-serif"},
+                "margin": {"l": 55, "r": 25, "t": 40, "b": 45},
+                "xaxis": {"title": "Horizontal distance (m)", "gridcolor": "rgba(255,255,255,0.08)", "rangemode": "tozero"},
+                "yaxis": {"title": "Height (m)", "gridcolor": "rgba(255,255,255,0.08)", "rangemode": "tozero"},
+                "annotations": [{
+                    "x": round(horizontal_range / 2.0, 3),
+                    "y": round(max_height, 3),
+                    "text": f"Peak height: {max_height:.2f} m",
+                    "showarrow": True,
+                    "arrowhead": 2,
+                    "font": {"color": "#f59e0b", "size": 11},
+                }],
+            },
+        },
+        "metrics": [
+            {"label": "Flight time", "value": f"{flight_time:.2f} s"},
+            {"label": "Horizontal range", "value": f"{horizontal_range:.2f} m"},
+            {"label": "Maximum height", "value": f"{max_height:.2f} m"},
+        ],
+        "interactive_controls": [],
+        "explanation": (
+            "The plotted points are calculated from x(t)=v₀cos(θ)t and "
+            "y(t)=v₀sin(θ)t−½gt². Air resistance is excluded unless the question states otherwise."
+        ),
+    }
+
+
+def create_linear_regression_spec(slope: float = 1.5, intercept: float = 1.0) -> Dict[str, Any]:
+    """Create a deterministic regression visual from y = mx + b."""
+    slope = max(-50.0, min(float(slope), 50.0))
+    intercept = max(-100.0, min(float(intercept), 100.0))
+    xs = [round(-5.0 + i * 0.25, 2) for i in range(41)]
+    line_ys = [round(slope * x + intercept, 3) for x in xs]
+    sample_x = [-4, -3, -2, -1, 0, 1, 2, 3, 4]
+    residual_offsets = [0.8, -0.6, 0.35, -0.45, 0.25, 0.55, -0.4, 0.7, -0.5]
+    sample_y = [round(slope * x + intercept + residual_offsets[i], 3) for i, x in enumerate(sample_x)]
+
+    return {
+        "engine": "plotly",
+        "archetype": "linear_regression",
+        "title": "Linear Regression: Prediction Line and Residuals",
+        "plotly_spec": {
+            "data": [
+                {"x": sample_x, "y": sample_y, "mode": "markers", "name": "Observed samples", "marker": {"color": "#38bdf8", "size": 10}},
+                {"x": xs, "y": line_ys, "mode": "lines", "name": f"ŷ = {slope:g}x + {intercept:g}", "line": {"color": "#f59e0b", "width": 3}},
+            ],
+            "layout": {
+                "title": {"text": "Observed values and fitted linear model", "font": {"color": "#f8fafc", "size": 14}},
+                "paper_bgcolor": "#020617",
+                "plot_bgcolor": "#0f172a",
+                "font": {"color": "#94a3b8", "family": "Inter, sans-serif"},
+                "margin": {"l": 50, "r": 25, "t": 40, "b": 45},
+                "xaxis": {"title": "Feature x", "gridcolor": "rgba(255,255,255,0.08)"},
+                "yaxis": {"title": "Target y", "gridcolor": "rgba(255,255,255,0.08)"},
+            },
+        },
+        "metrics": [
+            {"label": "Slope (m)", "value": f"{slope:g}"},
+            {"label": "Intercept (b)", "value": f"{intercept:g}"},
+            {"label": "Model equation", "value": f"ŷ = {slope:g}x + {intercept:g}"},
+        ],
+        "interactive_controls": [],
+        "explanation": (
+            "The line shows predictions from ŷ=mx+b. Vertical differences between the sample points "
+            "and the line are residuals; least squares minimizes their squared values."
+        ),
+    }
+
+
 def create_kmeans_clustering_spec(k: int = 3) -> Dict[str, Any]:
     """Generates a Plotly interactive specification for K-Means Clustering."""
-    data = [
-        {"x": [1.2, 1.8, 1.5, 2.2, 1.9], "y": [1.5, 2.2, 1.8, 2.5, 2.0], "mode": "markers", "name": "Cluster A", "marker": {"color": "#3b82f6", "size": 10}},
-        {"x": [5.1, 5.8, 5.5, 6.2, 5.9], "y": [5.2, 6.1, 5.8, 6.5, 6.0], "mode": "markers", "name": "Cluster B", "marker": {"color": "#10b981", "size": 10}},
-        {"x": [7.8, 8.4, 8.1, 8.9, 8.5], "y": [1.8, 2.4, 2.0, 2.6, 2.2], "mode": "markers", "name": "Cluster C", "marker": {"color": "#f59e0b", "size": 10}},
-        {"x": [1.7, 5.7, 8.3], "y": [2.0, 5.9, 2.2], "mode": "markers", "name": "Centroids (μ)", "marker": {"color": "#ec4899", "size": 16, "symbol": "star"}}
-    ]
+    k = max(2, min(int(k), 6))
+    centers = [(1.7, 2.0), (5.7, 5.9), (8.3, 2.2), (3.1, 7.8), (8.2, 7.9), (5.0, 1.0)][:k]
+    colors = ["#3b82f6", "#10b981", "#f59e0b", "#a855f7", "#f43f5e", "#06b6d4"]
+    offsets = [(-.5, -.4), (.1, .2), (-.2, -.1), (.5, .5), (.2, 0)]
+    data = []
+    for index, (center_x, center_y) in enumerate(centers):
+        data.append({
+            "x": [round(center_x + dx, 2) for dx, _ in offsets],
+            "y": [round(center_y + dy, 2) for _, dy in offsets],
+            "mode": "markers",
+            "name": f"Cluster {index + 1}",
+            "marker": {"color": colors[index], "size": 10},
+        })
+    data.append({
+        "x": [center[0] for center in centers],
+        "y": [center[1] for center in centers],
+        "mode": "markers",
+        "name": "Centroids (μ)",
+        "marker": {"color": "#ec4899", "size": 16, "symbol": "star"},
+    })
 
     layout = {
         "title": {"text": f"K-Means Clustering Space (K = {k})", "font": {"color": "#f8fafc", "size": 14}},
@@ -599,55 +842,302 @@ def create_calculus_extrema_spec(is_max: bool = True) -> Dict[str, Any]:
     }
 
 
-def create_fallback_simulation(question_text: str = "") -> Dict[str, Any]:
-    """Generates an accurate domain-specific visualization when offline or on API timeout."""
+def _linear_equation_parameters(question_text: str) -> Optional[Dict[str, float]]:
+    match = re.search(
+        r"(?:y|ŷ|f\(x\))\s*=\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+)?)\s*\*?\s*x\s*([+-]\s*\d+(?:\.\d+)?)?",
+        question_text.replace("−", "-"),
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    raw_slope = (match.group(1) or "1").replace(" ", "")
+    if raw_slope in {"+", ""}:
+        raw_slope = "1"
+    elif raw_slope == "-":
+        raw_slope = "-1"
+    try:
+        slope = float(raw_slope)
+        intercept = float((match.group(2) or "0").replace(" ", ""))
+    except ValueError:
+        return None
+    return {"slope": slope, "intercept": intercept}
+
+
+def create_verified_simulation(question_text: str) -> Optional[Dict[str, Any]]:
+    """Use deterministic maths for supported concepts before consulting an LLM."""
     q_lower = question_text.lower()
+    params = _extract_explicit_parameters(question_text)
 
-    # 1. Machine Learning: Gradient Descent & Cost Minimization (Takes priority over generic 'logistic')
-    if any(k in q_lower for k in ["gradient descent", "cost function", "loss function", "minimize the cost", "learning rate"]):
-        return create_gradient_descent_spec()
+    if any(term in q_lower for term in ["gradient descent", "cost function", "loss function", "learning rate"]):
+        visual = create_gradient_descent_spec()
+        return _add_accuracy_metadata(
+            visual,
+            "deterministic",
+            ["J(w)=0.4(w−2)²+0.3", "dJ/dw=0.8(w−2)", "wₜ₊₁=wₜ−η·dJ/dw"],
+            ["Illustrative convex cost function used because the question does not supply a complete cost equation."],
+        )
 
-    # 2. Machine Learning: Logistic Regression
-    if any(k in q_lower for k in ["logistic", "sigmoid", "classification threshold", "probability threshold"]):
-        return create_logistic_regression_spec(w=1.5, b=-4.5, threshold=0.5)
+    if any(term in q_lower for term in ["logistic regression", "sigmoid", "classification threshold", "probability threshold"]):
+        w = params.get("weight", 1.5)
+        b = params.get("bias", -4.5)
+        threshold = params.get("threshold", 0.5)
+        assumptions = []
+        if "weight" not in params:
+            assumptions.append("Illustrative logistic weight w=1.5.")
+        if "bias" not in params:
+            assumptions.append("Illustrative logistic bias b=−4.5.")
+        if "threshold" not in params:
+            assumptions.append("Decision threshold τ=0.5.")
+        return _add_accuracy_metadata(
+            create_logistic_regression_spec(w=w, b=b, threshold=threshold),
+            "deterministic",
+            ["P(y=1|x)=1/(1+e^(−(wx+b)))", "x*=(ln(τ/(1−τ))−b)/w"],
+            assumptions,
+        )
 
-    # 3. Machine Learning: Clustering / K-Means / KNN
-    if any(k in q_lower for k in ["cluster", "k-means", "kmeans", "centroid", "knn"]):
-        return create_kmeans_clustering_spec(k=3)
+    if any(term in q_lower for term in ["k-means", "kmeans", "centroid"]):
+        cluster_count = int(params.get("cluster_count", 3))
+        assumptions = [] if "cluster_count" in params else ["Illustrative K=3 feature-space dataset."]
+        return _add_accuracy_metadata(
+            create_kmeans_clustering_spec(k=cluster_count),
+            "deterministic",
+            ["μⱼ=(1/|Cⱼ|)Σxᵢ", "assign(xᵢ)=argminⱼ ||xᵢ−μⱼ||₂"],
+            assumptions,
+        )
 
-    # 3. Physics: Truck / Momentum / Inertia
-    if any(k in q_lower for k in ["truck", "momentum", "stopping", "inertia", "brake", "braking", "effort to stop"]):
-        physics = compute_momentum_physics(loaded_mass=9000.0, unloaded_mass=3000.0, speed_kmh=60.0, braking_force=8000.0)
-        return {
+    if any(term in q_lower for term in ["projectile", "trajectory", "angle of projection"]):
+        launch_speed = params.get("launch_speed", params.get("speed_kmh", 90.0) / 3.6)
+        launch_angle = params.get("launch_angle", 45.0)
+        gravity = params.get("gravity", 9.81)
+        assumptions = []
+        if "launch_speed" not in params and "speed_kmh" not in params:
+            assumptions.append("Illustrative launch speed v₀=25 m/s.")
+        if "launch_angle" not in params:
+            assumptions.append("Illustrative launch angle θ=45°.")
+        if "gravity" not in params:
+            assumptions.append("Earth gravity g=9.81 m/s².")
+        assumptions.append("Air resistance is neglected.")
+        return _add_accuracy_metadata(
+            create_projectile_motion_spec(launch_speed, launch_angle, gravity),
+            "deterministic",
+            ["x(t)=v₀cos(θ)t", "y(t)=v₀sin(θ)t−½gt²"],
+            assumptions,
+        )
+
+    if any(term in q_lower for term in ["truck", "momentum", "stopping distance", "braking", "brake force"]):
+        loaded_mass = params.get("loaded_mass", 9000.0)
+        unloaded_mass = params.get("unloaded_mass", 3000.0)
+        speed_kmh = params.get("speed_kmh", 60.0)
+        braking_force = params.get("braking_force", 8000.0)
+        physics = compute_momentum_physics(loaded_mass, unloaded_mass, speed_kmh, braking_force)
+        values = physics["values"]
+        assumptions = []
+        for key, message in {
+            "loaded_mass": "Illustrative loaded mass of 9000 kg.",
+            "unloaded_mass": "Illustrative unloaded mass of 3000 kg.",
+            "speed_kmh": "Illustrative initial speed of 60 km/h.",
+            "braking_force": "Constant illustrative braking force of 8000 N.",
+        }.items():
+            if key not in params:
+                assumptions.append(message)
+        visual = {
             "engine": "physical_simulation",
             "archetype": "momentum_stopping",
-            "title": "Loaded vs. Unloaded Truck: Momentum & Stopping Effort",
+            "title": "Momentum and Constant-Force Stopping Distance",
             "simulation_spec": {
                 "sim_type": "momentum_stopping",
-                "parameters": {"loaded_mass": 9000.0, "unloaded_mass": 3000.0, "speed_kmh": 60.0, "braking_force": 8000.0}
+                "parameters": {
+                    "loaded_mass": values["loaded_mass"],
+                    "unloaded_mass": values["unloaded_mass"],
+                    "speed_kmh": values["speed_kmh"],
+                    "braking_force": values["braking_force"],
+                },
             },
             "metrics": physics["metrics"],
             "interactive_controls": [
-                {"param": "loaded_mass", "label": "Loaded Truck Mass", "min": 4000, "max": 15000, "step": 500, "default": 9000, "unit": " kg"},
-                {"param": "speed_kmh", "label": "Initial Speed", "min": 30, "max": 100, "step": 5, "default": 60, "unit": " km/h"},
-                {"param": "braking_force", "label": "Braking Friction Force", "min": 4000, "max": 14000, "step": 500, "default": 8000, "unit": " N"}
+                {"param": "loaded_mass", "label": "Loaded mass", "min": 4000, "max": 15000, "step": 500, "default": values["loaded_mass"], "unit": " kg"},
+                {"param": "speed_kmh", "label": "Initial speed", "min": 10, "max": 140, "step": 5, "default": values["speed_kmh"], "unit": " km/h"},
+                {"param": "braking_force", "label": "Braking force", "min": 1000, "max": 30000, "step": 500, "default": values["braking_force"], "unit": " N"},
             ],
-            "explanation": "Momentum is given by p = mass × velocity. At the same speed, a loaded truck has substantially more mass and therefore greater momentum, requiring more braking work and skid distance to stop."
+            "explanation": "Momentum is p=mv. Under a constant opposing braking force, the work-energy relation gives stopping distance d=mv²/(2F).",
         }
+        return _add_accuracy_metadata(visual, "deterministic", ["p=mv", "d=mv²/(2F)"], assumptions)
 
-    # 4. Calculus / Maxima / Minima / Optimization / Profit Maximization / Derivatives
-    if any(k in q_lower for k in ["maxima", "minima", "maximum", "minimum", "profit maximization", "derivative", "critical point", "concavity", "f'(", "f''("]):
+    if any(term in q_lower for term in ["linear regression", "least squares", "regression line"]):
+        equation = _linear_equation_parameters(question_text)
+        assumptions = []
+        if equation is None:
+            equation = {"slope": 1.5, "intercept": 1.0}
+            assumptions.append("Illustrative fitted line ŷ=1.5x+1 and illustrative sample residuals.")
+        else:
+            assumptions.append("Sample observations around the supplied line are illustrative.")
+        return _add_accuracy_metadata(
+            create_linear_regression_spec(**equation),
+            "deterministic",
+            ["ŷ=mx+b", "residualᵢ=yᵢ−ŷᵢ", "SSE=Σ(yᵢ−ŷᵢ)²"],
+            assumptions,
+        )
+
+    if any(term in q_lower for term in ["maxima", "minima", "local maximum", "local minimum", "concavity", "critical point"]):
         is_max = not ("minimum" in q_lower or "minima" in q_lower)
-        return create_calculus_extrema_spec(is_max=is_max)
+        return _add_accuracy_metadata(
+            create_calculus_extrema_spec(is_max=is_max),
+            "deterministic",
+            ["f'(x₀)=0 at the illustrated stationary point", "f''(x) determines concavity"],
+            ["Illustrative quadratic function used because no complete function is supplied."],
+        )
 
-    # 5. Kinematics (Distance vs Displacement, Average Speed)
-    if any(k in q_lower for k in ["displacement", "scalar", "vector"]):
-        return create_kinematics_concept_spec("displacement")
-    if any(k in q_lower for k in ["speed", "velocity", "rate of motion", "average speed"]):
-        return create_kinematics_concept_spec("speed")
+    if any(term in q_lower for term in ["distance vs displacement", "distance and displacement", "net displacement"]):
+        return _add_accuracy_metadata(
+            create_kinematics_concept_spec("displacement"),
+            "deterministic",
+            ["displacement=final position−initial position", "distance=total path length"],
+            ["Path coordinates are illustrative unless supplied by the question."],
+        )
 
-    # 6. Universal Generic STEM Model
-    return create_generic_stem_spec(question_text)
+    if any(term in q_lower for term in ["average speed", "distance-time", "distance time graph"]):
+        return _add_accuracy_metadata(
+            create_kinematics_concept_spec("speed"),
+            "deterministic",
+            ["average speed=total distance/total time", "speed=gradient of a distance-time graph"],
+            ["Illustrative uniform motion of 150 m in 10 s."],
+        )
+
+    return None
+
+
+def validate_and_normalize_simulation(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate model output before it is displayed or stored for approval."""
+    try:
+        visual = json.loads(json.dumps(raw, allow_nan=False))
+    except (TypeError, ValueError) as exc:
+        raise VisualizationValidationError("Visualization is not valid JSON.") from exc
+
+    engine = visual.get("engine")
+    if engine not in ALLOWED_ENGINES:
+        raise VisualizationValidationError("Unsupported visualization engine.")
+    if not isinstance(visual.get("title"), str) or not visual["title"].strip():
+        raise VisualizationValidationError("Visualization title is missing.")
+    if not isinstance(visual.get("explanation"), str) or not visual["explanation"].strip():
+        raise VisualizationValidationError("Visualization explanation is missing.")
+
+    visible_text = " ".join([
+        visual.get("title", ""),
+        visual.get("explanation", ""),
+        json.dumps(visual.get("metrics", [])),
+    ]).lower()
+    if re.search(r"\bcorrect\s+(?:answer|option)\b|\banswer\s+is\s+(?:option\s+)?[a-d]\b", visible_text):
+        raise VisualizationValidationError("Visualization reveals the answer.")
+
+    metrics = visual.get("metrics", [])
+    if not isinstance(metrics, list) or len(metrics) > 6:
+        raise VisualizationValidationError("Visualization metrics are malformed.")
+    visual["metrics"] = [
+        {"label": str(metric.get("label", ""))[:100], "value": str(metric.get("value", ""))[:160]}
+        for metric in metrics
+        if isinstance(metric, dict) and metric.get("label") is not None and metric.get("value") is not None
+    ]
+
+    controls = visual.get("interactive_controls", [])
+    if not isinstance(controls, list) or len(controls) > 6:
+        raise VisualizationValidationError("Visualization controls are malformed.")
+    normalized_controls = []
+    deterministic = visual.get("generation_method") == "deterministic"
+    for control in controls:
+        if not isinstance(control, dict):
+            raise VisualizationValidationError("Visualization control is malformed.")
+        minimum, maximum, default = control.get("min"), control.get("max"), control.get("default")
+        if not all(_finite_number(value) for value in [minimum, maximum, default]) or minimum >= maximum:
+            raise VisualizationValidationError("Visualization control range is invalid.")
+        control["default"] = max(minimum, min(default, maximum))
+        target_type = control.get("target_type")
+        if not deterministic and target_type not in ALLOWED_CONTROL_TARGETS:
+            continue
+        if target_type and target_type not in ALLOWED_CONTROL_TARGETS:
+            control.pop("target_type", None)
+        normalized_controls.append(control)
+    visual["interactive_controls"] = normalized_controls
+
+    if engine == "plotly":
+        spec = visual.get("plotly_spec")
+        if not isinstance(spec, dict):
+            raise VisualizationValidationError("Plotly specification is missing.")
+        traces = spec.get("data")
+        if not isinstance(traces, list) or not 1 <= len(traces) <= MAX_PLOT_TRACES:
+            raise VisualizationValidationError("Plotly trace count is invalid.")
+        for trace in traces:
+            if not isinstance(trace, dict):
+                raise VisualizationValidationError("Plotly trace is malformed.")
+            x_values, y_values = trace.get("x"), trace.get("y")
+            if x_values is not None and (not isinstance(x_values, list) or len(x_values) > MAX_POINTS_PER_TRACE):
+                raise VisualizationValidationError("Plotly x-values are invalid.")
+            if y_values is not None and (not isinstance(y_values, list) or len(y_values) > MAX_POINTS_PER_TRACE):
+                raise VisualizationValidationError("Plotly y-values are invalid.")
+            trace_type = str(trace.get("type", "scatter")).lower()
+            if (
+                trace_type not in {"heatmap", "contour", "surface"}
+                and isinstance(x_values, list)
+                and isinstance(y_values, list)
+                and len(x_values) != len(y_values)
+            ):
+                raise VisualizationValidationError("Plotly x/y lengths do not match.")
+            for values in (x_values, y_values):
+                if isinstance(values, list):
+                    for value in values:
+                        if isinstance(value, (int, float)) and not _finite_number(value):
+                            raise VisualizationValidationError("Plotly contains a non-finite value.")
+            z_values = trace.get("z")
+            if z_values is not None:
+                if not isinstance(z_values, list) or len(z_values) > MAX_POINTS_PER_TRACE:
+                    raise VisualizationValidationError("Plotly z-values are invalid.")
+                for row in z_values:
+                    cells = row if isinstance(row, list) else [row]
+                    if len(cells) > MAX_POINTS_PER_TRACE:
+                        raise VisualizationValidationError("Plotly z-values are too large.")
+                    for value in cells:
+                        if isinstance(value, (int, float)) and not _finite_number(value):
+                            raise VisualizationValidationError("Plotly contains a non-finite value.")
+        layout = spec.setdefault("layout", {})
+        if not isinstance(layout, dict):
+            raise VisualizationValidationError("Plotly layout is malformed.")
+        layout.setdefault("paper_bgcolor", "#020617")
+        layout.setdefault("plot_bgcolor", "#0f172a")
+        layout.setdefault("font", {}).setdefault("color", "#94a3b8")
+        layout["font"].setdefault("family", "Inter, sans-serif")
+        margin = layout.setdefault("margin", {})
+        for side, value in {"l": 45, "r": 25, "t": 35, "b": 35}.items():
+            margin.setdefault(side, value)
+        for trace in traces:
+            if "lines" in str(trace.get("mode", "")):
+                line = trace.setdefault("line", {})
+                if "shape" not in line and line.get("dash") not in {"dash", "dot"}:
+                    line["shape"] = "spline"
+                    line["smoothing"] = 1.0
+    else:
+        spec = visual.get("simulation_spec")
+        if not isinstance(spec, dict) or spec.get("sim_type") not in ALLOWED_PHYSICAL_SIMULATIONS:
+            raise VisualizationValidationError("Physical simulation specification is invalid.")
+        parameters = spec.get("parameters", {})
+        if not isinstance(parameters, dict) or any(not _finite_number(value) for value in parameters.values()):
+            raise VisualizationValidationError("Physical simulation parameters are invalid.")
+
+    assumptions = visual.get("assumptions", [])
+    equations = visual.get("source_equations", [])
+    visual["assumptions"] = [str(item)[:240] for item in assumptions[:8]] if isinstance(assumptions, list) else []
+    visual["source_equations"] = [str(item)[:240] for item in equations[:8]] if isinstance(equations, list) else []
+    visual.setdefault("generation_method", "model_generated")
+    visual.setdefault("accuracy_status", "model_validated")
+    return visual
+
+
+def create_fallback_simulation(question_text: str = "") -> Dict[str, Any]:
+    """Return a verified offline visual, never a generic graph unrelated to the question."""
+    visual = create_verified_simulation(question_text)
+    if visual:
+        return validate_and_normalize_simulation(visual)
+    raise VisualizationValidationError(
+        "No verified offline visualization is available for this question."
+    )
 
 
 def is_question_visualizable(question_text: str, concept_tags: Optional[str] = None) -> bool:
@@ -688,7 +1178,7 @@ def is_question_visualizable(question_text: str, concept_tags: Optional[str] = N
         r"\b(derivative|rate of change|integral|area under)\b",
         r"\b(momentum|stopping distance|braking|skid|truck)\b",
         r"\b(projectile|trajectory|displacement|velocity-time|distance-time|acceleration)\b",
-        r"\b(logistic regression|sigmoid|decision boundary|k-means|clustering|centroid)\b",
+        r"\b(logistic regression|linear regression|sigmoid|decision boundary|k-means|centroid|least squares)\b",
         r"\b(demand curve|supply curve|profit curve|cost curve|equilibrium)\b",
     ]
     for pattern in visual_patterns:
@@ -702,22 +1192,36 @@ class VisualizationService:
     def __init__(self) -> None:
         settings = get_settings()
         self.api_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
-        self.model = getattr(settings, "LLM_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
+        self.model = (
+            getattr(settings, "VISUALIZATION_MODEL", "")
+            or os.getenv("VISUALIZATION_MODEL", "")
+            or getattr(settings, "LLM_MODEL", "gpt-4o-mini")
+            or "gpt-4o-mini"
+        )
 
     async def plan_simulation(self, question_text: str, context: Optional[str] = None) -> Dict[str, Any]:
-        """Plans and generates a generic structured visualization using tool calling."""
+        """Generate a verified deterministic visual or a validated model-generated spec."""
+        verified = create_verified_simulation(question_text)
+        if verified:
+            return validate_and_normalize_simulation(verified)
+
         if not self.api_key:
             return create_fallback_simulation(question_text)
 
-        user_content = f"The student is exploring this assignment question:\n\"\"\"{question_text}\"\"\""
+        user_content = (
+            "Create one scientifically defensible visualization for this exact assignment question.\n"
+            f"QUESTION (source of truth):\n\"\"\"{question_text}\"\"\"\n"
+            "ACCURACY RULES:\n"
+            "1. Use every numeric value and unit exactly as stated.\n"
+            "2. Do not invent measurements, data points, coefficients, or named categories.\n"
+            "3. If an illustrative value is necessary, list it explicitly in assumptions.\n"
+            "4. Put every equation used to compute the visual in source_equations.\n"
+            "5. Keep x/y arrays the same length and derive numeric points from the stated equation.\n"
+            "6. Prefer a non-numeric conceptual diagram over a fabricated quantitative graph.\n"
+            "7. Never reveal which answer choice is correct."
+        )
         if context:
-            user_content += f"\nAdditional Context: {context}"
-
-        q_l = question_text.lower()
-        if any(k in q_l for k in ["gradient descent", "cost function", "loss function", "minimize the cost", "learning rate"]):
-            user_content += "\nCRITICAL FOCUS: The question is about Gradient Descent / Cost Minimization. Do NOT plot a sigmoid classification curve. Plot the convex Cost Function bowl J(w) vs Weight w, with an interactive slider (param: 'step', target_type: 'gradient_step') stepping downhill to the global minimum."
-
-        user_content += "\nGenerate an appropriate, interactive visualization model tailored to this exact question."
+            user_content += f"\nCOURSE CONTEXT (not permission to invent data): {context}"
 
         try:
             async with AsyncOpenAI(api_key=self.api_key) as client:
@@ -729,60 +1233,29 @@ class VisualizationService:
                     ],
                     tools=[SIMULATION_TOOL],
                     tool_choice={"type": "function", "function": {"name": "render_interactive_visualization"}},
-                    temperature=0.2,
+                    parallel_tool_calls=False,
+                    temperature=0,
                 )
 
                 choice = response.choices[0]
                 if choice.message.tool_calls:
                     call = choice.message.tool_calls[0]
                     arguments = json.loads(call.function.arguments)
-                    # Validate engine key
-                    if "engine" in arguments and (arguments.get("plotly_spec") or arguments.get("simulation_spec")):
-                        if arguments.get("engine") == "plotly" and "plotly_spec" in arguments:
-                            spec = arguments["plotly_spec"]
-                            layout = spec.setdefault("layout", {})
-                            layout.setdefault("paper_bgcolor", "#020617")
-                            layout.setdefault("plot_bgcolor", "#0f172a")
-                            font = layout.setdefault("font", {})
-                            font.setdefault("color", "#94a3b8")
-                            font.setdefault("family", "Inter, sans-serif")
-                            margin = layout.setdefault("margin", {})
-                            margin.setdefault("l", 45)
-                            margin.setdefault("r", 25)
-                            margin.setdefault("t", 35)
-                            margin.setdefault("b", 35)
+                    arguments.setdefault(
+                        "assumptions",
+                        ["Model-generated visual; professor verification is required before approval."],
+                    )
+                    return validate_and_normalize_simulation(arguments)
 
-                            # Enforce spline smoothing on continuous line curves to avoid sharp jagged polygons
-                            for trace in spec.get("data", []):
-                                if trace.get("mode") and "lines" in trace.get("mode"):
-                                    line = trace.setdefault("line", {})
-                                    if "shape" not in line and line.get("dash") != "dash" and line.get("dash") != "dot":
-                                        line["shape"] = "spline"
-                                        line["smoothing"] = 1.3
+                raise VisualizationValidationError("The model did not return a visualization specification.")
 
-                            # Infer target_type for interactive controls if omitted
-                            for ctrl in arguments.get("interactive_controls", []):
-                                if "target_type" not in ctrl:
-                                    p = ctrl.get("param", "").lower()
-                                    if any(k in p for k in ["step", "iteration", "gradient"]):
-                                        ctrl["target_type"] = "gradient_step"
-                                    elif any(k in p for k in ["threshold", "tau"]):
-                                        ctrl["target_type"] = "threshold_y"
-                                    elif any(k in p for k in ["probe", "tangent", "x_probe"]):
-                                        ctrl["target_type"] = "tangent_probe"
-                                    elif any(k in p for k in ["slope", "speed", "velocity", "rate", "amplitude", "weight", "w", "curvature", "concavity"]):
-                                        ctrl["target_type"] = "scale_y"
-                                    elif any(k in p for k in ["spread", "variance", "k"]):
-                                        ctrl["target_type"] = "cluster_spread"
-                                    elif any(k in p for k in ["detour", "winding"]):
-                                        ctrl["target_type"] = "detour"
-                        return arguments
-
-                return create_fallback_simulation(question_text)
-
+        except VisualizationValidationError:
+            raise
         except Exception as e:
             logger.exception("Error in plan_simulation: %s", e)
-            return create_fallback_simulation(question_text)
+            raise VisualizationValidationError(
+                "The visualization could not be generated and verified."
+            ) from e
 
 
 _visualization_service: Optional[VisualizationService] = None

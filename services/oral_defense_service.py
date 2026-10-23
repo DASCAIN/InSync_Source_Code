@@ -46,42 +46,39 @@ ROUNDS_CONFIG = {
     },
 }
 
-BOSS_SYSTEM_PROMPT = """You are Professor Algor, Guardian of Extrema — an authoritative, dramatic, but fair calculus professor and boss examiner in an educational game called InSync.
+BOSS_SYSTEM_PROMPT = """You are Professor Algor — an authoritative, dramatic, but fair university examiner in an educational Oral Defense game called InSync.
+Judge the student's spoken defense only against the professor-authored evaluation criteria supplied for the current level. Do not require facts that are absent from those criteria.
 
-You are evaluating a university student in an 'Oral Defense' on 'Understanding Maxima and Minima in Profit Maximization'.
+Strict Evaluation & Damage Rules:
+1. Empty, Ignorant, or Evasive Answers:
+   - If the student admits ignorance (e.g. "I do not know", "I don't know", "idk", "no idea", "no clue", "i do not know anything", "nothing"), speaks gibberish, avoids the question, or provides factually wrong content:
+     - damage_dealt MUST BE 0 (ABSOLUTELY ZERO DAMAGE. Do NOT give even 1 HP).
+     - is_sound MUST BE false.
+     - boss_dialogue: Respond sternly but constructively in character.
+     - feedback: Explain which professor-specified concepts they need to study.
 
-Current Challenge: {ROUND_TITLE}
-Topic: {ROUND_TOPIC}
+2. Partially Correct Answers (Damage 10-25):
+   - The student addresses only part of the required knowledge or reasoning:
+     - damage_dealt: 10 to 25.
+     - is_sound: false.
+     - boss_dialogue: Acknowledge the partial truth, but demand the missing piece.
+     - feedback: Guide the student on what specific missing component they need to add.
 
-Expected Conceptual Criteria:
-{EVALUATION_CRITERIA}
+3. Solid to Masterful Answers (Damage 30-50):
+   - The student correctly covers the essential professor-authored criteria with sound reasoning:
+     - damage_dealt: 30 to 50.
+     - is_sound: true.
+     - boss_dialogue: Express dramatic shock or respect at their defense.
+     - feedback: Praise their clear conceptual understanding.
 
-Student's Spoken Defense Transcript:
-\"{STUDENT_TRANSCRIPT}\"
-
-Your Job:
-1. Evaluate the student's verbal defense against the criteria.
-2. Determine if the explanation is conceptually sound (solid/good understanding) or flawed/insufficient.
-3. Determine damage dealt to the Boss (out of 50 HP max for this round):
-   - Solid explanation: 40 to 50 damage.
-   - Partial/incomplete explanation: 20 to 35 damage.
-   - Incorrect/vague/evasive: 0 to 15 damage.
-4. Compose your Boss spoken dialogue (2 to 4 punchy sentences):
-   - Stay in character as Professor Algor: dramatic, scholarly, formidable, yet intellectually generous.
-   - Speak directly to the student in natural spoken English (no markdown, no bullets, no math symbols like 'π' or 'f\'(x)' spelled as raw LaTeX; say 'pi' or 'f prime of x' or 'first derivative' so TTS pronounces it cleanly).
-   - If they did well, react with dramatic respect (e.g., 'Argh! Your grasp of concavity pierces my defenses!').
-   - If flawed, point out what they missed (e.g., 'Hah! You mentioned zero slope, but ignored the concavity test entirely!').
-   - If this was Round 1 and they dealt >= 35 damage, transition to the Round 2 question.
-   - If this was Round 2 and total Boss HP reaches 0, give an epic defeat concession speech acknowledging them as the true Extrema Master.
-
-You must respond ONLY with a valid JSON object in this exact schema:
-{{
-  "is_sound": true/false,
-  "damage_dealt": <integer between 0 and 50>,
-  "boss_dialogue": "<spoken response text for text-to-speech>",
-  "feedback": "<concise 1-2 sentence constructive pedagogical feedback for the UI>",
-  "next_round": <1 or 2 or null>
-}}
+You must respond ONLY with a valid JSON object matching this exact schema:
+{
+  "is_sound": boolean,
+  "damage_dealt": integer (between 0 and 50),
+  "boss_dialogue": string (2-3 spoken sentences, natural spoken English, no markdown or raw LaTeX symbols),
+  "feedback": string (1-2 sentences constructive guidance),
+  "next_round": integer or null
+}
 """
 
 SAGE_PERSPECTIVES = {
@@ -120,7 +117,7 @@ SAGE_PERSPECTIVES = {
 }
 
 SAGE_COACH_SYSTEM_PROMPT = """You are Sage AI, the student's supportive learning companion and corner coach in InSync.
-The student is currently in an intense Oral Defense against Professor Algor on Maxima and Minima in Profit Maximization.
+The student is currently in an Oral Defense against Professor Algor.
 
 Current Challenge: {ROUND_TITLE}
 Topic: {ROUND_TOPIC}
@@ -140,6 +137,43 @@ Respond with only your spoken coaching advice.
 """
 
 
+def legacy_oral_defense_config() -> Dict[str, Any]:
+    """Return the original calculus battle as a reusable configuration."""
+    return {
+        "enabled": True,
+        "template": "oral_defense",
+        "title": "Apex Extrema Oral Defense",
+        "boss_name": "Professor Algor",
+        "boss_title": "Guardian of Extrema",
+        "levels": [
+            {
+                "level": number,
+                "title": config["title"],
+                "topic": config["topic"],
+                "question": config["intro_question"],
+                "knowledge_base": config["evaluation_criteria"],
+            }
+            for number, config in sorted(ROUNDS_CONFIG.items())
+        ],
+    }
+
+
+def resolve_oral_defense_config(game_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Use an assignment's professor-authored game or the original legacy template."""
+    if isinstance(game_config, dict) and game_config.get("enabled"):
+        levels = game_config.get("levels")
+        if isinstance(levels, list) and levels:
+            return game_config
+    return legacy_oral_defense_config()
+
+
+def get_level_config(game_config: Optional[Dict[str, Any]], round_num: int) -> Dict[str, Any]:
+    config = resolve_oral_defense_config(game_config)
+    levels = config["levels"]
+    index = max(0, min(int(round_num or 1) - 1, len(levels) - 1))
+    return levels[index]
+
+
 class OralDefenseService:
     def __init__(self) -> None:
         settings = get_settings()
@@ -149,17 +183,23 @@ class OralDefenseService:
             raise ValueError("OPENAI_API_KEY not configured in environment")
         self.voice = "onyx"  # Deep, authoritative, professorial voice
 
-    async def get_intro_audio(self, round_num: int = 1) -> Dict[str, Any]:
+    async def get_intro_audio(
+        self,
+        round_num: int = 1,
+        game_config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Returns the introductory question and OpenAI audio for the given round."""
-        config = ROUNDS_CONFIG.get(round_num, ROUNDS_CONFIG[1])
-        question_text = config["intro_question"]
+        config = resolve_oral_defense_config(game_config)
+        level = get_level_config(config, round_num)
+        question_text = level["question"]
         audio_base64 = await self.synthesize_speech(question_text)
         return {
             "round": round_num,
-            "title": config["title"],
-            "topic": config["topic"],
+            "title": level["title"],
+            "topic": level["topic"],
             "boss_dialogue": question_text,
             "audio_base64": audio_base64,
+            "total_levels": len(config["levels"]),
         }
 
     async def evaluate_turn(
@@ -167,26 +207,30 @@ class OralDefenseService:
         round_num: int,
         student_transcript: str,
         current_boss_hp: int = 100,
+        game_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Evaluates student spoken defense and returns evaluation, damage, and synthesized OpenAI voice."""
-        config = ROUNDS_CONFIG.get(round_num, ROUNDS_CONFIG[1])
+        config = resolve_oral_defense_config(game_config)
+        level = get_level_config(config, round_num)
+        total_levels = len(config["levels"])
 
-        prompt = BOSS_SYSTEM_PROMPT.format(
-            ROUND_TITLE=config["title"],
-            ROUND_TOPIC=config["topic"],
-            EVALUATION_CRITERIA=config["evaluation_criteria"],
-            STUDENT_TRANSCRIPT=student_transcript.strip() or "[No words spoken / silence]",
+        user_message_content = (
+            f"Current Challenge: {level['title']}\n"
+            f"Topic: {level['topic']}\n"
+            f"Challenge Question Asked: \"{level['question']}\"\n\n"
+            f"Expected Conceptual Criteria:\n{level['knowledge_base']}\n\n"
+            f"Student Spoken Defense Transcript:\n\"{student_transcript.strip() or '[Silence / No words spoken]'}\""
         )
 
         async with AsyncOpenAI(api_key=self.api_key) as client:
             completion = await client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You evaluate calculus students in an educational boss battle. Respond only in JSON."},
-                    {"role": "user", "content": prompt},
+                    {"role": "system", "content": BOSS_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message_content},
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.7,
+                temperature=0.2,
             )
             raw_response = completion.choices[0].message.content or "{}"
             try:
@@ -194,27 +238,57 @@ class OralDefenseService:
             except json.JSONDecodeError:
                 logger.error(f"Failed to parse boss response JSON: {raw_response}")
                 data = {
-                    "is_sound": True,
-                    "damage_dealt": 45,
-                    "boss_dialogue": "Impressive reasoning, scholar! You have defended your calculations with honor.",
-                    "feedback": "Great explanation of critical points and derivatives.",
-                    "next_round": 2 if round_num == 1 else None,
+                    "is_sound": False,
+                    "damage_dealt": 0,
+                    "boss_dialogue": "I could not decipher your defense, scholar! Speak with precision and mathematical clarity.",
+                    "feedback": "Your response could not be parsed. Please speak clearly using calculus terms.",
+                    "next_round": round_num,
                 }
 
-        damage_dealt = int(data.get("damage_dealt", 40))
+        # Deterministic checks for admissions of ignorance
+        transcript_clean = (student_transcript or "").strip().lower()
+        idk_phrases = [
+            "i don't know", "i dont know", "i do not know", "idk",
+            "no idea", "no clue", "dunno", "nothing", "i have no idea",
+            "not sure", "do not know anything", "dont know anything",
+            "i have no clue"
+        ]
+        has_idk = any(phrase in transcript_clean for phrase in idk_phrases)
+        is_pure_ignorance = (has_idk and len(transcript_clean.split()) < 14) or len(transcript_clean) < 3
+
+        damage_dealt = int(data.get("damage_dealt", 0))
+        damage_dealt = max(0, min(50, damage_dealt))
+
+        if is_pure_ignorance:
+            damage_dealt = 0
+            data["is_sound"] = False
+            data["next_round"] = round_num
+        elif not data.get("is_sound", False):
+            damage_dealt = min(damage_dealt, 25)
+            data["next_round"] = round_num
+        else:
+            damage_dealt = max(damage_dealt, 30)
+            data["next_round"] = round_num + 1 if round_num < total_levels else None
+
         new_boss_hp = max(0, current_boss_hp - damage_dealt)
-        is_defeated = (new_boss_hp <= 0) or (round_num == 2 and data.get("is_sound", False))
+        is_defeated = (
+            round_num >= total_levels
+            and data.get("is_sound", False)
+            and damage_dealt >= 30
+        )
 
         if is_defeated:
             new_boss_hp = 0
+        elif new_boss_hp <= 0:
+            new_boss_hp = 1
 
         boss_dialogue = data.get("boss_dialogue", "")
 
-        # If Round 1 is passed and next round is available, append the Round 2 question seamlessly to the voice
-        if round_num == 1 and not is_defeated and data.get("is_sound", False):
-            next_q = ROUNDS_CONFIG[2]["intro_question"]
+        # When a level is passed, introduce the next professor-authored challenge.
+        if round_num < total_levels and not is_defeated and data.get("is_sound", False):
+            next_q = get_level_config(config, round_num + 1)["question"]
             boss_dialogue = f"{boss_dialogue} {next_q}"
-            data["next_round"] = 2
+            data["next_round"] = round_num + 1
 
         # Generate OpenAI speech for the boss response
         audio_base64 = await self.synthesize_speech(boss_dialogue)
@@ -229,6 +303,7 @@ class OralDefenseService:
             "is_defeated": is_defeated,
             "next_round": data.get("next_round"),
             "audio_base64": audio_base64,
+            "total_levels": total_levels,
         }
 
     async def synthesize_speech(self, text: str, voice: Optional[str] = None) -> Optional[str]:
@@ -249,10 +324,22 @@ class OralDefenseService:
             logger.error(f"OpenAI TTS synthesis error ({selected_voice}): {exc}")
             return None
 
-    async def get_sage_perspective(self, round_num: int, angle: str) -> Dict[str, Any]:
+    async def get_sage_perspective(
+        self,
+        round_num: int,
+        angle: str,
+        game_config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Returns Sage's perspective text and warm audio whisper for the requested lens."""
-        round_perspectives = SAGE_PERSPECTIVES.get(round_num, SAGE_PERSPECTIVES[1])
-        text = round_perspectives.get(angle, round_perspectives.get("calculus", ""))
+        if game_config:
+            level = get_level_config(game_config, round_num)
+            text = (
+                f"Focus on {level['topic']}. Build your answer around these ideas: "
+                f"{level['knowledge_base'][:700]}"
+            )
+        else:
+            round_perspectives = SAGE_PERSPECTIVES.get(round_num, SAGE_PERSPECTIVES[1])
+            text = round_perspectives.get(angle, round_perspectives.get("calculus", ""))
         audio_base64 = await self.synthesize_speech(text, voice="nova")
         return {
             "round": round_num,
@@ -261,13 +348,18 @@ class OralDefenseService:
             "audio_base64": audio_base64,
         }
 
-    async def ask_sage_coach(self, round_num: int, student_question: str) -> Dict[str, Any]:
+    async def ask_sage_coach(
+        self,
+        round_num: int,
+        student_question: str,
+        game_config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Provides real-time Socratic coaching from Sage AI based on student's question."""
-        config = ROUNDS_CONFIG.get(round_num, ROUNDS_CONFIG[1])
+        config = get_level_config(game_config, round_num)
         prompt = SAGE_COACH_SYSTEM_PROMPT.format(
             ROUND_TITLE=config["title"],
             ROUND_TOPIC=config["topic"],
-            EVALUATION_CRITERIA=config["evaluation_criteria"],
+            EVALUATION_CRITERIA=config["knowledge_base"],
             STUDENT_QUESTION=student_question.strip() or "How should I think about this problem?",
         )
 

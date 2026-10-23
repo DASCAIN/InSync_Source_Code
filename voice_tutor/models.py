@@ -176,6 +176,8 @@ class Assignment(AuditModel):
     expected_duration = models.IntegerField(default=30) # in minutes
     source_pdf_path = models.CharField(max_length=500, null=True, blank=True)
     professor_allocation = models.ForeignKey('ProfessorAllocation', on_delete=models.SET_NULL, null=True, blank=True, related_name='assignments')
+    oral_defense_enabled = models.BooleanField(default=False)
+    oral_defense_config = models.JSONField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.code} - {self.title}"
@@ -199,6 +201,16 @@ class AssignmentQuestion(AuditModel):
     concept_tags = models.TextField(null=True, blank=True) # JSON array of strings
     difficulty = models.CharField(max_length=50, default='beginner')
     order = models.IntegerField(default=1)
+    visualization_data = models.JSONField(null=True, blank=True)
+    visualization_approved = models.BooleanField(default=False)
+    visualization_approved_at = models.DateTimeField(null=True, blank=True)
+    visualization_approved_by = models.ForeignKey(
+        UserProfile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_question_visualizations'
+    )
 
     def __str__(self):
         return f"{self.assignment.code} - {self.code}"

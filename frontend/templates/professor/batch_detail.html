@@ -6,87 +6,61 @@
 {% block dashboard_head %}
 <link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
 <style>
-  .prof-table-container {
+  .course-card {
     background-color: var(--prof-card-bg);
     border: 1px solid var(--prof-border);
     border-radius: var(--prof-radius-xl);
+    padding: 1.5rem;
     box-shadow: var(--prof-shadow-sm);
-    overflow: hidden;
+    transition: var(--prof-transition);
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
   }
-  .prof-table-header-bar {
-    padding: 1.25rem;
-    border-bottom: 1px solid var(--prof-border);
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+  .course-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--prof-shadow-hover);
+    border-color: var(--prof-primary-light);
   }
-  @media (min-width: 768px) {
-    .prof-table-header-bar {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-    }
-  }
-  .prof-search-wrapper {
+  .course-search-wrapper {
     position: relative;
     width: 100%;
+    display: flex;
+    align-items: center;
   }
   @media (min-width: 768px) {
-    .prof-search-wrapper { width: 18rem; }
+    .course-search-wrapper { width: 18rem; }
   }
-  .prof-search-wrapper i {
+  .course-search-wrapper i,
+  .course-search-wrapper svg {
     position: absolute;
     left: 0.75rem;
     top: 50%;
     transform: translateY(-50%);
     color: var(--prof-text-muted);
+    pointer-events: none;
+    width: 1rem;
+    height: 1rem;
+    display: block;
+    margin: 0;
   }
-  .prof-search-input {
+  .course-search-input {
     width: 100%;
     height: 2.25rem;
+    box-sizing: border-box;
     border-radius: var(--prof-radius-md);
     border: 1px solid var(--prof-border);
     background-color: var(--prof-bg);
     padding: 0.5rem 0.75rem 0.5rem 2.25rem;
     font-size: 0.875rem;
+    color: var(--prof-text-main);
     outline: none;
     transition: var(--prof-transition);
+    font-family: inherit;
   }
-  .prof-search-input:focus {
+  .course-search-input:focus {
     border-color: var(--prof-primary);
     box-shadow: 0 0 0 2px var(--prof-primary-light);
-  }
-  .prof-table-wrapper {
-    overflow-x: auto;
-  }
-  .prof-table {
-    width: 100%;
-    text-align: left;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-  }
-  .prof-table th {
-    background-color: var(--prof-bg);
-    color: var(--prof-text-muted);
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--prof-border);
-  }
-  .prof-table td {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--prof-border);
-    color: var(--prof-text-muted);
-    background-color: var(--prof-card-bg);
-  }
-  .prof-table tr:last-child td {
-    border-bottom: none;
-  }
-  .prof-table tr:hover td {
-    background-color: var(--prof-bg);
   }
 </style>
 {% endblock %}
@@ -99,7 +73,7 @@
     <div class="prof-header">
       <div>
         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-          <a href="{% url 'voice_tutor:professor_batchs' %}" class="prof-icon-button" style="background: transparent; color: var(--prof-text-muted); border: 1px solid transparent;">
+          <a href="{% url 'voice_tutor:professor_batchs' %}" class="prof-icon-button" style="background: transparent; color: var(--prof-text-muted); border: 1px solid transparent;" title="Back to Batches">
             <i data-lucide="arrow-left"></i>
           </a>
           <h1 class="prof-header-title" style="margin-bottom: 0;">{{ batch.name }}</h1>
@@ -123,47 +97,99 @@
         <div class="prof-stat-value" style="font-size: 1.125rem;">{{ batch.course.name|default:"N/A" }}</div>
       </div>
       <div class="prof-stat-card" style="padding: 1.25rem;">
-        <div class="prof-stat-label" style="margin-bottom: 0.25rem;">Total Students</div>
-        <div class="prof-stat-value" style="font-size: 1.125rem;">{{ students|length }}</div>
+        <div class="prof-stat-label" style="margin-bottom: 0.25rem;">Assigned Courses</div>
+        <div class="prof-stat-value" style="font-size: 1.125rem;">{{ subjects|length }}</div>
       </div>
     </div>
 
-    <!-- Students Data Table -->
-    <div class="prof-table-container">
-      <div class="prof-table-header-bar">
-        <h2 class="prof-section-title" style="margin: 0;">Students Directory</h2>
-        <div class="prof-search-wrapper">
-          <i data-lucide="search" style="width: 1rem; height: 1rem;"></i>
-          <input type="text" id="dt-search" placeholder="Search students..." class="prof-search-input" />
+    <!-- Assigned Courses Section -->
+    <div style="margin-top: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+        <div>
+          <h2 class="prof-section-title" style="margin: 0; font-size: 1.25rem; font-weight: 700;">Assigned Courses</h2>
+          <p style="font-size: 0.85rem; color: var(--prof-text-muted); margin: 0.25rem 0 0;">Courses and subjects assigned to this batch.</p>
         </div>
+        {% if subjects|length > 0 %}
+        <div class="course-search-wrapper">
+          <i data-lucide="search" style="width: 1rem; height: 1rem;"></i>
+          <input type="text" id="course-search" placeholder="Search courses..." class="course-search-input" />
+        </div>
+        {% endif %}
       </div>
-      
-      <div class="prof-table-wrapper">
-        <table id="batch-students-table" class="prof-table">
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Username</th>
-              <th>Email</th>
-              <th>Joined</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for s in students %}
-            <tr>
-              <td>
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <img src="{% if s.avatar %}{{ s.avatar }}{% else %}https://ui-avatars.com/api/?name={{ s.name|urlencode }}&background=random{% endif %}" style="width: 2rem; height: 2rem; border-radius: 50%; object-fit: cover; border: 1px solid var(--prof-border);" alt="avatar" />
-                  <span style="font-weight: 500; color: var(--prof-text-main);">{{ s.name }}</span>
-                </div>
-              </td>
-              <td style="font-family: monospace; font-size: 0.75rem;">{{ s.id }}</td>
-              <td>{{ s.email }}</td>
-              <td>{{ s.createdAt }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+
+      <!-- Course Cards Grid -->
+      <div id="course-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem;">
+        {% for s in subjects %}
+        <div
+          class="course-card course-card-item"
+          data-search="{{ s.name }} {{ s.code }} {{ s.course }} {{ s.semester }} {{ s.description }}"
+        >
+          <div>
+            <!-- Header Badges -->
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+              <span style="font-family: monospace; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.625rem; border-radius: var(--prof-radius-sm); background: var(--prof-primary-light); color: var(--prof-primary); letter-spacing: 0.02em;">
+                {{ s.code }}
+              </span>
+              <span class="prof-tag" style="background-color: var(--prof-bg); color: var(--prof-text-main); border: 1px solid var(--prof-border); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <i data-lucide="layers" style="width: 0.8rem; height: 0.8rem; color: var(--prof-primary);"></i>
+                {{ s.topics_count }} topic{{ s.topics_count|pluralize }}
+              </span>
+            </div>
+
+            <!-- Title & Description -->
+            <h3 style="font-family: var(--prof-font-display); font-size: 1.15rem; font-weight: 700; color: var(--prof-text-main); margin: 0.85rem 0 0.35rem 0; line-height: 1.35;">
+              {{ s.name }}
+            </h3>
+            <p style="font-size: 0.825rem; color: var(--prof-text-muted); line-height: 1.5; margin-bottom: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5rem;">
+              {{ s.description|default:"No description provided." }}
+            </p>
+
+            <!-- Metadata Info -->
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem 0; border-top: 1px solid var(--prof-border); margin-bottom: 1rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                <span style="color: var(--prof-text-muted); display: inline-flex; align-items: center; gap: 0.35rem;">
+                  <i data-lucide="book-open" style="width: 0.85rem; height: 0.85rem;"></i> Program
+                </span>
+                <span style="font-weight: 600; color: var(--prof-text-main); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  {{ s.course }}
+                </span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                <span style="color: var(--prof-text-muted); display: inline-flex; align-items: center; gap: 0.35rem;">
+                  <i data-lucide="calendar" style="width: 0.85rem; height: 0.85rem;"></i> Semester / Year
+                </span>
+                <span style="font-weight: 600; color: var(--prof-text-main);">
+                  {{ s.semester }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div>
+            <a
+              href="{% url 'voice_tutor:professor_topics' %}?subject_id={{ s.id }}&batch_id={{ batch.code }}"
+              class="prof-btn-secondary"
+              style="width: 100%; height: 2.35rem; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; text-decoration: none;"
+            >
+              <i data-lucide="layers" style="width: 0.95rem; height: 0.95rem;"></i>
+              View Topics
+            </a>
+          </div>
+        </div>
+        {% empty %}
+        <div style="grid-column: 1 / -1; padding: 3rem 1.5rem; text-align: center; background: var(--prof-card-bg); border: 1px dashed var(--prof-border); border-radius: var(--prof-radius-xl); color: var(--prof-text-muted);">
+          <i data-lucide="book-open" style="width: 2.5rem; height: 2.5rem; margin: 0 auto 0.75rem auto; color: var(--prof-text-muted); opacity: 0.5;"></i>
+          <h3 style="font-weight: 600; font-size: 1rem; color: var(--prof-text-main); margin-bottom: 0.25rem;">No courses mapped</h3>
+          <p style="font-size: 0.85rem;">No courses or subjects are assigned to this batch yet.</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- No Search Results Msg -->
+      <div id="no-search-results" style="display: none; padding: 3rem 1.5rem; text-align: center; background: var(--prof-card-bg); border: 1px dashed var(--prof-border); border-radius: var(--prof-radius-xl); color: var(--prof-text-muted); margin-top: 1.25rem;">
+        <i data-lucide="search-x" style="width: 2rem; height: 2rem; margin: 0 auto 0.5rem auto; opacity: 0.5;"></i>
+        <p style="font-size: 0.875rem;">No courses found matching your search.</p>
       </div>
     </div>
   </div>
@@ -171,70 +197,35 @@
 {% endblock %}
 
 {% block dashboard_scripts %}
-<!-- jQuery and DataTables CDN -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-
-<style>
-  .dataTables_wrapper .dataTables_filter { display: none; }
-  
-  .dataTables_wrapper .dataTables_length select {
-    border: 1px solid var(--prof-border);
-    border-radius: var(--prof-radius-md);
-    padding: 0.25rem 1.5rem 0.25rem 0.75rem;
-    background: var(--prof-bg);
-    color: var(--prof-text-main);
-  }
-  .dataTables_wrapper .dataTables_info,
-  .dataTables_wrapper .dataTables_length {
-    color: var(--prof-text-muted) !important;
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-    margin-top: 1rem;
-    padding-left: 1.5rem;
-  }
-  .dataTables_wrapper .dataTables_info {
-    padding-left: 1.5rem;
-    padding-top: 1rem;
-  }
-  .dataTables_wrapper .dataTables_paginate {
-    padding-right: 1.5rem;
-    padding-top: 1rem;
-  }
-  .dataTables_wrapper .dataTables_paginate .paginate_button {
-    color: var(--prof-text-main) !important;
-    border: 1px solid transparent !important;
-    border-radius: var(--prof-radius-md) !important;
-    margin-left: 2px;
-  }
-  .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-    background: var(--prof-bg) !important;
-    border-color: var(--prof-border) !important;
-    color: var(--prof-text-main) !important;
-  }
-  .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-    background: var(--prof-primary) !important;
-    color: white !important;
-    border-color: var(--prof-primary) !important;
-  }
-  table.dataTable.no-footer {
-    border-bottom: 1px solid var(--prof-border);
-  }
-</style>
-
 <script>
-  $(document).ready(function() {
-    var table = $('#batch-students-table').DataTable({
-      pageLength: 10,
-      language: {
-        lengthMenu: "Show _MENU_ entries"
-      }
-    });
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('course-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.course-card-item');
+        let visibleCount = 0;
 
-    $('#dt-search').on('keyup', function() {
-      table.search(this.value).draw();
-    });
+        cards.forEach(card => {
+          const text = (card.getAttribute('data-search') || '').toLowerCase();
+          if (!query || text.includes(query)) {
+            card.style.display = 'flex';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+          }
+        });
+
+        const noMatch = document.getElementById('no-search-results');
+        if (noMatch) {
+          noMatch.style.display = (visibleCount === 0 && cards.length > 0) ? 'block' : 'none';
+        }
+      });
+    }
+
+    if (window.lucide) {
+      lucide.createIcons();
+    }
   });
 </script>
 {% endblock %}

@@ -9,8 +9,11 @@
 window.MathJax = {
   tex: {
     inlineMath: [['$', '$'], ['\\(', '\\)']],
-    displayMath: [['$$', '$$'], ['\\[', '\\]'], ['[', ']']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
     processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
   }
 };
 </script>
@@ -70,7 +73,7 @@ window.MathJax = {
 {% block dashboard_scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const rawMarkdown = '{{ note.content|escapejs }}';
+    const rawMarkdown = '{{ note_content|escapejs }}';
     const htmlContent = marked.parse(rawMarkdown);
     document.getElementById('notes-content').innerHTML = htmlContent;
     

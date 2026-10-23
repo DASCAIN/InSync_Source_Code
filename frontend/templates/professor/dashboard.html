@@ -38,25 +38,213 @@
   .section-card {
     background: var(--db-card);
     border: 1px solid var(--db-card-border);
-    border-radius: 1rem;
-    padding: 1.5rem;
+    border-radius: 1.125rem;
+    padding: 1.25rem;
+    min-width: 0;
+  }
+  .workspace-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    align-items: start;
+  }
+  .workspace-panel {
+    min-width: 0;
+  }
+  .workspace-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .workspace-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .workspace-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+  .workspace-icon.batches {
+    background: var(--db-blue-light);
+    color: var(--db-blue);
+  }
+  .workspace-icon.assignments {
+    background: var(--db-purple-bg);
+    color: var(--db-purple-text);
+  }
+  .workspace-heading-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .workspace-heading-row h2 {
+    color: var(--db-text);
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.35;
+    margin: 0;
+  }
+  .workspace-count {
+    min-width: 24px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+    padding: 0 7px;
+    background: var(--db-blue-light);
+    color: var(--db-blue);
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  .workspace-description {
+    color: var(--db-text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    margin: 0.15rem 0 0;
+  }
+  .workspace-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex: none;
+    min-height: 34px;
+    padding: 0 0.65rem;
+    border: 1px solid var(--db-card-border);
+    border-radius: 9px;
+    color: var(--db-blue);
+    background: var(--db-card);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color .2s, background .2s, transform .15s;
+  }
+  .workspace-link:hover {
+    border-color: var(--db-blue);
+    background: var(--db-blue-light);
+    transform: translateX(2px);
+  }
+  .workspace-link:focus-visible,
+  .action-card:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, .28);
+    outline-offset: 2px;
+  }
+  .workspace-list {
+    display: grid;
+    gap: 0.75rem;
   }
   .action-card {
     background: var(--db-card);
     border: 1px solid var(--db-card-border);
-    border-radius: 1rem;
-    padding: 1.25rem 1.5rem;
+    border-radius: 0.875rem;
+    padding: 1rem;
     cursor: pointer;
-    transition: box-shadow 0.3s, transform 0.3s;
+    transition: border-color .2s, box-shadow .2s, transform .2s;
     text-align: left;
     width: 100%;
-    display: block;
+    min-height: 158px;
+    display: flex;
+    flex-direction: column;
     text-decoration: none;
     color: inherit;
   }
   .action-card:hover {
-    box-shadow: 0 8px 24px -4px rgba(0,0,0,0.1);
+    border-color: var(--db-blue);
+    box-shadow: 0 10px 24px -10px rgba(15, 40, 90, .24);
     transform: translateY(-2px);
+  }
+  .dashboard-item-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .dashboard-item-icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--db-blue-light);
+    color: var(--db-blue);
+    flex: none;
+  }
+  .assignment-item .dashboard-item-icon {
+    background: var(--db-purple-bg);
+    color: var(--db-purple-text);
+  }
+  .dashboard-item-copy {
+    min-width: 0;
+    flex: 1;
+  }
+  .dashboard-item-title {
+    color: var(--db-text);
+    font-size: 0.95rem;
+    font-weight: 650;
+    line-height: 1.4;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .dashboard-item-description {
+    color: var(--db-text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    margin: 0.2rem 0 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .dashboard-nav-arrow {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    background: var(--db-blue-light);
+    color: var(--db-blue);
+    flex: none;
+    transition: transform .2s, background .2s;
+  }
+  .action-card:hover .dashboard-nav-arrow {
+    transform: translateX(3px);
+    background: var(--db-blue-light);
+  }
+  .dashboard-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 0.9rem;
+  }
+  .dashboard-item-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--db-card-border);
+  }
+  .dashboard-item-footer .student-names {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--db-text-secondary);
+    font-size: 0.72rem;
   }
   .badge {
     display: inline-block;
@@ -101,6 +289,39 @@
   .metric i {
     width: 0.875rem;
     height: 0.875rem;
+  }
+  .dashboard-empty {
+    min-height: 158px;
+    border: 1px dashed var(--db-card-border);
+    border-radius: 0.875rem;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+    color: var(--db-text-secondary);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+  @media (max-width: 1100px) {
+    .workspace-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 640px) {
+    .section-card {
+      padding: 1rem;
+    }
+    .workspace-header {
+      align-items: center;
+    }
+    .workspace-description {
+      display: none;
+    }
+    .workspace-link span {
+      display: none;
+    }
+    .action-card {
+      min-height: 0;
+    }
   }
 </style>
 {% endblock %}
@@ -177,127 +398,125 @@
     </div>
   </div>
 
-  <!-- Two-column layout: Batches + Recent Assignments -->
-  <div class="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 w-full">
-    <!-- Left Column: Batches -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-      <div class="section-card">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="font-display font-bold" style="font-size: 1.25rem; color: var(--db-text);">Your Batches</h2>
-          <a href="{% url 'voice_tutor:professor_batchs' %}"
-            style="color: var(--db-blue); font-size: 0.875rem; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 0.25rem;"
-            onmouseenter="this.style.textDecoration='underline'"
-            onmouseleave="this.style.textDecoration='none'"
-          >
-            View All <i data-lucide="chevron-right" class="w-4 h-4"></i>
-          </a>
+  <!-- Primary navigation workspaces: Batches + Recent Assignments -->
+  <div class="workspace-grid w-full">
+    <section class="section-card workspace-panel" aria-labelledby="dashboard-batches-title">
+      <header class="workspace-header">
+        <div class="workspace-title">
+          <span class="workspace-icon batches"><i data-lucide="users" class="w-5 h-5"></i></span>
+          <div>
+            <div class="workspace-heading-row">
+              <h2 id="dashboard-batches-title" class="font-display">Your Batches</h2>
+              <span class="workspace-count">{{ batchs|length }}</span>
+            </div>
+            <p class="workspace-description">Open a cohort to review students, subjects, and activity.</p>
+          </div>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          {% for batch in batchs %}
-          <button
-            onclick="location.href='{% url 'voice_tutor:professor_batchs' %}?batch_id={{ batch.id }}'"
-            class="action-card"
-          >
-            <div class="flex items-center justify-between" style="margin-bottom: 0.75rem;">
-              <div style="flex: 1; min-width: 0;">
-                <h3 class="font-display font-semibold" style="font-size: 1rem; color: var(--db-text); margin-bottom: 0.25rem;">{{ batch.name }}</h3>
-                <p style="font-size: 0.8rem; color: var(--db-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ batch.description }}</p>
-              </div>
-              <div style="padding: 0.375rem; border-radius: 0.5rem; background: var(--db-blue-light); color: var(--db-blue); margin-left: 1rem; flex-shrink: 0;">
-                <i data-lucide="chevron-right" class="w-4 h-4"></i>
-              </div>
-            </div>
+        <a href="{% url 'voice_tutor:professor_batchs' %}" class="workspace-link" aria-label="View all batches">
+          <span>View all</span><i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+      </header>
 
-            <div class="flex items-center gap-4" style="margin-bottom: 0.75rem;">
-              <div class="metric">
-                <i data-lucide="users"></i>
-                <span><span style="font-weight: 600; color: var(--db-text);">{{ batch.studentIds|length }}</span> students</span>
-              </div>
-              <div class="metric">
-                <i data-lucide="book-open"></i>
-                <span><span style="font-weight: 600; color: var(--db-text);">{{ batch.assignmentIds|length }}</span> assignments</span>
-              </div>
+      <div class="workspace-list">
+        {% for batch in batchs %}
+        <a href="{% url 'voice_tutor:professor_batch_detail' batch.id %}"
+          class="action-card batch-item"
+          aria-label="Open {{ batch.name }} batch">
+          <div class="dashboard-item-top">
+            <span class="dashboard-item-icon"><i data-lucide="users" class="w-4 h-4"></i></span>
+            <div class="dashboard-item-copy">
+              <h3 class="dashboard-item-title font-display">{{ batch.name }}</h3>
+              <p class="dashboard-item-description">{{ batch.description|default:"View this batch's students and learning activity." }}</p>
             </div>
+            <span class="dashboard-nav-arrow" aria-hidden="true"><i data-lucide="arrow-right" class="w-4 h-4"></i></span>
+          </div>
 
-            <!-- Student Avatars -->
-            <div class="flex items-center gap-2">
-              <div class="avatar-stack">
-                {% for student in batch.avatar_students %}
-                <div class="avatar" style="z-index: {{ forloop.revcounter }};">
-                  {{ student.name.0 }}
-                </div>
-                {% endfor %}
-                {% if batch.remaining_students_count > 0 %}
-                <div class="avatar more">
-                  +{{ batch.remaining_students_count }}
-                </div>
-                {% endif %}
-              </div>
-              <span style="font-size: 0.75rem; color: var(--db-text-secondary);">
-                {{ batch.students_display_str }}
-              </span>
+          <div class="dashboard-item-meta">
+            <div class="metric">
+              <i data-lucide="users"></i>
+              <span><span style="font-weight: 700; color: var(--db-text);">{{ batch.studentIds|length }}</span> students</span>
             </div>
-          </button>
-          {% empty %}
-          <div style="text-align: center; color: var(--db-text-secondary); font-size: 0.875rem; padding: 2rem 0;">No batches yet.</div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-
-    <!-- Right Column: Recent Assignments -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-      <div class="section-card">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="font-display font-bold" style="font-size: 1.25rem; color: var(--db-text);">Recent Assignments</h2>
-          <a href="{% url 'voice_tutor:professor_assignments' %}"
-            style="color: var(--db-blue); font-size: 0.875rem; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 0.25rem;"
-            onmouseenter="this.style.textDecoration='underline'"
-            onmouseleave="this.style.textDecoration='none'"
-          >
-            View All <i data-lucide="chevron-right" class="w-4 h-4"></i>
-          </a>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          {% for assignment in recent_assignments %}
-          <div
-            onclick="location.href='{% url 'voice_tutor:professor_assignment_detail' assignment.id %}'"
-            class="action-card"
-          >
-            <div style="margin-bottom: 0.5rem;">
-              <span class="badge"
-                style="{% if assignment.difficulty == 'beginner' %}background: var(--db-green-bg); color: var(--db-green-text);{% elif assignment.difficulty == 'intermediate' %}background: var(--db-orange-bg); color: var(--db-orange-text);{% else %}background: var(--db-red-bg); color: var(--db-red-text);{% endif %}"
-              >
-                {{ assignment.difficulty }}
-              </span>
-            </div>
-            <div class="flex items-start justify-between" style="margin-bottom: 0.75rem;">
-              <div style="flex: 1; min-width: 0;">
-                <h3 class="font-display font-semibold" style="font-size: 1rem; color: var(--db-text); margin-bottom: 0.25rem;">{{ assignment.title }}</h3>
-                <p style="font-size: 0.8rem; color: var(--db-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5;">{{ assignment.description }}</p>
-              </div>
-              <div style="padding: 0.375rem; border-radius: 0.5rem; background: var(--db-blue-light); color: var(--db-blue); margin-left: 1rem; flex-shrink: 0;">
-                <i data-lucide="chevron-right" class="w-4 h-4"></i>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-4" style="padding-top: 0.75rem; border-top: 1px solid var(--db-card-border);">
-              <div class="metric">
-                <i data-lucide="help-circle"></i>
-                <span><span style="font-weight: 600; color: var(--db-text);">{{ assignment.questions|length }}</span> questions</span>
-              </div>
-              <div class="metric">
-                <i data-lucide="clock"></i>
-                <span><span style="font-weight: 600; color: var(--db-text);">{{ assignment.expectedDuration }}</span> min</span>
-              </div>
+            <div class="metric">
+              <i data-lucide="book-open"></i>
+              <span><span style="font-weight: 700; color: var(--db-text);">{{ batch.assignmentCount }}</span> assignment{{ batch.assignmentCount|pluralize }}</span>
             </div>
           </div>
-          {% empty %}
-          <div style="text-align: center; color: var(--db-text-secondary); font-size: 0.875rem; padding: 2rem 0;">No assignments yet.</div>
-          {% endfor %}
+
+          <div class="dashboard-item-footer">
+            <div class="avatar-stack" aria-hidden="true">
+              {% for student in batch.avatar_students %}
+              <span class="avatar" style="z-index: {{ forloop.revcounter }};">{{ student.name.0 }}</span>
+              {% endfor %}
+              {% if batch.remaining_students_count > 0 %}
+              <span class="avatar more">+{{ batch.remaining_students_count }}</span>
+              {% endif %}
+            </div>
+            <span class="student-names">{{ batch.students_display_str|default:"No students added yet" }}</span>
+          </div>
+        </a>
+        {% empty %}
+        <div class="dashboard-empty">
+          <span><i data-lucide="users" class="w-5 h-5" style="margin: 0 auto 0.5rem;"></i>No batches yet. Your cohorts will appear here.</span>
         </div>
+        {% endfor %}
       </div>
-    </div>
+    </section>
+
+    <section class="section-card workspace-panel" aria-labelledby="dashboard-assignments-title">
+      <header class="workspace-header">
+        <div class="workspace-title">
+          <span class="workspace-icon assignments"><i data-lucide="book-open" class="w-5 h-5"></i></span>
+          <div>
+            <div class="workspace-heading-row">
+              <h2 id="dashboard-assignments-title" class="font-display">Recent Assignments</h2>
+              <span class="workspace-count">{{ recent_assignments|length }}</span>
+            </div>
+            <p class="workspace-description">Continue editing or review your latest assessments.</p>
+          </div>
+        </div>
+        <a href="{% url 'voice_tutor:professor_assignments' %}" class="workspace-link" aria-label="View all assignments">
+          <span>View all</span><i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+      </header>
+
+      <div class="workspace-list">
+        {% for assignment in recent_assignments %}
+        <a href="{% url 'voice_tutor:professor_assignment_detail' assignment.id %}"
+          class="action-card assignment-item"
+          aria-label="Open assignment {{ assignment.title }}">
+          <div class="dashboard-item-top">
+            <span class="dashboard-item-icon"><i data-lucide="book-open" class="w-4 h-4"></i></span>
+            <div class="dashboard-item-copy">
+              <div style="margin-bottom: 0.4rem;">
+                <span class="badge"
+                  style="{% if assignment.difficulty == 'beginner' %}background: var(--db-green-bg); color: var(--db-green-text);{% elif assignment.difficulty == 'intermediate' %}background: var(--db-orange-bg); color: var(--db-orange-text);{% else %}background: var(--db-red-bg); color: var(--db-red-text);{% endif %}">
+                  {{ assignment.difficulty }}
+                </span>
+              </div>
+              <h3 class="dashboard-item-title font-display">{{ assignment.title }}</h3>
+              <p class="dashboard-item-description">{{ assignment.description|default:"Open this assignment to review questions and student activity." }}</p>
+            </div>
+            <span class="dashboard-nav-arrow" aria-hidden="true"><i data-lucide="arrow-right" class="w-4 h-4"></i></span>
+          </div>
+
+          <div class="dashboard-item-meta" style="border-top: 1px solid var(--db-card-border);">
+            <div class="metric">
+              <i data-lucide="help-circle"></i>
+              <span><span style="font-weight: 700; color: var(--db-text);">{{ assignment.questionCount }}</span> question{{ assignment.questionCount|pluralize }}</span>
+            </div>
+            <div class="metric">
+              <i data-lucide="clock"></i>
+              <span><span style="font-weight: 700; color: var(--db-text);">{{ assignment.expectedDuration }}</span> min</span>
+            </div>
+          </div>
+        </a>
+        {% empty %}
+        <div class="dashboard-empty">
+          <span><i data-lucide="book-open" class="w-5 h-5" style="margin: 0 auto 0.5rem;"></i>No assignments yet. Create one to get started.</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
   </div>
 
 </div>

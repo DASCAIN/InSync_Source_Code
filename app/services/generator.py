@@ -19,6 +19,11 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from app.services.vector_store import retrieve_documents, retrieve_all_documents, _sanitize_name
+from app.services.notes_pipeline import (
+    HierarchicalNotesPipeline,
+    openai_completion,
+    sections_from_documents,
+)
 from config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -188,7 +193,7 @@ async def generate_notes(
     custom_instructions: str | None = None,
 ) -> str:
     """
-    Generate detailed study notes from uploaded material using hybrid retrieval.
+    Generate detailed study notes through the coverage-aware hierarchical pipeline.
 
     Args:
         subject: The subject name.
@@ -202,84 +207,40 @@ async def generate_notes(
     if await check_custom_prompt_off_topic(subject, topic, custom_instructions):
         return get_off_topic_warning(subject, topic, custom_instructions)
 
-    query = f"Comprehensive concepts, definitions, formulas, and examples about {topic} in {subject}"
-    context = await _build_context_hybrid(subject, topic, query, top_n_child=12)
-    
-    if not context:
+    documents = await asyncio.to_thread(
+        retrieve_all_documents,
+        subject=subject,
+        topic=topic,
+    )
+    sections = sections_from_documents(documents)
+
+    if not sections:
         return (
             f"No study material found for **{topic}** in **{subject}**. "
             "Please ask your teacher to upload relevant documents first."
         )
 
-    llm = get_llm(temperature=0.3)
-    
-    system_prompt = (
-        "You are an expert educational content creator. Your task is to "
-        "create detailed, well-structured study notes from ONLY the provided "
-        "study material. Do NOT add information beyond what is in the material. "
-        "If a concept or topic is not mentioned in the material, do not generate notes for it.\n\n"
-        "Structure your notes exactly as follows:\n"
-        "1. **Introduction** — A brief overview and introduction to the topic\n"
-        "2. **Key Concepts** — Detailed explanation of each major concept\n"
-        "3. **Formulae** — Key equations, mathematical representations, and definitions of terms\n"
-        "4. **Examples** — Relevant step-by-step examples from the material\n"
-        "5. **Summary** — A concise concluding summary\n\n"
-        "**CRITICAL REQUIREMENT - CITATION-AWARE GENERATION**:\n"
-        "Every definition, fact, formula, example, or statement you make MUST include an inline citation "
-        "referencing its Source, Page, and Section immediately at the end of the sentence or block in this exact format:\n"
-        "`[Source: <source_file>, Page: <page>, Section: <section>]`\n\n"
-        "For example:\n"
-        "- The linearity assumption requires a linear relationship between variables. [Source: DataScience.pdf, Page 14, Section: Assumptions]\n"
-        "- ANOVA tests if the means of three or more groups are different. [Source: stats_book.pdf, Page 22, Section: ANOVA Overview]\n\n"
-        "Format everything in clean, readable Markdown. Use headings, "
-        "bullet points, bold text, and code blocks where appropriate.\n\n"
-        "**CRITICAL REQUIREMENT - INFOGRAPHIC**:\n"
-        "You MUST include exactly one beautiful educational infographic/chart relevant to the topic. "
-        "To do this, embed a python script block at the very end of your notes in this format:\n\n"
-        "[INFOGRAPHIC_SCRIPT]\n"
-        "```python\n"
-        "import matplotlib.pyplot as plt\n"
-        "import numpy as np\n"
-        "# Generate professional chart relevant to the notes (e.g. F-distribution, bar chart, comparison curves)\n"
-        "# Use matplotlib or numpy. Do NOT import scipy.\n"
-        "fig, ax = plt.subplots(figsize=(6, 4))\n"
-        "# Drawing logic...\n"
-        "plt.savefig(OUTPUT_PATH, bbox_inches='tight', dpi=150)\n"
-        "plt.close()\n"
-        "```\n\n"
-        "In your markdown notes content, reference the infographic where it fits best using: "
-        "`![Infographic - Topic Visual Description](infographic.png)`.\n"
-        "Our backend will run the script and serve the image file in place of the placeholder."
+    settings = get_settings()
+    pipeline = HierarchicalNotesPipeline(
+        completion=openai_completion(settings.OPENAI_API_KEY, settings.LLM_MODEL),
+        cache_dir=settings.GENERATED_DIR / "_notes_analysis",
+        model_name=settings.LLM_MODEL,
     )
-
-    # Inject focus and custom parameters
-    if (focus and focus != "Default") or custom_instructions:
-        system_prompt += "\n\n**Special Focus Guidelines for Notes Generation**:\n"
-        if focus and focus != "Default":
-            system_prompt += f"- Focus Style: Focus on producing a **{focus}** set of notes. "
-            if focus == "Deep Dive":
-                system_prompt += "Explain all key concepts in high granularity, incorporating theoretical details, formulas, and in-depth analyses present in the source text.\n"
-            elif focus == "Critique":
-                system_prompt += "Critically analyze the methodology, limitations, core assumptions, and potential counter-arguments or alternate viewpoints mentioned in the source.\n"
-            elif focus == "Summary & Bullets":
-                system_prompt += "Ensure the output is highly concise and structured, relying heavily on clean bullet points, summary tables, bold terminology, and minimal fluff.\n"
-        if custom_instructions:
-            system_prompt += f"- Custom Teacher Focus Instructions: {custom_instructions}\n"
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        (
-            "human",
-            "Subject: {subject}\n"
-            "Topic: {topic}\n\n"
-            "Study Material Chunks:\n\n{context}\n\n"
-            "Please create comprehensive study notes with page-level citations from the above material.",
-        ),
-    ])
-    chain = prompt | llm
-    logger.info("Generating notes for %s/%s using hybrid context (%d chars)", subject, topic, len(context))
-    response = await chain.ainvoke({"subject": subject, "topic": topic, "context": context})
-    return response.content
+    logger.info(
+        "Generating hierarchical notes for %s/%s from %d source sections",
+        subject,
+        topic,
+        len(sections),
+    )
+    result = await asyncio.to_thread(
+        pipeline.generate,
+        sections,
+        subject,
+        topic,
+        focus,
+        custom_instructions,
+    )
+    return result["markdown"]
 
 
 async def generate_assignment(

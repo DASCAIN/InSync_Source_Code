@@ -6,46 +6,70 @@
 {% block dashboard_head %}
 <link rel="stylesheet" href="{% static 'css/professor.css' %}?v=1.2" />
 <style>
-  .prof-table-container {
+  .topic-card {
     background-color: var(--prof-card-bg);
     border: 1px solid var(--prof-border);
     border-radius: var(--prof-radius-xl);
+    padding: 1.5rem;
     box-shadow: var(--prof-shadow-sm);
-    overflow: hidden;
+    transition: var(--prof-transition);
     display: flex;
     flex-direction: column;
-    padding: 1.5rem;
+    justify-content: space-between;
   }
-  .prof-table-wrapper {
-    overflow-x: auto;
+  .topic-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--prof-shadow-hover);
+    border-color: var(--prof-primary-light);
   }
-  .prof-table {
+  .topic-btn-edit:hover {
+    background-color: var(--prof-border) !important;
+    color: var(--prof-text-main) !important;
+  }
+  .topic-btn-delete:hover {
+    background-color: #fee2e2 !important;
+    border-color: #fecaca !important;
+    color: #dc2626 !important;
+  }
+  .topic-search-wrapper {
+    position: relative;
     width: 100%;
-    text-align: left;
-    border-collapse: collapse;
+    display: flex;
+    align-items: center;
+  }
+  @media (min-width: 768px) {
+    .topic-search-wrapper { width: 18rem; }
+  }
+  .topic-search-wrapper i,
+  .topic-search-wrapper svg {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--prof-text-muted);
+    pointer-events: none;
+    width: 1rem;
+    height: 1rem;
+    display: block;
+    margin: 0;
+  }
+  .topic-search-input {
+    width: 100%;
+    height: 2.25rem;
+    box-sizing: border-box;
+    border-radius: var(--prof-radius-md);
+    border: 1px solid var(--prof-border);
+    background-color: var(--prof-bg);
+    padding: 0.5rem 0.75rem 0.5rem 2.25rem;
     font-size: 0.875rem;
-  }
-  .prof-table th {
-    background-color: var(--prof-bg);
-    color: var(--prof-text-muted);
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--prof-border);
-  }
-  .prof-table td {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--prof-border);
-    color: var(--prof-text-muted);
-    background-color: var(--prof-card-bg);
+    color: var(--prof-text-main);
+    outline: none;
     transition: var(--prof-transition);
+    font-family: inherit;
   }
-  .prof-table tr:last-child td {
-    border-bottom: none;
-  }
-  .prof-table tr:hover td {
-    background-color: var(--prof-bg);
+  .topic-search-input:focus {
+    border-color: var(--prof-primary);
+    box-shadow: 0 0 0 2px var(--prof-primary-light);
   }
   
   /* Additional styling for inputs inside modal */
@@ -78,51 +102,143 @@
         <h1 class="prof-header-title">Topics</h1>
         <p class="prof-header-subtitle">Manage topics for your assigned subjects.</p>
       </div>
-      <button onclick="openCreateModal()" class="prof-btn-primary">
-        <i data-lucide="plus"></i> New Topic
-      </button>
+      <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        {% if topics|length > 0 %}
+        <div class="topic-search-wrapper">
+          <i data-lucide="search" style="width: 1rem; height: 1rem;"></i>
+          <input type="text" id="topic-search" placeholder="Search topics..." class="topic-search-input" />
+        </div>
+        {% endif %}
+        <button onclick="openCreateModal()" class="prof-btn-primary">
+          <i data-lucide="plus"></i> New Topic
+        </button>
+      </div>
     </div>
 
-    <!-- Data Table Container -->
-    <div class="prof-table-container">
-      <div class="prof-table-wrapper">
-        <table id="topics-table" class="prof-table">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Name</th>
-              <th>Subject</th>
-              <th>Added</th>
-              <th class="no-sort" style="text-align: right;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for t in topics %}
-            <tr>
-              <td style="font-family: monospace; color: var(--prof-primary); font-weight: 500;">{{ t.code }}</td>
-              <td>
-                <div style="font-weight: 500; color: var(--prof-text-main);">{{ t.name }}</div>
-                {% if t.description %}
-                <div style="font-size: 0.75rem; color: var(--prof-text-muted); margin-top: 0.25rem; max-width: 20rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.description }}</div>
-                {% endif %}
-              </td>
-              <td>{{ t.subject.name }} ({{ t.subject.code }})</td>
-              <td>{{ t.date_time|date:"Y-m-d" }}</td>
-              <td style="text-align: right;">
-                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
-                  <button onclick="openEditModal({{ t.id }}, '{{ t.code|escapejs }}', '{{ t.name|escapejs }}', {{ t.subject.id }}, '{{ t.description|escapejs }}', '{{ t.learning_objectives|escapejs }}')" class="prof-icon-button" style="background: transparent; color: var(--prof-text-muted);" title="Edit Topic">
-                    <i data-lucide="edit-3"></i>
-                  </button>
-                  <button onclick="openDeleteModal({{ t.id }}, '{{ t.name|escapejs }}')" class="prof-icon-button" style="background: transparent; color: var(--prof-danger);" title="Delete Topic">
-                    <i data-lucide="trash-2"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    {% if selected_subject or selected_batch %}
+    <div style="display: flex; align-items: center; justify-content: space-between; background: var(--prof-card-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-lg); padding: 0.75rem 1.25rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--prof-text-main); flex-wrap: wrap;">
+        <i data-lucide="filter" style="width: 1rem; height: 1rem; color: var(--prof-primary);"></i>
+        <span style="font-weight: 500;">Filtered by:</span>
+        {% if selected_subject %}
+        <span class="prof-tag" style="background-color: var(--prof-primary-light); color: var(--prof-primary); font-weight: 600;">
+          {{ selected_subject.name }} ({{ selected_subject.code }})
+        </span>
+        {% endif %}
+        {% if selected_batch %}
+        <span class="prof-tag" style="background-color: var(--prof-bg); color: var(--prof-text-main); border: 1px solid var(--prof-border); font-weight: 600;">
+          Batch: {{ selected_batch.name }}
+        </span>
+        {% endif %}
       </div>
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        {% if selected_batch %}
+        <a href="{% url 'voice_tutor:professor_batch_detail' selected_batch.code %}" class="prof-btn-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;">
+          <i data-lucide="arrow-left" style="width: 0.85rem; height: 0.85rem;"></i>
+          Back to Batch
+        </a>
+        {% endif %}
+        <a href="{% url 'voice_tutor:professor_topics' %}" class="prof-btn-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; text-decoration: none;">
+          Show All Topics
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Topics Cards Grid -->
+    <div id="topic-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem;">
+      {% for t in topics %}
+      <div
+        class="topic-card topic-card-item"
+        data-search="{{ t.name }} {{ t.code }} {{ t.subject.name }} {{ t.subject.code }} {{ t.description }}"
+      >
+        <div>
+          <!-- Header Badges -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+            <span style="font-family: monospace; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.625rem; border-radius: var(--prof-radius-sm); background: var(--prof-primary-light); color: var(--prof-primary); letter-spacing: 0.02em;">
+              {{ t.code }}
+            </span>
+            <span class="prof-tag" style="background-color: var(--prof-bg); color: var(--prof-text-muted); border: 1px solid var(--prof-border); font-size: 0.75rem; font-weight: 500; padding: 0.25rem 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+              <i data-lucide="calendar" style="width: 0.8rem; height: 0.8rem;"></i>
+              {{ t.date_time|date:"M d, Y" }}
+            </span>
+          </div>
+
+          <!-- Title & Description -->
+          <h3 style="font-family: var(--prof-font-display); font-size: 1.15rem; font-weight: 700; color: var(--prof-text-main); margin: 0.85rem 0 0.35rem 0; line-height: 1.35;">
+            {{ t.name }}
+          </h3>
+          <p style="font-size: 0.825rem; color: var(--prof-text-muted); line-height: 1.5; margin-bottom: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5rem;">
+            {% if t.description %}{{ t.description }}{% else %}<span style="opacity: 0.6; font-style: italic;">No description provided.</span>{% endif %}
+          </p>
+
+          <!-- Subject Info (Clean, full-width display without any cut-off) -->
+          <div style="background: var(--prof-bg); border: 1px solid var(--prof-border); border-radius: var(--prof-radius-md); padding: 0.65rem 0.85rem; margin-bottom: 1.125rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+              <span style="font-size: 0.7rem; font-weight: 700; color: var(--prof-text-muted); text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <i data-lucide="book-open" style="width: 0.75rem; height: 0.75rem; color: var(--prof-primary);"></i>
+                Subject
+              </span>
+              <span style="font-family: monospace; font-size: 0.7rem; font-weight: 700; color: var(--prof-primary); background: var(--prof-primary-light); padding: 0.15rem 0.45rem; border-radius: var(--prof-radius-sm);">
+                {{ t.subject.code }}
+              </span>
+            </div>
+            <div style="font-size: 0.875rem; font-weight: 600; color: var(--prof-text-main); line-height: 1.35;">
+              {{ t.subject.name }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <a
+            href="{% url 'voice_tutor:professor_plan' %}?topic={{ t.name|urlencode }}&subject={{ t.subject.name|urlencode }}{% if selected_batch %}&batch={{ selected_batch.name|urlencode }}{% endif %}"
+            class="prof-btn-primary"
+            style="flex: 1; height: 2.35rem; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; text-decoration: none;"
+            title="Plan Topic with Sage"
+          >
+            <i data-lucide="compass" style="width: 0.95rem; height: 0.95rem;"></i>
+            Plan
+          </a>
+          <a
+            href="{% url 'voice_tutor:professor_topic_preview' t.id %}"
+            class="prof-icon-button topic-btn-edit"
+            style="height: 2.35rem; width: 2.35rem; display: inline-flex; align-items: center; justify-content: center; background: var(--prof-bg); border: 1px solid var(--prof-border); color: var(--prof-text-muted); border-radius: var(--prof-radius-md); transition: var(--prof-transition); text-decoration: none;"
+            title="Student Preview"
+          >
+            <i data-lucide="eye" style="width: 0.9rem; height: 0.9rem;"></i>
+          </a>
+          <button
+            onclick="openEditModal({{ t.id }}, '{{ t.code|escapejs }}', '{{ t.name|escapejs }}', {{ t.subject.id }}, '{{ t.description|escapejs }}', '{{ t.learning_objectives|escapejs }}')"
+            class="prof-icon-button topic-btn-edit"
+            style="height: 2.35rem; width: 2.35rem; display: inline-flex; align-items: center; justify-content: center; background: var(--prof-bg); border: 1px solid var(--prof-border); color: var(--prof-text-muted); border-radius: var(--prof-radius-md); transition: var(--prof-transition);"
+            title="Edit Topic"
+          >
+            <i data-lucide="edit-3" style="width: 0.9rem; height: 0.9rem;"></i>
+          </button>
+          <button
+            onclick="openDeleteModal({{ t.id }}, '{{ t.name|escapejs }}')"
+            class="prof-icon-button topic-btn-delete"
+            style="height: 2.35rem; width: 2.35rem; display: inline-flex; align-items: center; justify-content: center; background: var(--prof-bg); border: 1px solid var(--prof-border); color: var(--prof-danger); border-radius: var(--prof-radius-md); transition: var(--prof-transition);"
+            title="Delete Topic"
+          >
+            <i data-lucide="trash-2" style="width: 0.9rem; height: 0.9rem;"></i>
+          </button>
+        </div>
+      </div>
+      {% empty %}
+      <div style="grid-column: 1 / -1; padding: 3rem 1.5rem; text-align: center; background: var(--prof-card-bg); border: 1px dashed var(--prof-border); border-radius: var(--prof-radius-xl); color: var(--prof-text-muted);">
+        <i data-lucide="layers" style="width: 2.5rem; height: 2.5rem; margin: 0 auto 0.75rem auto; color: var(--prof-text-muted); opacity: 0.5;"></i>
+        <h3 style="font-weight: 600; font-size: 1rem; color: var(--prof-text-main); margin-bottom: 0.25rem;">No topics found</h3>
+        <p style="font-size: 0.85rem;">Click "New Topic" above to create your first topic.</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- No Search Results Msg -->
+    <div id="no-search-results" style="display: none; padding: 3rem 1.5rem; text-align: center; background: var(--prof-card-bg); border: 1px dashed var(--prof-border); border-radius: var(--prof-radius-xl); color: var(--prof-text-muted); margin-top: 1.25rem;">
+      <i data-lucide="search-x" style="width: 2rem; height: 2rem; margin: 0 auto 0.5rem auto; opacity: 0.5;"></i>
+      <p style="font-size: 0.875rem;">No topics found matching your search.</p>
     </div>
   </div>
 </div>
@@ -222,7 +338,7 @@
     <h2 class="prof-modal-title" style="margin-bottom: 0.5rem; font-size: 1.25rem;">Delete Topic?</h2>
     <p class="prof-stat-label">Are you sure you want to delete <span id="delete-topic-name" style="font-weight: 600; color: var(--prof-text-main);"></span>? This action cannot be undone.</p>
     
-    <form id="delete-form" method="POST" action="" style="margin-top: 1.5rem;">
+    <form id="delete-form" method="POST" action="" style="margin-top: 1.5rem;" onsubmit="const btn = this.querySelector('button[type=submit]'); if(btn){ btn.disabled = true; btn.innerText = 'Deleting...'; }">
       {% csrf_token %}
       <div style="display: flex; gap: 0.75rem; justify-content: center;">
         <button type="button" onclick="closeModals()" class="prof-btn-secondary" style="flex: 1;">Cancel</button>
@@ -234,68 +350,35 @@
 {% endblock %}
 
 {% block dashboard_scripts %}
-<!-- jQuery and DataTables CDN -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-
-<style>
-  .dataTables_wrapper .dataTables_filter input {
-    border: 1px solid var(--prof-border);
-    border-radius: var(--prof-radius-md);
-    padding: 0.25rem 0.75rem;
-    background: var(--prof-bg);
-    color: var(--prof-text-main);
-    margin-left: 0.5rem;
-  }
-  .dataTables_wrapper .dataTables_length select {
-    border: 1px solid var(--prof-border);
-    border-radius: var(--prof-radius-md);
-    padding: 0.25rem 1.5rem 0.25rem 0.75rem;
-    background: var(--prof-bg);
-    color: var(--prof-text-main);
-  }
-  .dataTables_wrapper .dataTables_info,
-  .dataTables_wrapper .dataTables_length,
-  .dataTables_wrapper .dataTables_filter {
-    color: var(--prof-text-muted) !important;
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-    margin-top: 0.5rem;
-  }
-  .dataTables_wrapper .dataTables_paginate .paginate_button {
-    color: var(--prof-text-main) !important;
-    border: 1px solid transparent !important;
-    border-radius: var(--prof-radius-md) !important;
-    margin-left: 2px;
-  }
-  .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-    background: var(--prof-bg) !important;
-    border-color: var(--prof-border) !important;
-    color: var(--prof-text-main) !important;
-  }
-  .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-    background: var(--prof-primary) !important;
-    color: white !important;
-    border-color: var(--prof-primary) !important;
-  }
-  table.dataTable.no-footer {
-    border-bottom: 1px solid var(--prof-border);
-  }
-</style>
-
 <script>
-  $(document).ready(function() {
-    $('#topics-table').DataTable({
-      pageLength: 10,
-      language: {
-        search: "Search:",
-        lengthMenu: "Show _MENU_ entries"
-      },
-      columnDefs: [
-        { targets: 'no-sort', orderable: false }
-      ]
-    });
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('topic-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.topic-card-item');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+          const text = (card.getAttribute('data-search') || '').toLowerCase();
+          if (!query || text.includes(query)) {
+            card.style.display = 'flex';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+          }
+        });
+
+        const noMatch = document.getElementById('no-search-results');
+        if (noMatch) {
+          noMatch.style.display = (visibleCount === 0 && cards.length > 0) ? 'block' : 'none';
+        }
+      });
+    }
+
+    if (window.lucide) {
+      lucide.createIcons();
+    }
   });
 
   const overlay = document.getElementById('modal-overlay');

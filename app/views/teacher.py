@@ -1,4 +1,6 @@
 import logging
+import hashlib
+import uuid
 from pathlib import Path
 import inngest
 
@@ -8,15 +10,32 @@ import aiofiles
 
 from app.services.document_processor import (
     SUPPORTED_EXTENSIONS,
-    chunk_text,
-    process_file,
 )
-from app.services.vector_store import add_documents, register_topic
+from app.services.vector_store import register_topic
 from config import get_settings
 
 logger = logging.getLogger(__name__)
 
 from app.services.inngest_client import inngest_client
+
+
+def _tenant_id(request) -> str:
+    """Return the caller's ingestion scope without a sync auth lookup."""
+    return str(
+        request.POST.get("tenant_id")
+        or request.headers.get("X-Tenant-ID")
+        or "default"
+    )
+
+
+async def _stream_upload(upload_file, file_path: Path) -> str:
+    """Persist and hash an upload without loading the complete file in memory."""
+    digest = hashlib.sha256()
+    async with aiofiles.open(file_path, "wb") as destination:
+        for chunk in upload_file.chunks():
+            digest.update(chunk)
+            await destination.write(chunk)
+    return digest.hexdigest()
 
 @csrf_exempt
 async def upload_files(request) -> JsonResponse:
@@ -56,8 +75,10 @@ async def upload_files(request) -> JsonResponse:
     files_processed = 0
 
     for upload_file in files:
-        filename = upload_file.name or "unknown_file"
-        file_path = upload_dir / filename
+        filename = Path(upload_file.name or "unknown_file").name
+        immutable_dir = upload_dir / uuid.uuid4().hex
+        immutable_dir.mkdir(parents=True, exist_ok=True)
+        file_path = immutable_dir / filename
         logger.info("Saving uploaded file: %s", filename)
 
         try:
@@ -70,11 +91,7 @@ async def upload_files(request) -> JsonResponse:
                     )
                 }, status=400)
 
-            content = upload_file.read()
-
-            # Save file to disk
-            async with aiofiles.open(file_path, "wb") as f:
-                await f.write(content)
+            file_sha256 = await _stream_upload(upload_file, file_path)
 
             # Trigger Inngest background task
             await inngest_client.send(
@@ -84,7 +101,9 @@ async def upload_files(request) -> JsonResponse:
                         "subject": subject,
                         "topic": topic,
                         "file_path": str(file_path),
-                        "filename": filename
+                        "filename": filename,
+                        "tenant_id": _tenant_id(request),
+                        "file_sha256": file_sha256,
                     }
                 )
             )
@@ -135,11 +154,10 @@ async def upload_assignment_pdf(request) -> JsonResponse:
     max_size_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
     jobs = []
     
-    import uuid
     import json
     
     for upload_file in upload_files:
-        filename = upload_file.name or "unknown_assignment.pdf"
+        filename = Path(upload_file.name or "unknown_assignment.pdf").name
         ext = Path(filename).suffix.lower()
         if ext not in SUPPORTED_EXTENSIONS:
             return JsonResponse({"detail": f"Unsupported file type: '{ext}'"}, status=400)
@@ -147,11 +165,11 @@ async def upload_assignment_pdf(request) -> JsonResponse:
         if upload_file.size > max_size_bytes:
             return JsonResponse({"detail": f"File '{filename}' exceeds {settings.MAX_UPLOAD_SIZE_MB}MB."}, status=400)
     
-        upload_dir = settings.UPLOADS_DIR / "assignments" / subject / topic
+        job_id = uuid.uuid4().hex
+        upload_dir = settings.UPLOADS_DIR / "assignments" / subject / topic / job_id
         upload_dir.mkdir(parents=True, exist_ok=True)
         file_path = upload_dir / filename
-        
-        job_id = uuid.uuid4().hex
+
         jobs_dir = settings.UPLOADS_DIR / "jobs"
         jobs_dir.mkdir(parents=True, exist_ok=True)
         job_file = jobs_dir / f"{job_id}.json"
@@ -160,9 +178,7 @@ async def upload_assignment_pdf(request) -> JsonResponse:
             json.dump({"status": "Uploading to server...", "progress": 5, "filename": filename}, jf)
     
         try:
-            content = upload_file.read()
-            async with aiofiles.open(file_path, "wb") as f:
-                await f.write(content)
+            file_sha256 = await _stream_upload(upload_file, file_path)
     
             # Trigger Assignment Generation Inngest task
             await inngest_client.send(
@@ -174,7 +190,9 @@ async def upload_assignment_pdf(request) -> JsonResponse:
                         "batch_id": batch_id,
                         "file_path": str(file_path),
                         "filename": filename,
-                        "job_id": job_id
+                        "job_id": job_id,
+                        "tenant_id": _tenant_id(request),
+                        "file_sha256": file_sha256,
                     }
                 )
             )
@@ -236,11 +254,10 @@ async def upload_guided_assignment(request) -> JsonResponse:
     settings = get_settings()
     max_size_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
     
-    import uuid
     session_id = uuid.uuid4().hex
     
-    for upload_file in upload_files:
-        filename = upload_file.name or "unknown_assignment.pdf"
+    for upload_index, upload_file in enumerate(upload_files):
+        filename = Path(upload_file.name or "unknown_assignment.pdf").name
         ext = Path(filename).suffix.lower()
         if ext not in SUPPORTED_EXTENSIONS:
             return JsonResponse({"detail": f"Unsupported file type: '{ext}'"}, status=400)
@@ -248,14 +265,19 @@ async def upload_guided_assignment(request) -> JsonResponse:
         if upload_file.size > max_size_bytes:
             return JsonResponse({"detail": f"File '{filename}' exceeds {settings.MAX_UPLOAD_SIZE_MB}MB."}, status=400)
     
-        upload_dir = settings.UPLOADS_DIR / "assignments" / subject / topic
+        upload_dir = (
+            settings.UPLOADS_DIR
+            / "assignments"
+            / subject
+            / topic
+            / session_id
+            / str(upload_index)
+        )
         upload_dir.mkdir(parents=True, exist_ok=True)
         file_path = upload_dir / filename
         
         try:
-            content = upload_file.read()
-            async with aiofiles.open(file_path, "wb") as f:
-                await f.write(content)
+            file_sha256 = await _stream_upload(upload_file, file_path)
     
             # Trigger ONLY Document Uploaded Inngest task (just vectorization)
             await inngest_client.send(
@@ -265,7 +287,9 @@ async def upload_guided_assignment(request) -> JsonResponse:
                         "subject": subject,
                         "topic": topic,
                         "file_path": str(file_path),
-                        "filename": filename
+                        "filename": filename,
+                        "tenant_id": _tenant_id(request),
+                        "file_sha256": file_sha256,
                     }
                 )
             )

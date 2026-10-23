@@ -98,7 +98,7 @@
   </div>
 
   <div class="container mx-auto px-6 py-8 max-w-4xl">
-    {% if assignment.id == 'A_C2F6D9' or 'maxima and minima' in assignment.title|lower %}
+    {% if assignment.oralDefenseEnabled %}
     <!-- Boss Battle Trial Feature Callout Banner -->
     <div
       class="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-purple-500/10 border border-amber-500/30 flex items-center justify-between gap-4">
@@ -109,7 +109,7 @@
         </div>
         <div>
           <h4 class="font-bold text-sm text-foreground flex items-center gap-2">
-            <span>Trial Feature: AI Voice Oral Defense</span>
+            <span>{{ assignment.oralDefenseTitle|default:"AI Voice Oral Defense" }}</span>
             <span
               class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30">Boss
               Battle</span>
@@ -286,7 +286,7 @@
               class="text-primary">0%</span></h2>
           <p class="text-muted-foreground mb-4">You got <span id="correct-count">0</span> out of {{ assignment.questions|length }} correct.</p>
 
-          {% if assignment.id == 'A_C2F6D9' or 'maxima and minima' in assignment.title|lower %}
+          {% if assignment.oralDefenseEnabled %}
           <!-- Unlocked Boss Battle Card -->
           <div
             class="mt-6 p-6 rounded-3xl bg-gradient-to-br from-indigo-950/80 via-slate-900 to-indigo-900/60 border-2 border-amber-500/40 shadow-2xl max-w-xl mx-auto text-center space-y-4">
@@ -295,10 +295,10 @@
               <i data-lucide="swords" class="w-3.5 h-3.5"></i>
               <span>Boss Battle Unlocked!</span>
             </div>
-            <h3 class="text-2xl font-bold text-white tracking-tight">The AI Oral Defense: Professor Algor</h3>
+            <h3 class="text-2xl font-bold text-white tracking-tight">{{ assignment.oralDefenseTitle|default:"The AI Oral Defense" }}</h3>
             <p class="text-sm text-slate-300 leading-relaxed">
-              You've solved the calculus problems on paper. Now step into the arena and verbally defend your reasoning
-              against the Guardian of Extrema using OpenAI Voice!
+              You've completed the written questions. Now step into the arena and verbally defend your reasoning
+              against Professor Algor using the professor-approved knowledge base.
             </p>
             <div class="pt-2">
               <a href="{% url 'voice_tutor:oral_defense_view' assignment.id %}"
@@ -616,11 +616,15 @@
 
 <!-- Plotly.js for Universal Scientific & ML Visualizations -->
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{{ approved_visualizations|json_script:"approved-question-visualizations" }}
 
 <!-- Universal Inline Visualization Controller Script -->
 <script>
   (function () {
     const activeSims = {};
+    const approvedVisualizations = JSON.parse(
+      document.getElementById('approved-question-visualizations')?.textContent || '{}'
+    );
 
     function getCookie(name) {
       let cookieValue = null;
@@ -689,26 +693,14 @@
         const qCard = this.closest('.question-card');
         const qText = qCard ? qCard.querySelector('h3').innerText.replace(/^\d+\.\s*/, '').trim() : '';
 
-        try {
-          const res = await fetch("{% url 'voice_tutor:api_visualize_concept' %}", {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-              question_id: qId,
-              question_text: qText
-            })
-          });
-
-          if (!res.ok) throw new Error('API failed');
-          const data = await res.json();
-          renderUniversalVisualization(qId, data.simulation, qText, titleEl, explanationEl, metricsEl, slidersEl, plotEl, canvasBox, canvas, statusEl, loadingEl, contentEl);
-        } catch (err) {
-          console.warn('API call failed, generating universal fallback:', err);
-          renderUniversalVisualization(qId, null, qText, titleEl, explanationEl, metricsEl, slidersEl, plotEl, canvasBox, canvas, statusEl, loadingEl, contentEl);
+        const approvedSimulation = approvedVisualizations[qId];
+        if (!approvedSimulation) {
+          loadingEl.classList.add('hidden');
+          container.classList.add('hidden');
+          return;
         }
+
+        renderUniversalVisualization(qId, approvedSimulation, qText, titleEl, explanationEl, metricsEl, slidersEl, plotEl, canvasBox, canvas, statusEl, loadingEl, contentEl);
       });
     });
 

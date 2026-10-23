@@ -21,9 +21,16 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     EMBEDDING_MODEL: str = "text-embedding-3-large"
     LLM_MODEL: str = "gpt-4o-mini"
+    VISUALIZATION_MODEL: str = ""
     CHUNK_SIZE: int = 512
     CHUNK_OVERLAP: int = 50
     MAX_UPLOAD_SIZE_MB: int = 50
+    PDF_OCR_MIN_NATIVE_CHARS: int = 40
+    PDF_OCR_BATCH_SIZE: int = 8
+    EMBEDDING_BATCH_SIZE: int = 64
+    QDRANT_UPSERT_BATCH_SIZE: int = 64
+    INGESTION_PIPELINE_VERSION: str = "rag-v2-adaptive-ocr"
+    KEEP_INGESTION_ARTIFACTS: bool = False
 
     # HeyGen API Settings
     HEYGEN_API_KEY: str = ""
